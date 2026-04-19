@@ -32,6 +32,9 @@ func TestLoad_DefaultsApplied(t *testing.T) {
 	if cfg.DatabaseSchema != "" {
 		t.Fatalf("DatabaseSchema: got %q", cfg.DatabaseSchema)
 	}
+	if cfg.MigrateDatabaseURL != "" {
+		t.Fatalf("MigrateDatabaseURL: got %q", cfg.MigrateDatabaseURL)
+	}
 	if cfg.InviteMaxAge != 24*time.Hour {
 		t.Fatalf("InviteMaxAge: got %v", cfg.InviteMaxAge)
 	}
@@ -45,6 +48,7 @@ func TestLoad_ParsesOverrides(t *testing.T) {
 	t.Setenv("SESSION_SECRET", "secret")
 	t.Setenv("HTTP_ADDR", ":9999")
 	t.Setenv("DATABASE_SCHEMA", "ssanta")
+	t.Setenv("MIGRATE_DATABASE_URL", "postgres://migrate:p@localhost:5432/db?sslmode=disable")
 	t.Setenv("INVITE_MAX_AGE", "2h")
 	t.Setenv("JANITOR_INTERVAL", "5s")
 
@@ -57,6 +61,9 @@ func TestLoad_ParsesOverrides(t *testing.T) {
 	}
 	if cfg.DatabaseSchema != "ssanta" {
 		t.Fatalf("DatabaseSchema: got %q", cfg.DatabaseSchema)
+	}
+	if cfg.MigrateDatabaseURL != "postgres://migrate:p@localhost:5432/db?sslmode=disable" {
+		t.Fatalf("MigrateDatabaseURL: got %q", cfg.MigrateDatabaseURL)
 	}
 	if cfg.InviteMaxAge != 2*time.Hour {
 		t.Fatalf("InviteMaxAge: got %v", cfg.InviteMaxAge)

@@ -32,6 +32,7 @@ Optional:
 - `HTTP_ADDR` (default `:8080`)
 - `MIGRATIONS_DIR` (default `migrations`)
 - `DATABASE_SCHEMA` (default empty; when set, server will `CREATE SCHEMA IF NOT EXISTS` and set `search_path` so all tables + `schema_migrations` live in that schema)
+- `MIGRATE_DATABASE_URL` (default empty; when set, migrations/schema bootstrap use this URL while the app uses `DATABASE_URL` for normal operation)
 - `INVITE_MAX_AGE` (default `24h`)
 - `JANITOR_INTERVAL` (default `1m`)
 
@@ -50,6 +51,11 @@ Some managed Postgres setups restrict writes to the `public` schema. If you see 
 `pq: permission denied for schema public ... CREATE TABLE ... schema_migrations`
 
 Set `DATABASE_SCHEMA` to a schema name your DB user can own/write (for example `ssanta`). The server will create the schema (if needed) and run migrations with `search_path` set to it.
+
+If your app’s DB user cannot create schemas (error like `permission denied for database ...`), either:
+
+- Pre-create the schema once using an admin role, or
+- Set `MIGRATE_DATABASE_URL` to a more privileged connection string (admin role) so the app can create the schema + run migrations at startup.
 
 ## Architecture
 

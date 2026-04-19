@@ -13,6 +13,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
 
 func WithSearchPath(databaseURL, schema string) (string, error) {
@@ -46,9 +47,25 @@ func CreateSchema(ctx context.Context, databaseURL, schema string) error {
 
 	query := "CREATE SCHEMA IF NOT EXISTS " + quoteIdent(schema)
 	if _, err := pool.Exec(ctx, query); err != nil {
-		return fmt.Errorf("create schema %q: %w", schema, err)
+		exists, existsErr := schemaExists(ctx, pool, schema)
+		if existsErr == nil && exists {
+			return nil
+		}
+		return fmt.Errorf("create schema %q: %w (hint: pre-create the schema or set MIGRATE_DATABASE_URL with a role that has CREATE privilege on the database)", schema, err)
 	}
 	return nil
+}
+
+func schemaExists(ctx context.Context, pool *pgxpool.Pool, schema string) (bool, error) {
+	var one int
+	err := pool.QueryRow(ctx, "SELECT 1 FROM pg_namespace WHERE nspname = $1", schema).Scan(&one)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return false, err
 }
 
 func quoteIdent(ident string) string {

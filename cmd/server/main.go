@@ -37,24 +37,32 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	dbURL := cfg.DatabaseURL
+	runtimeURL := cfg.DatabaseURL
+	migrateURL := cfg.DatabaseURL
+	if cfg.MigrateDatabaseURL != "" {
+		migrateURL = cfg.MigrateDatabaseURL
+	}
 	if cfg.DatabaseSchema != "" {
-		if err := db.CreateSchema(ctx, dbURL, cfg.DatabaseSchema); err != nil {
+		if err := db.CreateSchema(ctx, migrateURL, cfg.DatabaseSchema); err != nil {
 			return err
 		}
-		dbURL, err = db.WithSearchPath(dbURL, cfg.DatabaseSchema)
+		runtimeURL, err = db.WithSearchPath(runtimeURL, cfg.DatabaseSchema)
+		if err != nil {
+			return err
+		}
+		migrateURL, err = db.WithSearchPath(migrateURL, cfg.DatabaseSchema)
 		if err != nil {
 			return err
 		}
 	}
 
-	pool, err := db.Connect(ctx, dbURL)
+	pool, err := db.Connect(ctx, runtimeURL)
 	if err != nil {
 		return err
 	}
 	defer pool.Close()
 
-	if err := db.Migrate(dbURL, cfg.MigrationsDir); err != nil {
+	if err := db.Migrate(migrateURL, cfg.MigrationsDir); err != nil {
 		return err
 	}
 
