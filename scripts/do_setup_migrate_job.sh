@@ -22,6 +22,8 @@ DB_CLUSTER_ID="${DB_CLUSTER_ID:-${2:-}}"
 SERVICE_NAME="${SERVICE_NAME:-ssanta}"
 JOB_NAME="${JOB_NAME:-migrate}"
 RUNTIME_DB_USER="${RUNTIME_DB_USER:-ssanta_app}"
+ALLOW_LOCAL_IP="${ALLOW_LOCAL_IP:-0}"
+LOCAL_IP_RULE="${LOCAL_IP_RULE:-}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -35,10 +37,17 @@ require openssl
 require psql
 require python3
 
+log() {
+  # Log to stderr so stdout stays clean.
+  printf '%s %s\n' "[do-setup]" "$*" >&2
+}
+
 if [[ -z "$APP_ID" ]]; then
   # Try to auto-detect the app ID by name "ssanta".
   APP_ID="$(doctl apps list --format ID,Spec.Name --no-header 2>/dev/null | awk '$2=="ssanta"{print $1; exit}')"
 fi
+
+log "app_id=$APP_ID"
 if [[ -z "$APP_ID" ]]; then
   echo "APP_ID is required (env APP_ID or first arg)." >&2
   exit 1
@@ -54,10 +63,32 @@ if [[ -z "$DB_CLUSTER_ID" ]]; then
   exit 1
 fi
 
+log "db_cluster_id=$DB_CLUSTER_ID"
+
 # Ensure the app is allowed to reach the DB.
 # If it already exists, doctl will return an error; we ignore it.
+log "ensuring db firewall allows app" 
 doctl databases firewalls append "$DB_CLUSTER_ID" --rule "app:${APP_ID}" >/dev/null 2>&1 || true
 
+if [[ "$ALLOW_LOCAL_IP" == "1" ]]; then
+  # Allow the machine running this script to connect to the DB (useful for psql grants).
+  # You can also provide LOCAL_IP_RULE explicitly, e.g. LOCAL_IP_RULE=203.0.113.10
+  if [[ -z "$LOCAL_IP_RULE" ]]; then
+    if command -v curl >/dev/null 2>&1; then
+      LOCAL_IP_RULE="$(curl -fsSL https://api.ipify.org || true)"
+    fi
+  fi
+  if [[ -z "$LOCAL_IP_RULE" ]]; then
+    log "ALLOW_LOCAL_IP=1 but couldn't determine public IP (set LOCAL_IP_RULE=<your.ip.addr>)"
+    exit 2
+  fi
+  log "ensuring db firewall allows local ip_addr:$LOCAL_IP_RULE"
+  doctl databases firewalls append "$DB_CLUSTER_ID" --rule "ip_addr:${LOCAL_IP_RULE}" >/dev/null 2>&1 || true
+  # Give firewall propagation a moment.
+  sleep 3
+fi
+
+log "fetching database connection details"
 # Admin connection (contains password). Keep it in memory only.
 ADMIN_URI="$(doctl databases connection "$DB_CLUSTER_ID" --format URI --no-header)"
 DB_HOST="$(doctl databases connection "$DB_CLUSTER_ID" --format Host --no-header)"
@@ -67,10 +98,12 @@ DB_NAME="$(doctl databases connection "$DB_CLUSTER_ID" --format Database --no-he
 # Create/rotate the runtime user's password.
 RUNTIME_DB_PASS="$(openssl rand -hex 24)"
 
+log "creating/rotating runtime db role and grants (user=$RUNTIME_DB_USER db=$DB_NAME host=$DB_HOST port=$DB_PORT)"
+
 # Create/rotate the runtime role and grant least-privilege rights.
 # NOTE: DigitalOcean's doctl database users are *admin* on the cluster.
 # We therefore create a Postgres role ourselves and lock it down.
-psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
+if ! psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
   -v app_user="$RUNTIME_DB_USER" \
   -v app_pass="$RUNTIME_DB_PASS" \
   -v db_name="$DB_NAME" \
@@ -96,6 +129,13 @@ SELECT format('ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT 
 -- Explicitly deny DDL.
 SELECT format('REVOKE CREATE ON SCHEMA public FROM %I', :'app_user') \gexec
 SQL
+then
+  log "psql failed to connect. This is usually a DB firewall/trusted-sources issue."
+  log "Fix: rerun with ALLOW_LOCAL_IP=1 (adds ip_addr for your current public IP), or manually run:"
+  log "  doctl databases firewalls append $DB_CLUSTER_ID --rule ip_addr:<your_public_ip>"
+  log "You can also inspect rules with: doctl databases firewalls list $DB_CLUSTER_ID"
+  exit 2
+fi
 
 # Runtime URL used by the public service (least privilege).
 RUNTIME_URI="postgresql://${RUNTIME_DB_USER}:${RUNTIME_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
@@ -111,6 +151,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Patch the existing app spec in JSON so we preserve any extra settings.
+log "patching app spec (service=$SERVICE_NAME job=$JOB_NAME)"
 doctl apps get "$APP_ID" --output json | \
   RUNTIME_URI="$RUNTIME_URI" \
   ADMIN_URI="$ADMIN_URI" \
@@ -212,11 +253,14 @@ sys.stdout.write("\n")
 PY
 
 # Validate and apply the spec.
+log "validating spec"
 doctl apps spec validate "$SPEC_FILE" >/dev/null
 
+log "updating app (this triggers a redeploy)"
 doctl apps update "$APP_ID" --spec "$SPEC_FILE" --update-sources --wait --format ID,Updated
 
 # Store runtime password locally (so you can recover it later if needed).
+log "saving runtime db password to .secrets/ssanta_app_password"
 mkdir -p .secrets
 chmod 700 .secrets
 printf "%s" "$RUNTIME_DB_PASS" > .secrets/ssanta_app_password
