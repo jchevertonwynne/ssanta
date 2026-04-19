@@ -47,10 +47,13 @@
         </div>
 
         {{if .IsCreator}}
-          <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
-              hx-target="#room-sidebar" 
-              hx-swap="outerHTML"
-              hx-trigger="change">
+        <section style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            <h4 style="margin-top: 0;">Room Settings</h4>
+            
+            <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
+                hx-target="#room-sidebar" 
+                hx-swap="outerHTML"
+              hx-trigger="change" style="margin-bottom: 1rem;">
             <label>
                 <input type="checkbox" 
                        name="value" 
@@ -60,6 +63,21 @@
                 Members can invite
             </label>
         </form>
+
+            <form hx-post="/rooms/{{.Room.ID}}/pgp-required" 
+                hx-target="#room-sidebar" 
+                hx-swap="outerHTML"
+              hx-trigger="change">
+            <label>
+                <input type="checkbox" 
+                       name="value" 
+                       value="true"
+                       {{if .Room.PGPRequired}}checked{{end}}
+                       onchange="this.value = this.checked ? 'true' : 'false'">
+                Require PGP encryption
+            </label>
+        </form>
+        </section>
         {{end}}
 
         {{template "room_dynamic.html" .}}
