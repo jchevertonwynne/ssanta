@@ -41,8 +41,11 @@ Config is loaded via `env` struct tags in `internal/config` (format `env:"NAME"`
 Run:
 
 ```bash
+go run ./cmd/migrate
 go run ./cmd/server
 ```
+
+`cmd/migrate` runs database migrations and exits. `cmd/server` is the publicly accessible web process and **does not** apply migrations on startup.
 
 ## DigitalOcean App Platform / Managed Postgres note
 
@@ -65,6 +68,15 @@ Dev Databases don’t support creating additional databases/schemas. For this se
 - Don’t set `MIGRATE_DATABASE_URL`.
 
 If you still see `permission denied for schema public`, the Dev Database role likely doesn’t have sufficient privileges to run migrations; in that case you’ll need to switch to a managed Postgres cluster where you can grant privileges or use an admin role for migrations.
+
+### Recommended: run migrations as an App Platform Job
+
+For better security, don’t run migrations in the publicly accessible web process. Instead:
+
+- Keep the web service (`cmd/server`) running with a least-privileged `DATABASE_URL` (no DDL permissions).
+- Add an App Platform **Job** with `kind: PRE_DEPLOY` that runs `/app/migrate` using `MIGRATE_DATABASE_URL` (DDL-capable).
+
+This repo includes a `/app/migrate` binary in the Docker image for that purpose.
 
 ## Architecture
 

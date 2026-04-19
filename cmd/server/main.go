@@ -38,19 +38,8 @@ func run() error {
 	defer stop()
 
 	runtimeURL := cfg.DatabaseURL
-	migrateURL := cfg.DatabaseURL
-	if cfg.MigrateDatabaseURL != "" {
-		migrateURL = cfg.MigrateDatabaseURL
-	}
 	if cfg.DatabaseSchema != "" {
-		if err := db.CreateSchema(ctx, migrateURL, cfg.DatabaseSchema); err != nil {
-			return err
-		}
 		runtimeURL, err = db.WithSearchPath(runtimeURL, cfg.DatabaseSchema)
-		if err != nil {
-			return err
-		}
-		migrateURL, err = db.WithSearchPath(migrateURL, cfg.DatabaseSchema)
 		if err != nil {
 			return err
 		}
@@ -61,10 +50,6 @@ func run() error {
 		return err
 	}
 	defer pool.Close()
-
-	if err := db.Migrate(migrateURL, cfg.MigrationsDir); err != nil {
-		return err
-	}
 
 	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies)
 	st := store.New(pool)

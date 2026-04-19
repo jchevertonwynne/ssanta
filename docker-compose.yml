@@ -21,6 +21,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       HTTP_ADDR: ":8080"
@@ -29,11 +31,23 @@ services:
     ports:
       - "8080:8080"
 
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    command: ["/app/migrate"]
+
   server:
     build: .
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       HTTP_ADDR: ":8080"
