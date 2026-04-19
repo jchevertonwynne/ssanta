@@ -2,16 +2,21 @@
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 
-# Dependency layer — cached until go.mod/go.sum/vendor change.
-COPY go.mod go.sum ./
-COPY vendor ./vendor
+RUN apk add --no-cache ca-certificates
 
-# Source layer — invalidates on code changes, but vendor layer is reused.
-COPY cmd ./cmd
-COPY internal ./internal
+# Copy the module files first to allow better caching in the non-vendored path.
+COPY go.mod go.sum ./
+
+# Copy the rest of the repo. If vendor/ is present, we'll use it.
+COPY . ./
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-s -w" -o /out/server ./cmd/server
+    --mount=type=cache,target=/go/pkg/mod \
+    if [ -d vendor ]; then \
+        CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-s -w" -o /out/server ./cmd/server; \
+    else \
+        go mod download && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/server ./cmd/server; \
+    fi
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
