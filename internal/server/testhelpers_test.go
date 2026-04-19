@@ -16,10 +16,10 @@ import (
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
 
-func newFormRequest(t *testing.T, method, target string, values url.Values) *http.Request {
+func newFormRequest(t *testing.T, target string, values url.Values) *http.Request {
 	t.Helper()
 	body := values.Encode()
-	r := httptest.NewRequest(method, target, strings.NewReader(body))
+	r := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return r
 }

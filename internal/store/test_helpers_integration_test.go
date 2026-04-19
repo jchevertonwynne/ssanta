@@ -30,17 +30,11 @@ func createRoom(t *testing.T, pool *pgxpool.Pool, name string, creatorID UserID)
 	st := New(pool)
 	ctx, cancel := testCtx(t)
 	defer cancel()
-	if err := st.Rooms.CreateRoom(ctx, name, creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, name, creatorID)
+	if err != nil {
 		t.Fatalf("create room %q: %v", name, err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms by creator: %v", err)
-	}
-	if len(rooms) == 0 {
-		t.Fatalf("expected created room to appear in list")
-	}
-	return rooms[0].ID
+	return roomID
 }
 
 func createInvite(t *testing.T, pool *pgxpool.Pool, roomID RoomID, inviterID UserID, inviteeUsername string) InviteID {

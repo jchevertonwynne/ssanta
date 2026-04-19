@@ -4,11 +4,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 func handleSetRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {

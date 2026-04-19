@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -25,6 +26,7 @@ type contentData struct {
 	Users               []store.User
 	CreatedRooms        []store.Room
 	MemberRooms         []store.Room
+	DMRooms             []service.DMRoomInfo
 	Invites             []store.InviteForUser
 	RoomFormError       string
 	RoomFormAttempted   string
@@ -78,11 +80,12 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /{$}", handleIndex)
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
+	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
 	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
 
 	// Users
-	mux.HandleFunc("POST /users", handleCreateUser(svc, sessions))
-	mux.HandleFunc("DELETE /users/{id}", handleDeleteUser(svc, sessions))
+	mux.HandleFunc("POST /users", handleCreateUser(svc, sessions, hubAPI))
+	mux.HandleFunc("DELETE /users/{id}", handleDeleteUser(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /login", handleLogin(svc, sessions))
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
 	mux.HandleFunc("POST /password", handleChangePassword(svc, sessions))
@@ -110,6 +113,10 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /invites/{id}/decline", handleDeclineInvite(svc, sessions))
 	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(svc, sessions, hubAPI))
+
+	// Direct Messages
+	mux.HandleFunc("POST /dms", handleCreateOrGetDM(svc, sessions))
+	mux.HandleFunc("GET /dms", handleListDMs(svc, sessions))
 
 	// Apply middleware stack (outermost first)
 	handler := Chain(mux,
@@ -154,6 +161,13 @@ func handleContentInvites(svc ContentHandlersService, sessions SessionManager) h
 	}
 }
 
+func handleContentUsers(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentID, _ := resolveSessionUser(r.Context(), svc, sessions, w, r)
+		renderContentUsers(w, r.Context(), svc, currentID)
+	}
+}
+
 // resolveSessionUser returns the logged-in user ID, or 0 if no valid session.
 // If the cookie is signed but references a user that no longer exists (e.g.
 // after a DB wipe), the cookie is cleared so the caller sees a logged-out state.
@@ -191,6 +205,19 @@ func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc Conten
 	})
 }
 
+func renderContentUsers(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+	view, err := svc.GetContentView(ctx, currentID)
+	if err != nil {
+		slog.Error("get content view", "err", err)
+		http.Error(w, "failed to load users", http.StatusInternalServerError)
+		return
+	}
+	render(w, "content_users.html", contentData{
+		CurrentUserID: currentID,
+		Users:         view.Users,
+	})
+}
+
 func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
@@ -199,9 +226,8 @@ func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, 
 	})
 }
 
-func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, attempted, formErr string) {
+func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
-		CurrentUserID:     currentID,
 		UserFormAttempted: attempted,
 		UserFormError:     formErr,
 	})
@@ -335,7 +361,7 @@ func render(w http.ResponseWriter, name string, data any) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	buf.WriteTo(w)
+	_, _ = buf.WriteTo(w) //nolint:errcheck
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

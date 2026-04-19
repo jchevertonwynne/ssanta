@@ -12,12 +12,13 @@ import (
 	"github.com/gorilla/websocket"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/pgp"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 const maxMessageLength = 4096
@@ -46,6 +47,15 @@ type ChatHub struct {
 	done            chan struct{}
 	wg              sync.WaitGroup
 	mu              sync.RWMutex
+	typingStatus    map[store.RoomID]map[store.UserID]*typingSession // track who's typing
+	typingSessionID int64
+}
+
+type typingSession struct {
+	username   string
+	lastActive time.Time
+	cancelFunc context.CancelFunc
+	sessionID  int64 // unique ID for this typing session
 }
 
 type ChatRoom struct {
@@ -79,6 +89,7 @@ func NewChatHub() *ChatHub {
 		register:        make(chan *ChatClient),
 		unregister:      make(chan *ChatClient),
 		done:            make(chan struct{}),
+		typingStatus:    make(map[store.RoomID]map[store.UserID]*typingSession),
 	}
 }
 
@@ -102,7 +113,7 @@ func (h *ChatHub) Stop() {
 	for _, room := range h.rooms {
 		room.mu.Lock()
 		for client := range room.clients {
-			client.conn.Close()
+			client.conn.Close() //nolint:errcheck
 		}
 		room.mu.Unlock()
 	}
@@ -199,6 +210,17 @@ func (h *ChatHub) Run() {
 					room.mu.Unlock()
 					if empty {
 						delete(h.rooms, client.roomID)
+					}
+				}
+
+				// Clear typing status for this user in this room
+				if typingRoom, ok := h.typingStatus[client.roomID]; ok {
+					if session, ok := typingRoom[client.userID]; ok {
+						session.cancelFunc()
+						delete(typingRoom, client.userID)
+					}
+					if len(typingRoom) == 0 {
+						delete(h.typingStatus, client.roomID)
 					}
 				}
 			}
@@ -332,6 +354,106 @@ func (h *ChatHub) NotifyUser(userID store.UserID, msgType, message string) {
 	}
 }
 
+func (h *ChatHub) NotifyContentUpdate(msgType string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	notifyMsg := ChatMessagePayload{Type: msgType}
+	msg, err := json.Marshal(notifyMsg)
+	if err != nil {
+		return
+	}
+
+	for _, connections := range h.userConnections {
+		for client := range connections {
+			if client.roomID != 0 {
+				continue
+			}
+			select {
+			case client.send <- msg:
+			default:
+			}
+		}
+	}
+}
+
+// SetTypingStatus updates the typing status for a user in a room
+// isTyping=true means user is typing; isTyping=false means user stopped typing
+// A 5-second timeout is automatically applied for typing status
+func (h *ChatHub) SetTypingStatus(roomID store.RoomID, userID store.UserID, username string, isTyping bool) {
+	h.mu.Lock()
+
+	// Ensure room entry exists in typingStatus
+	if h.typingStatus[roomID] == nil {
+		h.typingStatus[roomID] = make(map[store.UserID]*typingSession)
+	}
+
+	// Cancel any existing typing timeout
+	if session, exists := h.typingStatus[roomID][userID]; exists {
+		session.cancelFunc()
+	}
+
+	if !isTyping {
+		// User stopped typing, remove from tracking
+		delete(h.typingStatus[roomID], userID)
+		h.mu.Unlock()
+
+		// Broadcast stopped_typing
+		stoppedMsg := ChatMessagePayload{
+			Type:     "stopped_typing",
+			Username: username,
+		}
+		if msg, err := json.Marshal(stoppedMsg); err == nil {
+			h.BroadcastToRoom(roomID, msg)
+		}
+	} else {
+		// User is typing, set up with auto-timeout
+		h.typingSessionID++
+		sessionID := h.typingSessionID
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		h.typingStatus[roomID][userID] = &typingSession{
+			username:   username,
+			lastActive: time.Now(),
+			cancelFunc: cancel,
+			sessionID:  sessionID,
+		}
+		h.mu.Unlock()
+
+		// Broadcast typing update
+		typingMsg := ChatMessagePayload{
+			Type:     "typing",
+			Username: username,
+		}
+		if msg, err := json.Marshal(typingMsg); err == nil {
+			h.BroadcastToRoom(roomID, msg)
+		}
+
+		// Wait for timeout and auto-clear
+		go func() {
+			<-ctx.Done()
+
+			h.mu.Lock()
+			// Only clear if it hasn't been updated (check sessionID)
+			if session, ok := h.typingStatus[roomID][userID]; ok && session.sessionID == sessionID {
+				delete(h.typingStatus[roomID], userID)
+				h.mu.Unlock()
+
+				// Broadcast stopped_typing
+				stoppedMsg := ChatMessagePayload{
+					Type:     "stopped_typing",
+					Username: username,
+				}
+				if msg, err := json.Marshal(stoppedMsg); err == nil {
+					h.BroadcastToRoom(roomID, msg)
+				}
+			} else {
+				h.mu.Unlock()
+			}
+		}()
+	}
+}
+
 func (c *ChatClient) readPump() {
 	defer func() {
 		select {
@@ -339,14 +461,14 @@ func (c *ChatClient) readPump() {
 		case <-c.hub.done:
 			// Hub is stopping; avoid blocking if Run has exited.
 		}
-		c.conn.Close()
+		c.conn.Close() //nolint:errcheck
 		c.hub.wg.Done()
 	}()
 
 	c.conn.SetReadLimit(maxMessageLength * 2)
-	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)) //nolint:errcheck
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)) //nolint:errcheck
 		return nil
 	})
 
@@ -371,6 +493,17 @@ func (c *ChatClient) readPump() {
 		var payload ChatMessagePayload
 		if err := json.Unmarshal(message, &payload); err != nil {
 			slog.Error("unmarshal message", "err", err)
+			continue
+		}
+
+		// Handle typing indicators
+		if payload.Type == "typing" {
+			c.hub.SetTypingStatus(c.roomID, c.userID, c.username, true)
+			continue
+		}
+
+		if payload.Type == "stopped_typing" {
+			c.hub.SetTypingStatus(c.roomID, c.userID, c.username, false)
 			continue
 		}
 
@@ -430,7 +563,7 @@ func (c *ChatClient) readPump() {
 			var g errgroup.Group
 
 			for _, m := range members {
-				m := m // capture loop variable
+				// capture loop variable
 				g.Go(func() error {
 					var b []byte
 					var err error
@@ -444,13 +577,13 @@ func (c *ChatClient) readPump() {
 						}
 						b, err = json.Marshal(out)
 						if err != nil {
-							return nil // skip on marshal error, don't fail the whole batch
+							return nil //nolint:nilerr // skip on marshal error, don't fail the whole batch
 						}
 					} else {
 						ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
 						if err != nil {
 							slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
-							return nil // skip on encryption error, don't fail the whole batch
+							return nil //nolint:nilerr // skip on encryption error, don't fail the whole batch
 						}
 						out := ChatMessagePayload{
 							Type:      "message",
@@ -460,7 +593,7 @@ func (c *ChatClient) readPump() {
 						}
 						b, err = json.Marshal(out)
 						if err != nil {
-							return nil // skip on marshal error, don't fail the whole batch
+							return nil //nolint:nilerr // skip on marshal error, don't fail the whole batch
 						}
 					}
 
@@ -472,7 +605,7 @@ func (c *ChatClient) readPump() {
 			}
 
 			// Wait for all encryptions to complete
-			g.Wait() // ignore error, we handled errors inside goroutines
+			_ = g.Wait() //nolint:errcheck // ignore error, we handled errors inside goroutines
 
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 
@@ -495,16 +628,16 @@ func (c *ChatClient) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		c.conn.Close() //nolint:errcheck
 		c.hub.wg.Done()
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //nolint:errcheck
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{}) //nolint:errcheck
 				return
 			}
 
@@ -513,7 +646,7 @@ func (c *ChatClient) writePump() {
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //nolint:errcheck
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -570,7 +703,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		}
 
 		if !hub.tryRegister(client) {
-			conn.Close()
+			conn.Close() //nolint:errcheck
 			return
 		}
 
@@ -611,7 +744,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 		}
 
 		if !hub.tryRegister(client) {
-			conn.Close()
+			conn.Close() //nolint:errcheck
 			return
 		}
 

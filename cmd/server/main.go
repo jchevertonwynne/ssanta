@@ -83,7 +83,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer pool.Close() //nolint:errcheck
 
 	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies, cfg.SessionTTL)
 	st := store.New(pool)

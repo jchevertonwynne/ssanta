@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
 )
 
 func TestCleanupDeletesOldInvitesAndClearsExpiredChallenges(t *testing.T) {

@@ -113,7 +113,7 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		)
 	}
 	if err != nil {
-		traceExporter.Shutdown(ctx)
+		_ = traceExporter.Shutdown(ctx) //nolint:errcheck
 		return nil, fmt.Errorf("create metric exporter: %w", err)
 	}
 
@@ -137,8 +137,8 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		)
 	}
 	if err != nil {
-		traceExporter.Shutdown(ctx)
-		metricExporter.Shutdown(ctx)
+		_ = traceExporter.Shutdown(ctx)  //nolint:errcheck
+		_ = metricExporter.Shutdown(ctx) //nolint:errcheck
 		return nil, fmt.Errorf("create log exporter: %w", err)
 	}
 

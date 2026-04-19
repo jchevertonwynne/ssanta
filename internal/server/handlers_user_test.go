@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,17 +21,19 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(store.UserID(42), nil)
 	sessions.EXPECT().Set(gomock.Any(), store.UserID(42))
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(42)).Return(stubContentView("Alice"), nil)
+	hub.EXPECT().NotifyContentUpdate("users_updated")
 
-	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+	r := newFormRequest(t, "/users", url.Values{
 		"username":         {"Alice"},
 		"password":         {"secret123"},
 		"password_confirm": {"secret123"},
 	})
-	w := serve(t, handleCreateUser(svc, sessions), r)
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -46,15 +49,16 @@ func TestHandleCreateUser_PasswordMismatch_RendersError(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+	r := newFormRequest(t, "/users", url.Values{
 		"username":         {"alice"},
 		"password":         {"secret123"},
 		"password_confirm": {"different"},
 	})
-	w := serve(t, handleCreateUser(svc, sessions), r)
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -70,16 +74,17 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	svc.EXPECT().CreateUser(gomock.Any(), "bad name", "secret123").Return(store.UserID(0), store.ErrUsernameInvalid)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+	r := newFormRequest(t, "/users", url.Values{
 		"username":         {"bad name"},
 		"password":         {"secret123"},
 		"password_confirm": {"secret123"},
 	})
-	w := serve(t, handleCreateUser(svc, sessions), r)
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -95,12 +100,13 @@ func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := httptest.NewRequest(http.MethodDelete, "/users/1", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/1", nil)
 	r.SetPathValue("id", "1")
-	w := serve(t, handleDeleteUser(svc, sessions), r)
+	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d", w.Code)
@@ -113,12 +119,13 @@ func TestHandleDeleteUser_CannotDeleteOtherUser_Returns403(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 1)
 
-	r := httptest.NewRequest(http.MethodDelete, "/users/2", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/2", nil)
 	r.SetPathValue("id", "2")
-	w := serve(t, handleDeleteUser(svc, sessions), r)
+	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
@@ -131,15 +138,17 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 7)
 	svc.EXPECT().DeleteUser(gomock.Any(), store.UserID(7)).Return(nil)
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
+	hub.EXPECT().NotifyContentUpdate("users_updated")
 
-	r := httptest.NewRequest(http.MethodDelete, "/users/7", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/7", nil)
 	r.SetPathValue("id", "7")
-	w := serve(t, handleDeleteUser(svc, sessions), r)
+	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -156,7 +165,7 @@ func TestHandleLogin_InvalidCredentials_RendersError(t *testing.T) {
 	svc.EXPECT().LoginUser(gomock.Any(), "alice", "wrongpass").Return(store.UserID(0), store.ErrInvalidCredentials)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
+	r := newFormRequest(t, "/login", url.Values{
 		"username": {"alice"},
 		"password": {"wrongpass"},
 	})
@@ -181,7 +190,7 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	sessions.EXPECT().Set(gomock.Any(), store.UserID(5))
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(5)).Return(stubContentView("alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
+	r := newFormRequest(t, "/login", url.Values{
 		"username": {"alice"},
 		"password": {"correctpass"},
 	})
@@ -202,7 +211,7 @@ func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
-	r := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/logout", nil)
 	w := serve(t, handleLogout(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
@@ -219,12 +228,13 @@ func TestHandleDeleteUser_InvalidPathID_Returns400(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 7)
 
-	r := httptest.NewRequest(http.MethodDelete, "/users/abc", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/abc", nil)
 	r.SetPathValue("id", "abc")
-	w := serve(t, handleDeleteUser(svc, sessions), r)
+	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", w.Code)
@@ -242,7 +252,7 @@ func TestHandleChangePassword_Success(t *testing.T) {
 	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "oldpass12", "newpass12").Return(nil)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/password", url.Values{
+	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"oldpass12"},
 		"new_password":         {"newpass12"},
 		"new_password_confirm": {"newpass12"},
@@ -266,7 +276,7 @@ func TestHandleChangePassword_Unauthorized(t *testing.T) {
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := newFormRequest(t, http.MethodPost, "/password", url.Values{
+	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"old"},
 		"new_password":         {"new12345"},
 		"new_password_confirm": {"new12345"},
@@ -288,7 +298,7 @@ func TestHandleChangePassword_NewPasswordMismatch(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, 10)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/password", url.Values{
+	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"oldpass12"},
 		"new_password":         {"newpass12"},
 		"new_password_confirm": {"different"},
@@ -314,7 +324,7 @@ func TestHandleChangePassword_IncorrectCurrentPassword(t *testing.T) {
 	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "wrongpass", "newpass12").Return(store.ErrCurrentPasswordIncorrect)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/password", url.Values{
+	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"wrongpass"},
 		"new_password":         {"newpass12"},
 		"new_password_confirm": {"newpass12"},
@@ -340,7 +350,7 @@ func TestHandleChangePassword_PasswordTooShort(t *testing.T) {
 	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "oldpass12", "short").Return(store.ErrPasswordTooShort)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/password", url.Values{
+	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"oldpass12"},
 		"new_password":         {"short"},
 		"new_password_confirm": {"short"},

@@ -87,15 +87,3 @@ func computeCSRFToken(secret []byte, csrfID string) string {
 	h.Write([]byte(csrfID))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
-
-// csrfTokenForTemplate is the body of the `csrf` template func. It returns
-// the token computed against the request's csrf_id cookie. If CSRF middleware
-// hasn't run, it returns an empty string (the form will fail server-side
-// validation, which is the safe default).
-func csrfTokenForRequest(secret []byte, r *http.Request) string {
-	id := csrfIDFromContext(r.Context())
-	if id == "" {
-		return ""
-	}
-	return computeCSRFToken(secret, id)
-}

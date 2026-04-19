@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/jchevertonwynne/ssanta/internal/pgp"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
@@ -58,12 +60,22 @@ func (s *Service) Ping(ctx context.Context) error {
 	return s.store.Ping(ctx)
 }
 
+// DMRoomInfo contains info about a direct message room
+type DMRoomInfo struct {
+	RoomID      store.RoomID
+	PartnerID   store.UserID
+	PartnerName string
+	DisplayName string
+	CreatedAt   time.Time
+}
+
 // ContentView contains all data needed to render the main content page
 type ContentView struct {
 	CurrentUsername string
 	Users           []store.User
 	CreatedRooms    []store.Room
 	MemberRooms     []store.Room
+	DMRooms         []DMRoomInfo
 	Invites         []store.InviteForUser
 }
 
@@ -109,6 +121,13 @@ func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*Con
 		if err != nil {
 			return nil, err
 		}
+
+		// Load DM rooms
+		dmRooms, err := s.getDMRoomsForUser(ctx, userID, users)
+		if err != nil {
+			return nil, err
+		}
+		view.DMRooms = dmRooms
 	}
 
 	return view, nil
@@ -323,7 +342,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, curre
 
 // Room operations
 
-func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {
+func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateRoom")
 	defer span.End()
 
@@ -334,16 +353,17 @@ func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID 
 	)
 
 	if name == "" {
-		return store.ErrRoomNameEmpty
+		return 0, store.ErrRoomNameEmpty
 	}
 	if len(name) > store.MaxRoomNameLength {
-		return store.ErrRoomNameTooLong
+		return 0, store.ErrRoomNameTooLong
 	}
-	err := s.store.Rooms.CreateRoom(ctx, name, creatorID)
+	roomID, err := s.store.Rooms.CreateRoom(ctx, name, creatorID)
 	if err == nil {
-		slog.InfoContext(ctx, "room created", "room_name", name, "creator_id", creatorID)
+		slog.InfoContext(ctx, "room created", "room_name", name, "creator_id", creatorID, "room_id", roomID.Int64())
+		span.SetAttributes(attribute.Int64("room_id", roomID.Int64()))
 	}
-	return err
+	return roomID, err
 }
 
 func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
@@ -437,4 +457,181 @@ func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string,
 
 func (s *Service) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
 	return s.store.Users.GetUserByUsername(ctx, username)
+}
+
+// Room Discovery
+
+func (s *Service) ListPublicRooms(ctx context.Context, limit int, offset int) ([]store.Room, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.store.Rooms.ListPublicRooms(ctx, limit, offset)
+}
+
+func (s *Service) SearchPublicRooms(ctx context.Context, query string, limit int) ([]store.Room, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return []store.Room{}, nil
+	}
+	if len(query) > 100 {
+		query = query[:100]
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	return s.store.Rooms.SearchPublicRooms(ctx, query, limit)
+}
+
+func (s *Service) SetRoomPublic(ctx context.Context, roomID store.RoomID, creatorID store.UserID, isPublic bool) error {
+	return s.store.Rooms.SetRoomPublic(ctx, roomID, creatorID, isPublic)
+}
+
+// Direct Messages
+
+// GetOrCreateDMRoom gets or creates a DM room between two users
+func (s *Service) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
+	if user1ID == user2ID {
+		return 0, store.ErrCannotInviteSelf
+	}
+
+	// Get usernames
+	user1, err := s.store.Users.GetUserByID(ctx, user1ID)
+	if err != nil {
+		return 0, err
+	}
+	user2, err := s.store.Users.GetUserByID(ctx, user2ID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Generate deterministic DM room name (alphabetically sorted)
+	name1, name2 := user1.Username, user2.Username
+	if name1 > name2 {
+		name1, name2 = name2, name1
+	}
+	displayName := "dm:" + name1 + ":" + name2
+
+	// Try to find existing room
+	rooms, err := s.store.Rooms.ListRoomsByMember(ctx, user1ID)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, room := range rooms {
+		if room.DisplayName == displayName {
+			// Ensure user2 is also a member
+			isMember, err := s.store.Rooms.IsRoomMember(ctx, room.ID, user2ID)
+			if err != nil {
+				return 0, err
+			}
+			if !isMember {
+				err = s.store.Rooms.JoinRoom(ctx, room.ID, user2ID)
+				if err != nil {
+					return 0, err
+				}
+			}
+			return room.ID, nil
+		}
+	}
+
+	// Create new DM room (user1 is creator)
+	roomID, err := s.store.Rooms.CreateRoom(ctx, displayName, user1ID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Join user2 to the newly created room
+	err = s.store.Rooms.JoinRoom(ctx, roomID, user2ID)
+	if err != nil {
+		return 0, err
+	}
+
+	return roomID, nil
+}
+
+// GetDMPartnerUsername gets the partner's username from a DM room
+func (s *Service) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
+	members, err := s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
+	if err != nil {
+		return "", err
+	}
+
+	for _, member := range members {
+		if member.ID != currentUserID {
+			return member.Username, nil
+		}
+	}
+
+	return "", errors.New("partner not found in DM room")
+}
+
+// getDMRoomsForUser returns a list of DM rooms for a user with partner info
+func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, users []store.User) ([]DMRoomInfo, error) {
+	memberRooms, err := s.store.Rooms.ListRoomsByMember(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build a map of username -> user for quick lookup
+	userByName := make(map[string]store.User)
+	for _, u := range users {
+		userByName[u.Username] = u
+	}
+
+	var dmRooms []DMRoomInfo
+
+	for _, room := range memberRooms {
+		if !strings.HasPrefix(room.DisplayName, "dm:") {
+			continue
+		}
+
+		// Extract partner username from DM name format "dm:user1:user2"
+		parts := strings.Split(room.DisplayName, ":")
+		if len(parts) != 3 {
+			continue
+		}
+
+		partnerName := parts[1]
+		if partnerName == "" {
+			partnerName = parts[2]
+		} else if parts[2] != "" {
+			// Pick the one that's not the current user
+			if user, ok := userByName[parts[1]]; ok {
+				if user.ID != userID {
+					partnerName = parts[1]
+				} else if user2, ok2 := userByName[parts[2]]; ok2 {
+					partnerName = parts[2]
+					if user2.ID == userID {
+						continue
+					}
+				}
+			}
+		}
+
+		// Find the partner in the user list
+		var partnerID store.UserID
+		if partner, ok := userByName[partnerName]; ok {
+			partnerID = partner.ID
+		} else {
+			continue
+		}
+
+		dmRooms = append(dmRooms, DMRoomInfo{
+			RoomID:      room.ID,
+			PartnerID:   partnerID,
+			PartnerName: partnerName,
+			DisplayName: room.DisplayName,
+			CreatedAt:   room.CreatedAt,
+		})
+	}
+
+	// Sort by created_at DESC (newest first)
+	sort.Slice(dmRooms, func(i, j int) bool {
+		return dmRooms[i].CreatedAt.After(dmRooms[j].CreatedAt)
+	})
+
+	return dmRooms, nil
 }

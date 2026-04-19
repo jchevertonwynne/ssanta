@@ -92,7 +92,7 @@ func (s *Store) WithTx(ctx context.Context, fn func(*Store) error) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if err := fn(storeFromDB(tx, nil)); err != nil {
 		return err

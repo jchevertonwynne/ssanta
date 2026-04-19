@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -20,7 +21,7 @@ func TestHandleHealth_OK(t *testing.T) {
 	svc.EXPECT().Ping(gomock.Any()).Return(nil)
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", nil)
 
 	h := handleHealth(svc)
 	h.ServeHTTP(w, r)
@@ -46,7 +47,7 @@ func TestHandleHealth_DBUnavailable(t *testing.T) {
 	svc.EXPECT().Ping(gomock.Any()).Return(errors.New("db down"))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", nil)
 
 	h := handleHealth(svc)
 	h.ServeHTTP(w, r)

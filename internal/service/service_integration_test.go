@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -29,14 +30,10 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 		t.Fatalf("create nonmember: %v", err)
 	}
 
-	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms: %v", err)
-	}
-	roomID := rooms[0].ID
 
 	// Creator can view even if not a member, and can always invite.
 	view, err := svc.GetRoomDetailView(ctx, roomID, creatorID)
@@ -78,7 +75,7 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 	}
 
 	// Non-member should be rejected.
-	if _, err := svc.GetRoomDetailView(ctx, roomID, nonMemberID); err != store.ErrNotRoomMember {
+	if _, err := svc.GetRoomDetailView(ctx, roomID, nonMemberID); !errors.Is(err, store.ErrNotRoomMember) {
 		t.Fatalf("expected ErrNotRoomMember, got %v", err)
 	}
 }
@@ -95,7 +92,8 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	if err := st.Rooms.CreateRoom(ctx, "room", id); err != nil {
+	_, err = st.Rooms.CreateRoom(ctx, "room", id)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
 

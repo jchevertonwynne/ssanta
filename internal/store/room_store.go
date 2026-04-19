@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,19 +16,20 @@ type RoomStore struct {
 	db dbtx
 }
 
-func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID) error {
-	_, err := s.db.Exec(ctx,
-		`INSERT INTO rooms (display_name, creator_id) VALUES ($1, $2)`,
+func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID) (RoomID, error) {
+	var roomID RoomID
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO rooms (display_name, creator_id) VALUES ($1, $2) RETURNING id`,
 		displayName, creatorID,
-	)
+	).Scan(&roomID)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return ErrRoomNameTaken
+		return 0, ErrRoomNameTaken
 	}
 	if err == nil {
-		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID)
+		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID, "room_id", roomID)
 	}
-	return err
+	return roomID, err
 }
 
 func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
@@ -190,14 +192,15 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	// Check if room exists and if user is the creator
 	var creatorID UserID
+	var displayName string
 	err = tx.QueryRow(ctx,
-		`SELECT creator_id FROM rooms WHERE id = $1`,
+		`SELECT creator_id, display_name FROM rooms WHERE id = $1`,
 		roomID,
-	).Scan(&creatorID)
+	).Scan(&creatorID, &displayName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrRoomNotFound
@@ -229,6 +232,58 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 		}
 	}
 
+	// For DM rooms, check if there are any remaining members
+	// If no members left, delete the room entirely
+	if strings.HasPrefix(displayName, "dm:") {
+		var memberCount int
+		err = tx.QueryRow(ctx,
+			`SELECT COUNT(*) FROM room_users WHERE room_id = $1`,
+			roomID,
+		).Scan(&memberCount)
+		if err != nil {
+			return err
+		}
+
+		if memberCount == 0 {
+			// Delete all related data for this DM room
+			// Delete room PGP keys
+			_, err = tx.Exec(ctx,
+				`DELETE FROM room_user_pgp_keys WHERE room_id = $1`,
+				roomID,
+			)
+			if err != nil {
+				return err
+			}
+
+			// Delete room invites
+			_, err = tx.Exec(ctx,
+				`DELETE FROM room_invites WHERE room_id = $1`,
+				roomID,
+			)
+			if err != nil {
+				return err
+			}
+
+			// Delete room members (should be empty already, but be explicit)
+			_, err = tx.Exec(ctx,
+				`DELETE FROM room_users WHERE room_id = $1`,
+				roomID,
+			)
+			if err != nil {
+				return err
+			}
+
+			// Delete the room itself
+			_, err = tx.Exec(ctx,
+				`DELETE FROM rooms WHERE id = $1`,
+				roomID,
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return tx.Commit(ctx)
 }
 
@@ -237,7 +292,7 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	// Verify the actor is the creator
 	var actualCreatorID UserID
@@ -283,6 +338,52 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	}
 
 	return tx.Commit(ctx)
+}
+
+// Room Discovery Support
+
+func (s *RoomStore) ListPublicRooms(ctx context.Context, limit int, offset int) ([]Room, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT id, display_name, created_at 
+		 FROM rooms 
+		 WHERE is_public = true
+		 ORDER BY id DESC
+		 LIMIT $1 OFFSET $2`,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanRooms(rows)
+}
+
+func (s *RoomStore) SearchPublicRooms(ctx context.Context, query string, limit int) ([]Room, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT id, display_name, created_at 
+		 FROM rooms 
+		 WHERE is_public = true AND display_name ILIKE $1
+		 ORDER BY id DESC
+		 LIMIT $2`,
+		"%"+query+"%", limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanRooms(rows)
+}
+
+func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, isPublic bool) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE rooms SET is_public = $3 WHERE id = $1 AND creator_id = $2`,
+		roomID, creatorID, isPublic,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotRoomCreator
+	}
+	return nil
 }
 
 func scanRooms(rows pgx.Rows) ([]Room, error) {

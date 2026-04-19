@@ -36,7 +36,7 @@ func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomI
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	var storedHash []byte
 	var expiresAt *time.Time

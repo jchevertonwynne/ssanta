@@ -57,7 +57,7 @@ type UserLookupService interface {
 }
 
 type CreateRoomService interface {
-	CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error
+	CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error)
 }
 
 type DeleteRoomService interface {
@@ -162,6 +162,7 @@ type ServerService interface {
 	RoomHandlersService
 	InviteHandlersService
 	WebSocketHandlersService
+	DMHandlersService
 }
 
 type SessionManager interface {
@@ -170,9 +171,17 @@ type SessionManager interface {
 	UserID(r *http.Request) (store.UserID, bool)
 }
 
+type DMHandlersService interface {
+	UserExistsService
+	ContentViewService
+	GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error)
+	GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error)
+}
+
 type Hub interface {
 	BroadcastSystemMessage(roomID store.RoomID, message string)
 	NotifyRoomUpdate(roomID store.RoomID)
 	NotifyUser(userID store.UserID, msgType, message string)
+	NotifyContentUpdate(msgType string)
 	DisconnectUser(roomID store.RoomID, userID store.UserID)
 }

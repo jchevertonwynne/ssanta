@@ -16,7 +16,7 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 	m.Set(rr, 123)
 
 	res := rr.Result()
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 
 	cookies := res.Cookies()
 	if len(cookies) != 1 {
@@ -135,7 +135,7 @@ func TestManager_Clear_DeletesCookie(t *testing.T) {
 	m.Clear(rr)
 
 	res := rr.Result()
-	defer res.Body.Close()
+	defer res.Body.Close() //nolint:errcheck
 
 	cookies := res.Cookies()
 	if len(cookies) != 1 {

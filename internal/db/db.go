@@ -47,7 +47,7 @@ func CreateSchema(ctx context.Context, databaseURL, schema string) error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer pool.Close() //nolint:errcheck
 
 	query := "CREATE SCHEMA IF NOT EXISTS " + quoteIdent(schema)
 	if _, err := pool.Exec(ctx, query); err != nil {
@@ -127,7 +127,7 @@ func Migrate(url, dir string) error {
 	if err != nil {
 		return fmt.Errorf("init migrate: %w", err)
 	}
-	defer m.Close()
+	defer m.Close() //nolint:errcheck
 
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return fmt.Errorf("apply migrations: %w", err)
@@ -150,7 +150,7 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role 
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
+	defer pool.Close() //nolint:errcheck
 
 	// Ensure the role exists.
 	var one int

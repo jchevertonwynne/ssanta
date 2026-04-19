@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -49,7 +50,7 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 		t.Fatalf("delete user: %v", err)
 	}
 
-	if _, err := st.Users.GetUserByID(ctx, id); err != ErrUserNotFound {
+	if _, err := st.Users.GetUserByID(ctx, id); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound after delete, got %v", err)
 	}
 }
@@ -64,7 +65,7 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); err != ErrUsernameTaken {
+	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); !errors.Is(err, ErrUsernameTaken) {
 		t.Fatalf("expected ErrUsernameTaken, got %v", err)
 	}
 }
@@ -105,7 +106,7 @@ func TestUserStore_DeleteUser_NotFound(t *testing.T) {
 	ctx, cancel := testCtx(t)
 	defer cancel()
 
-	if err := st.Users.DeleteUser(ctx, 12345); err != ErrUserNotFound {
+	if err := st.Users.DeleteUser(ctx, 12345); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
 }
@@ -117,10 +118,10 @@ func TestUserStore_GetUser_NotFound(t *testing.T) {
 	ctx, cancel := testCtx(t)
 	defer cancel()
 
-	if _, err := st.Users.GetUserByID(ctx, 12345); err != ErrUserNotFound {
+	if _, err := st.Users.GetUserByID(ctx, 12345); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
-	if _, err := st.Users.GetUserByUsername(ctx, "missing"); err != ErrUserNotFound {
+	if _, err := st.Users.GetUserByUsername(ctx, "missing"); !errors.Is(err, ErrUserNotFound) {
 		t.Fatalf("expected ErrUserNotFound, got %v", err)
 	}
 }

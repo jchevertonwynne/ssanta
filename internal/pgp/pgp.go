@@ -24,12 +24,12 @@ const (
 )
 
 var (
-	ErrKeyEmpty         = errors.New("pgp key cannot be empty")
-	ErrKeyTooLarge      = errors.New("pgp key too large")
-	ErrKeyMustBePublic  = errors.New("pgp key must be a public key")
+	ErrKeyEmpty          = errors.New("pgp key cannot be empty")
+	ErrKeyTooLarge       = errors.New("pgp key too large")
+	ErrKeyMustBePublic   = errors.New("pgp key must be a public key")
 	ErrKeyNotEncryptable = errors.New("pgp key cannot be used for encryption")
-	ErrKeyRevoked       = errors.New("pgp key is revoked")
-	ErrKeyExpired       = errors.New("pgp key is expired")
+	ErrKeyRevoked        = errors.New("pgp key is revoked")
+	ErrKeyExpired        = errors.New("pgp key is expired")
 )
 
 // NormalizePublicKey parses an armored key, rejects private keys, and returns a

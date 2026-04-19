@@ -25,7 +25,7 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	var creatorID UserID
 	var membersCanInvite bool
@@ -164,7 +164,7 @@ func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userI
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	var roomID RoomID
 	var inviteeID UserID
@@ -223,7 +223,7 @@ func (s *InviteStore) CancelInvite(ctx context.Context, inviteID InviteID, actin
 	if err != nil {
 		return 0, 0, err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	var inviterID, creatorID, inviteeID UserID
 	var roomID RoomID

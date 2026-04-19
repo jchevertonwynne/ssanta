@@ -4,14 +4,15 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
+func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "CreateUser")
 		defer span.End()
@@ -27,22 +28,22 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.Han
 
 		if password != confirm {
 			span.SetStatus(codes.Error, "passwords do not match")
-			renderContentWithUserFormError(w, ctx, svc, 0, attempted, "passwords do not match")
+			renderContentWithUserFormError(w, ctx, svc, attempted, "passwords do not match")
 			return
 		}
 		id, err := svc.CreateUser(ctx, attempted, password)
 		switch {
 		case errors.Is(err, store.ErrUsernameInvalid):
 			span.SetStatus(codes.Error, err.Error())
-			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrUsernameTaken):
 			span.SetStatus(codes.Error, err.Error())
-			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrPasswordTooShort):
 			span.SetStatus(codes.Error, err.Error())
-			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, attempted, err.Error())
 			return
 		case err != nil:
 			span.SetStatus(codes.Error, err.Error())
@@ -60,10 +61,11 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.Han
 
 		sessions.Set(w, id)
 		renderContent(w, ctx, svc, id)
+		hub.NotifyContentUpdate("users_updated")
 	}
 }
 
-func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
+func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -85,6 +87,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.Han
 		}
 		sessions.Clear(w)
 		renderContent(w, r.Context(), svc, 0)
+		hub.NotifyContentUpdate("users_updated")
 	}
 }
 

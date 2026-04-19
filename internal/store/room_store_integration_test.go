@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -26,17 +27,10 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 		t.Fatalf("create invitee: %v", err)
 	}
 
-	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms: %v", err)
-	}
-	if len(rooms) != 1 {
-		t.Fatalf("expected 1 room, got %d", len(rooms))
-	}
-	roomID := rooms[0].ID
 
 	if err := st.Rooms.JoinRoom(ctx, roomID, memberID); err != nil {
 		t.Fatalf("join room: %v", err)
@@ -88,14 +82,10 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 	}
 	_ = inviteeID
 
-	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms: %v", err)
-	}
-	roomID := rooms[0].ID
 
 	// Creator must first join to be a member, then create an invite.
 	if err := st.Rooms.JoinRoom(ctx, roomID, creatorID); err != nil {
@@ -134,14 +124,10 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms: %v", err)
-	}
-	roomID := rooms[0].ID
 
 	if err := st.Rooms.JoinRoom(ctx, roomID, memberID); err != nil {
 		t.Fatalf("join room: %v", err)
@@ -180,16 +166,12 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}
-	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
-	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
-	if err != nil {
-		t.Fatalf("list rooms: %v", err)
-	}
-	roomID := rooms[0].ID
 
-	if err := st.Rooms.SetRoomMembersCanInvite(ctx, roomID, otherID, true); err != ErrNotRoomCreator {
+	if err := st.Rooms.SetRoomMembersCanInvite(ctx, roomID, otherID, true); !errors.Is(err, ErrNotRoomCreator) {
 		t.Fatalf("expected ErrNotRoomCreator, got %v", err)
 	}
 }

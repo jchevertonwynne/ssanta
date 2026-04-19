@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/ProtonMail/gopenpgp/v3/crypto"
-	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
 )
 
 func TestRoomPGPChallengeLifecycle(t *testing.T) {

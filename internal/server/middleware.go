@@ -10,17 +10,17 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 type contextKey int
@@ -41,35 +41,11 @@ func Chain(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler 
 	return h
 }
 
-// userIDFromContext returns the user ID injected by RequireAuth, or 0.
-func userIDFromContext(ctx context.Context) store.UserID {
-	v, _ := ctx.Value(ctxKeyUserID).(store.UserID)
-	return v
-}
-
-// optionalUserIDFromContext is for routes that can be hit while logged out;
-// pair it with WithOptionalAuth.
-func optionalUserIDFromContext(ctx context.Context) store.UserID {
-	return userIDFromContext(ctx)
-}
-
 func loggerFromContext(ctx context.Context) *slog.Logger {
 	if l, ok := ctx.Value(ctxKeyLogger).(*slog.Logger); ok {
 		return l
 	}
 	return slog.Default()
-}
-
-func requestIDFromContext(ctx context.Context) string {
-	if v, ok := ctx.Value(ctxKeyRequestID).(string); ok {
-		return v
-	}
-	return ""
-}
-
-func csrfIDFromContext(ctx context.Context) string {
-	v, _ := ctx.Value(ctxKeyCSRFID).(string)
-	return v
 }
 
 // RequireAuth resolves the session, hits UserExists, and on success injects
@@ -169,8 +145,8 @@ func pathUserID(w http.ResponseWriter, r *http.Request, name string) (store.User
 }
 
 // pathRoomID parses a room ID from a path parameter.
-func pathRoomID(w http.ResponseWriter, r *http.Request, name string) (store.RoomID, bool) {
-	v, ok := pathInt64(w, r, name)
+func pathRoomID(w http.ResponseWriter, r *http.Request, _ string) (store.RoomID, bool) {
+	v, ok := pathInt64(w, r, "id")
 	return store.RoomID(v), ok
 }
 
@@ -178,24 +154,6 @@ func pathRoomID(w http.ResponseWriter, r *http.Request, name string) (store.Room
 func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (store.InviteID, bool) {
 	v, ok := pathInt64(w, r, name)
 	return store.InviteID(v), ok
-}
-
-// clientIP returns the best-effort source IP for rate-limiting. Honors
-// X-Forwarded-For only when explicitly trusted, since clients can spoof it.
-func clientIP(r *http.Request, trustForwardedFor bool) string {
-	if trustForwardedFor {
-		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-			if i := strings.IndexByte(xff, ','); i >= 0 {
-				xff = xff[:i]
-			}
-			return strings.TrimSpace(xff)
-		}
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // responseWriter captures status code and response size

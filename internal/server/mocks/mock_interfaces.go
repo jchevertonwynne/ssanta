@@ -734,11 +734,12 @@ func (m *MockCreateRoomService) EXPECT() *MockCreateRoomServiceMockRecorder {
 }
 
 // CreateRoom mocks base method.
-func (m *MockCreateRoomService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {
+func (m *MockCreateRoomService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(store.RoomID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateRoom indicates an expected call of CreateRoom.
@@ -754,19 +755,19 @@ type MockCreateRoomServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCreateRoomServiceCreateRoomCall) Return(arg0 error) *MockCreateRoomServiceCreateRoomCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockCreateRoomServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockCreateRoomServiceCreateRoomCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCreateRoomServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) error) *MockCreateRoomServiceCreateRoomCall {
+func (c *MockCreateRoomServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCreateRoomServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) error) *MockCreateRoomServiceCreateRoomCall {
+func (c *MockCreateRoomServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2010,11 +2011,12 @@ func (m *MockRoomHandlersService) EXPECT() *MockRoomHandlersServiceMockRecorder 
 }
 
 // CreateRoom mocks base method.
-func (m *MockRoomHandlersService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {
+func (m *MockRoomHandlersService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(store.RoomID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateRoom indicates an expected call of CreateRoom.
@@ -2030,19 +2032,19 @@ type MockRoomHandlersServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRoomHandlersServiceCreateRoomCall) Return(arg0 error) *MockRoomHandlersServiceCreateRoomCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockRoomHandlersServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockRoomHandlersServiceCreateRoomCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) error) *MockRoomHandlersServiceCreateRoomCall {
+func (c *MockRoomHandlersServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) error) *MockRoomHandlersServiceCreateRoomCall {
+func (c *MockRoomHandlersServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3320,11 +3322,12 @@ func (c *MockServerServiceCreateInviteCall) DoAndReturn(f func(context.Context, 
 }
 
 // CreateRoom mocks base method.
-func (m *MockServerService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {
+func (m *MockServerService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(store.RoomID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateRoom indicates an expected call of CreateRoom.
@@ -3340,19 +3343,19 @@ type MockServerServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCreateRoomCall) Return(arg0 error) *MockServerServiceCreateRoomCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockServerServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceCreateRoomCall {
+	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) error) *MockServerServiceCreateRoomCall {
+func (c *MockServerServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockServerServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) error) *MockServerServiceCreateRoomCall {
+func (c *MockServerServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockServerServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3545,6 +3548,84 @@ func (c *MockServerServiceGetContentViewCall) Do(f func(context.Context, store.U
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockServerServiceGetContentViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetDMPartnerUsername mocks base method.
+func (m *MockServerService) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDMPartnerUsername", ctx, roomID, currentUserID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDMPartnerUsername indicates an expected call of GetDMPartnerUsername.
+func (mr *MockServerServiceMockRecorder) GetDMPartnerUsername(ctx, roomID, currentUserID any) *MockServerServiceGetDMPartnerUsernameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDMPartnerUsername", reflect.TypeOf((*MockServerService)(nil).GetDMPartnerUsername), ctx, roomID, currentUserID)
+	return &MockServerServiceGetDMPartnerUsernameCall{Call: call}
+}
+
+// MockServerServiceGetDMPartnerUsernameCall wrap *gomock.Call
+type MockServerServiceGetDMPartnerUsernameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetDMPartnerUsernameCall) Return(arg0 string, arg1 error) *MockServerServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetDMPartnerUsernameCall) Do(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockServerServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetDMPartnerUsernameCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockServerServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetOrCreateDMRoom mocks base method.
+func (m *MockServerService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrCreateDMRoom", ctx, user1ID, user2ID)
+	ret0, _ := ret[0].(store.RoomID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrCreateDMRoom indicates an expected call of GetOrCreateDMRoom.
+func (mr *MockServerServiceMockRecorder) GetOrCreateDMRoom(ctx, user1ID, user2ID any) *MockServerServiceGetOrCreateDMRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrCreateDMRoom", reflect.TypeOf((*MockServerService)(nil).GetOrCreateDMRoom), ctx, user1ID, user2ID)
+	return &MockServerServiceGetOrCreateDMRoomCall{Call: call}
+}
+
+// MockServerServiceGetOrCreateDMRoomCall wrap *gomock.Call
+type MockServerServiceGetOrCreateDMRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetOrCreateDMRoomCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetOrCreateDMRoomCall) Do(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4340,6 +4421,186 @@ func (c *MockSessionManagerUserIDCall) DoAndReturn(f func(*http.Request) (store.
 	return c
 }
 
+// MockDMHandlersService is a mock of DMHandlersService interface.
+type MockDMHandlersService struct {
+	ctrl     *gomock.Controller
+	recorder *MockDMHandlersServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockDMHandlersServiceMockRecorder is the mock recorder for MockDMHandlersService.
+type MockDMHandlersServiceMockRecorder struct {
+	mock *MockDMHandlersService
+}
+
+// NewMockDMHandlersService creates a new mock instance.
+func NewMockDMHandlersService(ctrl *gomock.Controller) *MockDMHandlersService {
+	mock := &MockDMHandlersService{ctrl: ctrl}
+	mock.recorder = &MockDMHandlersServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDMHandlersService) EXPECT() *MockDMHandlersServiceMockRecorder {
+	return m.recorder
+}
+
+// GetContentView mocks base method.
+func (m *MockDMHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
+	ret0, _ := ret[0].(*service.ContentView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetContentView indicates an expected call of GetContentView.
+func (mr *MockDMHandlersServiceMockRecorder) GetContentView(ctx, userID any) *MockDMHandlersServiceGetContentViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetContentView", reflect.TypeOf((*MockDMHandlersService)(nil).GetContentView), ctx, userID)
+	return &MockDMHandlersServiceGetContentViewCall{Call: call}
+}
+
+// MockDMHandlersServiceGetContentViewCall wrap *gomock.Call
+type MockDMHandlersServiceGetContentViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockDMHandlersServiceGetContentViewCall) Return(arg0 *service.ContentView, arg1 error) *MockDMHandlersServiceGetContentViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockDMHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockDMHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetDMPartnerUsername mocks base method.
+func (m *MockDMHandlersService) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDMPartnerUsername", ctx, roomID, currentUserID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDMPartnerUsername indicates an expected call of GetDMPartnerUsername.
+func (mr *MockDMHandlersServiceMockRecorder) GetDMPartnerUsername(ctx, roomID, currentUserID any) *MockDMHandlersServiceGetDMPartnerUsernameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDMPartnerUsername", reflect.TypeOf((*MockDMHandlersService)(nil).GetDMPartnerUsername), ctx, roomID, currentUserID)
+	return &MockDMHandlersServiceGetDMPartnerUsernameCall{Call: call}
+}
+
+// MockDMHandlersServiceGetDMPartnerUsernameCall wrap *gomock.Call
+type MockDMHandlersServiceGetDMPartnerUsernameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) Return(arg0 string, arg1 error) *MockDMHandlersServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) Do(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockDMHandlersServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockDMHandlersServiceGetDMPartnerUsernameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetOrCreateDMRoom mocks base method.
+func (m *MockDMHandlersService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOrCreateDMRoom", ctx, user1ID, user2ID)
+	ret0, _ := ret[0].(store.RoomID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetOrCreateDMRoom indicates an expected call of GetOrCreateDMRoom.
+func (mr *MockDMHandlersServiceMockRecorder) GetOrCreateDMRoom(ctx, user1ID, user2ID any) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrCreateDMRoom", reflect.TypeOf((*MockDMHandlersService)(nil).GetOrCreateDMRoom), ctx, user1ID, user2ID)
+	return &MockDMHandlersServiceGetOrCreateDMRoomCall{Call: call}
+}
+
+// MockDMHandlersServiceGetOrCreateDMRoomCall wrap *gomock.Call
+type MockDMHandlersServiceGetOrCreateDMRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Return(arg0 store.RoomID, arg1 error) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Do(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UserExists mocks base method.
+func (m *MockDMHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UserExists", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UserExists indicates an expected call of UserExists.
+func (mr *MockDMHandlersServiceMockRecorder) UserExists(ctx, id any) *MockDMHandlersServiceUserExistsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserExists", reflect.TypeOf((*MockDMHandlersService)(nil).UserExists), ctx, id)
+	return &MockDMHandlersServiceUserExistsCall{Call: call}
+}
+
+// MockDMHandlersServiceUserExistsCall wrap *gomock.Call
+type MockDMHandlersServiceUserExistsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockDMHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) *MockDMHandlersServiceUserExistsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockDMHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockDMHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockHub is a mock of Hub interface.
 type MockHub struct {
 	ctrl     *gomock.Controller
@@ -4432,6 +4693,42 @@ func (c *MockHubDisconnectUserCall) Do(f func(store.RoomID, store.UserID)) *Mock
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockHubDisconnectUserCall) DoAndReturn(f func(store.RoomID, store.UserID)) *MockHubDisconnectUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// NotifyContentUpdate mocks base method.
+func (m *MockHub) NotifyContentUpdate(msgType string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "NotifyContentUpdate", msgType)
+}
+
+// NotifyContentUpdate indicates an expected call of NotifyContentUpdate.
+func (mr *MockHubMockRecorder) NotifyContentUpdate(msgType any) *MockHubNotifyContentUpdateCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyContentUpdate", reflect.TypeOf((*MockHub)(nil).NotifyContentUpdate), msgType)
+	return &MockHubNotifyContentUpdateCall{Call: call}
+}
+
+// MockHubNotifyContentUpdateCall wrap *gomock.Call
+type MockHubNotifyContentUpdateCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHubNotifyContentUpdateCall) Return() *MockHubNotifyContentUpdateCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHubNotifyContentUpdateCall) Do(f func(string)) *MockHubNotifyContentUpdateCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHubNotifyContentUpdateCall) DoAndReturn(f func(string)) *MockHubNotifyContentUpdateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

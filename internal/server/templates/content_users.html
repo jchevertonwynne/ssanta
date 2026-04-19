@@ -1,0 +1,24 @@
+<div id="content-users">
+    <h2>Users</h2>
+    {{if .Users}}
+    <table>
+        <thead><tr><th>Username</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+        {{$current := .CurrentUserID}}
+        {{range .Users}}
+            <tr>
+                <td>{{.Username}}</td>
+                <td>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                <td>
+                    {{if eq .ID $current}}
+                        <em>current</em>
+                    {{end}}
+                </td>
+            </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p>No users yet.</p>
+    {{end}}
+</div>

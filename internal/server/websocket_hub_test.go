@@ -131,7 +131,7 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
+	defer srv.Close() //nolint:errcheck
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
 	hdr := http.Header{}
@@ -141,10 +141,11 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	if err != nil {
 		if resp != nil {
 			t.Fatalf("dial websocket: %v (http %d)", err, resp.StatusCode)
+			_ = resp.Body.Close() //nolint:errcheck
 		}
 		t.Fatalf("dial websocket: %v", err)
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	msg := ChatMessagePayload{Type: "message", Message: "hello"}
 	b, _ := json.Marshal(msg)
@@ -223,7 +224,7 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
+	defer srv.Close() //nolint:errcheck
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
 
@@ -235,6 +236,7 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 		if err != nil {
 			if resp != nil {
 				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
+				_ = resp.Body.Close() //nolint:errcheck
 			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
@@ -242,9 +244,9 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	}
 
 	connA := dial("alice")
-	defer connA.Close()
+	defer connA.Close() //nolint:errcheck
 	connB := dial("bob")
-	defer connB.Close()
+	defer connB.Close() //nolint:errcheck
 
 	msg := ChatMessagePayload{Type: "message", Message: "hello"}
 	b, _ := json.Marshal(msg)
@@ -334,7 +336,7 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
+	defer srv.Close() //nolint:errcheck
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
 
@@ -346,6 +348,7 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 		if err != nil {
 			if resp != nil {
 				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
+				_ = resp.Body.Close() //nolint:errcheck
 			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
@@ -353,9 +356,9 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	}
 
 	connA := dial("alice")
-	defer connA.Close()
+	defer connA.Close() //nolint:errcheck
 	connB := dial("bob")
-	defer connB.Close()
+	defer connB.Close() //nolint:errcheck
 
 	msg := ChatMessagePayload{Type: "message", Message: "hello"}
 	b, _ := json.Marshal(msg)
@@ -445,7 +448,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
+	defer srv.Close() //nolint:errcheck
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
 	hdr := http.Header{}
@@ -453,7 +456,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
 	if err == nil {
-		conn.Close()
+		conn.Close() //nolint:errcheck
 		t.Fatalf("expected dial to fail")
 	}
 	if resp == nil {
@@ -487,7 +490,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 
 	srv := httptest.NewServer(mux)
-	defer srv.Close()
+	defer srv.Close() //nolint:errcheck
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
 	hdr := http.Header{}
@@ -497,10 +500,11 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	if err != nil {
 		if resp != nil {
 			t.Fatalf("dial websocket: %v (http %d)", err, resp.StatusCode)
+			_ = resp.Body.Close() //nolint:errcheck
 		}
 		t.Fatalf("dial websocket: %v", err)
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck
 
 	hub.DisconnectUser(roomID, userID)
 

@@ -4,11 +4,12 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
@@ -30,7 +31,7 @@ func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 		attempted := r.FormValue("display_name")
 		span.SetAttributes(attribute.String("room_name", attempted))
 
-		err := svc.CreateRoom(ctx, attempted, currentID)
+		_, err := svc.CreateRoom(ctx, attempted, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNameEmpty):
 			span.SetStatus(codes.Error, err.Error())

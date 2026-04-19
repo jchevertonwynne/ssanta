@@ -1,0 +1,56 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - gocritic
+    - gosec
+    - bodyclose
+    - nilerr
+    - errorlint
+    - prealloc
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+    - asasalint
+    - asciicheck
+    - bidichk
+    - copyloopvar
+    - durationcheck
+    - exhaustive
+    - forcetypeassert
+    - noctx
+    - rowserrcheck
+  
+  settings:
+    staticcheck:
+      go: "1.22"
+  
+  exclusions:
+    rules:
+      - path: '(.+)_test\.go'
+        linters:
+          - cyclop
+          - gocyclo
+      - path: 'mocks/(.+)\.go'
+        linters:
+          - dupl
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/jchevertonwynne/ssanta
