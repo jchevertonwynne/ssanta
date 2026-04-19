@@ -3,25 +3,25 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserStore struct {
-	pool *pgxpool.Pool
+	db dbtx
 }
 
-func (s *UserStore) UserExists(ctx context.Context, id int64) (bool, error) {
+func (s *UserStore) UserExists(ctx context.Context, id UserID) (bool, error) {
 	var exists bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, id).Scan(&exists)
+	err := s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, id).Scan(&exists)
 	return exists, err
 }
 
-func (s *UserStore) GetUserByID(ctx context.Context, id int64) (User, error) {
+func (s *UserStore) GetUserByID(ctx context.Context, id UserID) (User, error) {
 	var u User
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT id, username, created_at FROM users WHERE id = $1`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
@@ -33,7 +33,7 @@ func (s *UserStore) GetUserByID(ctx context.Context, id int64) (User, error) {
 
 func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (User, error) {
 	var u User
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT id, username, created_at FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
@@ -45,7 +45,7 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (Use
 
 func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (User, error) {
 	var u User
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT id, username, created_at, password_hash FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
@@ -55,9 +55,9 @@ func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (U
 	return u, err
 }
 
-func (s *UserStore) CreateUser(ctx context.Context, username, passwordHash string) (int64, error) {
-	var id int64
-	err := s.pool.QueryRow(ctx,
+func (s *UserStore) CreateUser(ctx context.Context, username, passwordHash string) (UserID, error) {
+	var id UserID
+	err := s.db.QueryRow(ctx,
 		`INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id`,
 		username, passwordHash,
 	).Scan(&id)
@@ -65,22 +65,26 @@ func (s *UserStore) CreateUser(ctx context.Context, username, passwordHash strin
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return 0, ErrUsernameTaken
 	}
+	if err == nil {
+		slog.InfoContext(ctx, "user created in db", "user_id", id, "username", username)
+	}
 	return id, err
 }
 
-func (s *UserStore) DeleteUser(ctx context.Context, id int64) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+func (s *UserStore) DeleteUser(ctx context.Context, id UserID) error {
+	tag, err := s.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrUserNotFound
 	}
+	slog.InfoContext(ctx, "user deleted from db", "user_id", id)
 	return nil
 }
 
 func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY id DESC`)
+	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY id DESC`)
 	if err != nil {
 		return nil, err
 	}

@@ -11,23 +11,42 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-const (
-	argon2Memory      = 64 * 1024
-	argon2Iterations  = 1
-	argon2Parallelism = 4
-	argon2SaltLen     = 16
-	argon2KeyLen      = 32
-)
+const argon2SaltLen = 16
+const argon2KeyLen = 32
 
-func hashPassword(password string) (string, error) {
+type Argon2Params struct {
+	Memory      uint32
+	Iterations  uint32
+	Parallelism uint8
+}
+
+func DefaultArgon2Params() Argon2Params {
+	return Argon2Params{Memory: 64 * 1024, Iterations: 1, Parallelism: 4}
+}
+
+// dummyHashSentinel is a real argon2id hash of a random secret, used as a
+// constant-cost target when the requested user does not exist. This keeps the
+// time taken by LoginUser approximately constant whether or not a username is
+// known, removing a trivial enumeration oracle.
+var dummyHashSentinel = mustHash("not-a-real-password", DefaultArgon2Params())
+
+func mustHash(password string, p Argon2Params) string {
+	h, err := hashPassword(password, p)
+	if err != nil {
+		panic(err)
+	}
+	return h
+}
+
+func hashPassword(password string, p Argon2Params) (string, error) {
 	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	hash := argon2.IDKey([]byte(password), salt, argon2Iterations, argon2Memory, argon2Parallelism, argon2KeyLen)
+	hash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, argon2KeyLen)
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version,
-		argon2Memory, argon2Iterations, argon2Parallelism,
+		p.Memory, p.Iterations, p.Parallelism,
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(hash),
 	), nil

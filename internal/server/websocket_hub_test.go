@@ -109,8 +109,8 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	userID := int64(2)
-	roomID := int64(10)
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
 
 	// Key for recipient (self)
 	armoredPub, privKey := mustGenerateTestKeyPair(t)
@@ -181,17 +181,17 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	roomID := int64(10)
+	roomID := store.RoomID(10)
 
-	userA := int64(2)
-	userB := int64(3)
+	userA := store.UserID(2)
+	userB := store.UserID(3)
 
 	pubA, privA := mustGenerateTestKeyPair(t)
 	pubB, _ := mustGenerateTestKeyPair(t)
 	verifiedAt := time.Now()
 
 	// Session user based on header, so we can dial two websocket conns.
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (int64, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case "alice":
 			return userA, true
@@ -296,15 +296,15 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	roomID := int64(10)
+	roomID := store.RoomID(10)
 
-	userA := int64(2)
-	userB := int64(3)
+	userA := store.UserID(2)
+	userB := store.UserID(3)
 
 	pubA, _ := mustGenerateTestKeyPair(t)
 
 	// Session user based on header, so we can dial two websocket conns.
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (int64, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case "alice":
 			return userA, true
@@ -430,8 +430,8 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	userID := int64(2)
-	roomID := int64(10)
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
@@ -471,8 +471,8 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	userID := int64(2)
-	roomID := int64(10)
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()

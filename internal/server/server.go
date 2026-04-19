@@ -19,7 +19,7 @@ var templatesFS embed.FS
 var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 type contentData struct {
-	CurrentUserID      int64
+	CurrentUserID      store.UserID
 	CurrentUsername    string
 	Users              []store.User
 	CreatedRooms       []store.Room
@@ -34,7 +34,7 @@ type contentData struct {
 }
 
 type roomDetailData struct {
-	CurrentUserID       int64
+	CurrentUserID       store.UserID
 	CurrentUsername     string
 	Room                store.RoomDetail
 	IsCreator           bool
@@ -62,7 +62,7 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
-func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
+func New(svc ServerService, sessions SessionManager, serviceName string) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
 	hubAPI := Hub(hub)
@@ -95,7 +95,16 @@ func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
 	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /invites/{id}/decline", handleDeclineInvite(svc, sessions))
 	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(svc, sessions, hubAPI))
-	return mux, hub.Stop
+
+	// Apply middleware stack (outermost first)
+	handler := Chain(mux,
+		RecoverPanic,
+		TracingMiddleware(serviceName),
+		MetricsMiddleware,
+		WithRequestLogger(nil),
+	)
+
+	return handler, hub.Stop
 }
 
 func handleHealth(svc HealthService) http.HandlerFunc {
@@ -133,7 +142,7 @@ func handleContentInvites(svc ContentHandlersService, sessions SessionManager) h
 // resolveSessionUser returns the logged-in user ID, or 0 if no valid session.
 // If the cookie is signed but references a user that no longer exists (e.g.
 // after a DB wipe), the cookie is cleared so the caller sees a logged-out state.
-func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (int64, bool) {
+func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (store.UserID, bool) {
 	id, ok := sessions.UserID(r)
 	if !ok {
 		return 0, false
@@ -150,11 +159,11 @@ func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions Ses
 	return id, true
 }
 
-func renderContent(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64) {
+func renderContent(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
 	renderContentData(w, ctx, svc, contentData{CurrentUserID: currentID})
 }
 
-func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64) {
+func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
 	view, err := svc.GetContentView(ctx, currentID)
 	if err != nil {
 		slog.Error("get content view", "err", err)
@@ -167,7 +176,7 @@ func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc Conten
 	})
 }
 
-func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64, attempted, formErr string) {
+func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		RoomFormAttempted: attempted,
@@ -175,7 +184,7 @@ func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, 
 	})
 }
 
-func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64, attempted, formErr string) {
+func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		UserFormAttempted: attempted,
@@ -190,7 +199,7 @@ func renderContentWithLoginFormError(w http.ResponseWriter, ctx context.Context,
 	})
 }
 
-func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, opts roomRenderOpts) {
+func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, opts roomRenderOpts) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	switch {
 	case errors.Is(err, store.ErrRoomNotFound):
@@ -223,19 +232,19 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 	})
 }
 
-func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail.html"})
 }
 
-func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail_page.html"})
 }
 
-func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})
 }
 
-func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:        "room_dynamic.html",
 		pgpKeyAttempted: attempted,
@@ -243,7 +252,7 @@ func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context
 	})
 }
 
-func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:           "room_dynamic.html",
 		pgpVerifyAttempted: attempted,
@@ -251,18 +260,18 @@ func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Cont
 	})
 }
 
-func renderRoomDynamicWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, formErr string) {
+func renderRoomDynamicWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:     "room_dynamic.html",
 		pgpRemoveErr: formErr,
 	})
 }
 
-func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_sidebar.html"})
 }
 
-func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:        "room_sidebar.html",
 		inviteAttempted: attempted,

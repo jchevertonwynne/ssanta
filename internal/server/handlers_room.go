@@ -2,11 +2,13 @@ package server
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
+	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
@@ -16,28 +18,46 @@ func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
+
+		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "CreateRoom")
+		defer span.End()
+		span.SetAttributes(attribute.Int64("user_id", currentID.Int64()))
+
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
 		attempted := r.FormValue("display_name")
-		err := svc.CreateRoom(r.Context(), attempted, currentID)
+		span.SetAttributes(attribute.String("room_name", attempted))
+
+		err := svc.CreateRoom(ctx, attempted, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNameEmpty):
-			renderContentWithRoomFormError(w, r.Context(), svc, currentID, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrRoomNameTooLong):
-			renderContentWithRoomFormError(w, r.Context(), svc, currentID, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrRoomNameTaken):
-			renderContentWithRoomFormError(w, r.Context(), svc, currentID, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
 			return
 		case err != nil:
-			slog.Error("create room", "err", err)
+			span.SetStatus(codes.Error, err.Error())
+			loggerFromContext(ctx).Error("create room", "err", err, "room_name", attempted)
 			http.Error(w, "failed to create room", http.StatusInternalServerError)
 			return
 		}
-		renderContent(w, r.Context(), svc, currentID)
+
+		loggerFromContext(ctx).Info("room created", "room_name", attempted, "creator_id", currentID)
+
+		if metrics := observability.GetMetrics(); metrics != nil {
+			metrics.RoomsCreated.Add(ctx, 1)
+		}
+
+		renderContent(w, ctx, svc, currentID)
 	}
 }
 
@@ -48,18 +68,17 @@ func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
-		err = svc.DeleteRoom(r.Context(), roomID, currentID)
+		err := svc.DeleteRoom(r.Context(), roomID, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		case err != nil:
-			slog.Error("delete room", "err", err)
+			loggerFromContext(r.Context()).Error("delete room", "err", err)
 			http.Error(w, "failed to delete room", http.StatusInternalServerError)
 			return
 		}
@@ -74,23 +93,22 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
 		// Get username before joining
 		username, err := svc.GetUsername(r.Context(), currentID)
 		if err != nil {
-			slog.Error("get username", "err", err)
+			loggerFromContext(r.Context()).Error("get username", "err", err)
 			http.Error(w, "failed to get user info", http.StatusInternalServerError)
 			return
 		}
 
 		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room access", "err", err)
+			loggerFromContext(r.Context()).Error("check room access", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
 			return
 		}
@@ -102,7 +120,7 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 
 		err = svc.JoinRoom(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("join room", "err", err)
+			loggerFromContext(r.Context()).Error("join room", "err", err)
 			http.Error(w, "failed to join room", http.StatusInternalServerError)
 			return
 		}
@@ -127,16 +145,15 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
 		// Get username before leaving
 		username, err := svc.GetUsername(r.Context(), currentID)
 		if err != nil {
-			slog.Error("get username", "err", err)
+			loggerFromContext(r.Context()).Error("get username", "err", err)
 			http.Error(w, "failed to get user info", http.StatusInternalServerError)
 			return
 		}
@@ -144,7 +161,7 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 		// Check if user is the creator before leaving
 		isCreator, _, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room access", "err", err)
+			loggerFromContext(r.Context()).Error("check room access", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
 			return
 		}
@@ -158,7 +175,7 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 			http.Error(w, "cannot leave room", http.StatusForbidden)
 			return
 		case err != nil:
-			slog.Error("leave room", "err", err)
+			loggerFromContext(r.Context()).Error("leave room", "err", err)
 			http.Error(w, "failed to leave room", http.StatusInternalServerError)
 			return
 		}
@@ -190,9 +207,8 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
@@ -214,9 +230,8 @@ func handleRoomDynamic(svc RoomHandlersService, sessions SessionManager) http.Ha
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
@@ -231,9 +246,8 @@ func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.Ha
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
@@ -248,9 +262,8 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 		if err := r.ParseForm(); err != nil {
@@ -258,13 +271,13 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			return
 		}
 		value := r.FormValue("value") == "true"
-		err = svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
+		err := svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
 		switch {
 		case errors.Is(err, store.ErrNotRoomCreator):
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		case err != nil:
-			slog.Error("set members_can_invite", "err", err)
+			loggerFromContext(r.Context()).Error("set members_can_invite", "err", err)
 			http.Error(w, "failed to update room", http.StatusInternalServerError)
 			return
 		}
@@ -279,17 +292,15 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
-		memberID, err := strconv.ParseInt(r.PathValue("memberid"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid member id", http.StatusBadRequest)
+		memberID, ok := pathUserID(w, r, "memberid")
+		if !ok {
 			return
 		}
-		err = svc.RemoveMember(r.Context(), roomID, memberID, currentID)
+		err := svc.RemoveMember(r.Context(), roomID, memberID, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -304,7 +315,7 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 			http.Error(w, "user is not a member", http.StatusNotFound)
 			return
 		case err != nil:
-			slog.Error("remove member", "err", err)
+			loggerFromContext(r.Context()).Error("remove member", "err", err)
 			http.Error(w, "failed to remove member", http.StatusInternalServerError)
 			return
 		}

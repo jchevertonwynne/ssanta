@@ -12,6 +12,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/config"
 	"github.com/jchevertonwynne/ssanta/internal/db"
+	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/server"
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/session"
@@ -19,11 +20,12 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	// Setup initial text logger for bootstrapping
+	textLogger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	slog.SetDefault(textLogger)
 
 	if err := run(); err != nil {
-		logger.Error("fatal", "err", err)
+		textLogger.Error("fatal", "err", err)
 		os.Exit(1)
 	}
 }
@@ -36,6 +38,38 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Initialize observability (traces, metrics, logs)
+	shutdown, err := observability.Init(ctx, observability.Config{
+		OTLPEndpoint: cfg.OTLPEndpoint,
+		OTLPInsecure: cfg.OTLPInsecure,
+		ServiceName:  cfg.ServiceName,
+		Environment:  cfg.Environment,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdown(shutdownCtx); err != nil {
+			slog.Error("observability shutdown", "err", err)
+		}
+	}()
+
+	// Initialize metrics
+	metrics, err := observability.InitMetrics(ctx, cfg.ServiceName)
+	if err != nil {
+		return err
+	}
+	observability.SetGlobalMetrics(metrics)
+
+	// Replace logger with OTLP-enabled handler plus JSON to stdout
+	otelHandler := observability.NewSlogHandler(cfg.ServiceName)
+	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	multiHandler := &multiHandler{handlers: []slog.Handler{otelHandler, jsonHandler}}
+	logger := slog.New(multiHandler)
+	slog.SetDefault(logger)
 
 	runtimeURL := cfg.DatabaseURL
 	if cfg.DatabaseSchema != "" {
@@ -51,19 +85,21 @@ func run() error {
 	}
 	defer pool.Close()
 
-	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies)
+	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies, cfg.SessionTTL)
 	st := store.New(pool)
 	svc := service.New(st)
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)
 	startJanitor(ctx, svc, cfg)
 
-	handler, closeHub := server.New(svc, sessions)
+	handler, closeHub := server.New(svc, sessions, cfg.ServiceName)
 	defer closeHub()
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MB
 	}
 
 	errCh := make(chan error, 1)
@@ -118,4 +154,43 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 			}
 		}
 	}()
+}
+
+// multiHandler fans out slog records to multiple handlers
+type multiHandler struct {
+	handlers []slog.Handler
+}
+
+func (m *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	for _, h := range m.handlers {
+		if h.Enabled(ctx, level) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *multiHandler) Handle(ctx context.Context, record slog.Record) error {
+	for _, h := range m.handlers {
+		if err := h.Handle(ctx, record.Clone()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	handlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		handlers[i] = h.WithAttrs(attrs)
+	}
+	return &multiHandler{handlers: handlers}
+}
+
+func (m *multiHandler) WithGroup(name string) slog.Handler {
+	handlers := make([]slog.Handler, len(m.handlers))
+	for i, h := range m.handlers {
+		handlers[i] = h.WithGroup(name)
+	}
+	return &multiHandler{handlers: handlers}
 }

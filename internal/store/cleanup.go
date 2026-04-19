@@ -7,7 +7,7 @@ import (
 
 // DeleteExpiredInvites deletes invites whose expires_at is before now.
 func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx,
+	tag, err := s.db.Exec(ctx,
 		`DELETE FROM room_invites WHERE expires_at < $1`,
 		now,
 	)
@@ -20,7 +20,7 @@ func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (
 // ClearExpiredRoomPGPChallenges clears challenge fields for room members whose
 // challenge expiry is in the past.
 func (s *RoomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.Time) (int64, error) {
-	tag, err := s.pool.Exec(ctx,
+	tag, err := s.db.Exec(ctx,
 		`UPDATE room_users
 		 SET pgp_challenge_ciphertext = NULL,
 		     pgp_challenge_hash = NULL,

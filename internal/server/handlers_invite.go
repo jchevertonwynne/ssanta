@@ -2,11 +2,13 @@ package server
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
+	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
@@ -16,9 +18,12 @@ func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+
+		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "CreateInvite")
+		defer span.End()
+
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 		if err := r.ParseForm(); err != nil {
@@ -26,36 +31,51 @@ func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			return
 		}
 		attempted := r.FormValue("invitee_username")
-		err = svc.CreateInvite(r.Context(), roomID, currentID, attempted)
+		span.SetAttributes(
+			attribute.Int64("room_id", roomID.Int64()),
+			attribute.Int64("inviter_id", currentID.Int64()),
+			attribute.String("invitee_username", attempted),
+		)
+
+		err := svc.CreateInvite(ctx, roomID, currentID, attempted)
 		switch {
 		case errors.Is(err, store.ErrInviteeNotFound),
 			errors.Is(err, store.ErrAlreadyMember),
 			errors.Is(err, store.ErrAlreadyInvited),
 			errors.Is(err, store.ErrCannotInviteSelf),
 			errors.Is(err, store.ErrNotAllowedToInvite):
-			renderRoomSidebarWithInviteError(w, r.Context(), svc, currentID, roomID, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderRoomSidebarWithInviteError(w, ctx, svc, currentID, roomID, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrRoomNotFound):
+			span.SetStatus(codes.Error, err.Error())
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		case err != nil:
-			slog.Error("create invite", "err", err)
+			span.SetStatus(codes.Error, err.Error())
+			loggerFromContext(ctx).Error("create invite", "err", err, "room_id", roomID, "invitee", attempted)
 			http.Error(w, "failed to create invite", http.StatusInternalServerError)
 			return
 		}
 
-		if inviterName, err := svc.GetUsername(r.Context(), currentID); err == nil {
+		loggerFromContext(ctx).Info("invite created", "room_id", roomID, "inviter_id", currentID, "invitee", attempted)
+
+		if metrics := observability.GetMetrics(); metrics != nil {
+			metrics.InvitesSent.Add(ctx, 1)
+		}
+
+		if inviterName, err := svc.GetUsername(ctx, currentID); err == nil {
 			hub.BroadcastSystemMessage(roomID, inviterName+" invited "+attempted)
 		} else {
-			slog.Error("get inviter username", "err", err)
+			loggerFromContext(ctx).Error("get inviter username", "err", err)
 		}
 
 		// Notify the invitee if they're online
-		if inviteeUser, err := svc.GetUserByUsername(r.Context(), attempted); err == nil {
+		if inviteeUser, err := svc.GetUserByUsername(ctx, attempted); err == nil {
 			hub.NotifyUser(inviteeUser.ID, "invite_received", "")
 		}
 
-		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
+		renderRoomSidebar(w, ctx, svc, currentID, roomID)
 	}
 }
 
@@ -66,45 +86,30 @@ func handleAcceptInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		inviteID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid invite id", http.StatusBadRequest)
+		inviteID, ok := pathInviteID(w, r, "id")
+		if !ok {
 			return
 		}
 
-		// Get room ID and username before accepting
-		roomID, err := svc.RoomIDForInvite(r.Context(), inviteID)
-		if err != nil {
-			if errors.Is(err, store.ErrInviteNotFound) {
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			slog.Error("lookup invite room", "err", err)
-			http.Error(w, "failed to accept invite", http.StatusInternalServerError)
-			return
-		}
-
-		username, err := svc.GetUsername(r.Context(), currentID)
-		if err != nil {
-			slog.Error("get username", "err", err)
-			http.Error(w, "failed to get user info", http.StatusInternalServerError)
-			return
-		}
-
-		err = svc.AcceptInvite(r.Context(), inviteID, currentID)
+		roomID, err := svc.AcceptInvite(r.Context(), inviteID, currentID)
 		switch {
 		case errors.Is(err, store.ErrInviteNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		case err != nil:
-			slog.Error("accept invite", "err", err)
+			loggerFromContext(r.Context()).Error("accept invite", "err", err)
 			http.Error(w, "failed to accept invite", http.StatusInternalServerError)
 			return
 		}
 
-		// Notify other members to update their member lists, and send a system message.
+		// Username is only needed for the announcement; fetch after the
+		// state change so we don't pay for it on the unhappy paths.
+		if username, err := svc.GetUsername(r.Context(), currentID); err == nil {
+			hub.BroadcastSystemMessage(roomID, username+" joined the room")
+		} else {
+			loggerFromContext(r.Context()).Error("get username", "err", err)
+		}
 		hub.NotifyRoomUpdate(roomID)
-		hub.BroadcastSystemMessage(roomID, username+" joined the room")
 
 		renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 	}
@@ -117,18 +122,17 @@ func handleDeclineInvite(svc InviteHandlersService, sessions SessionManager) htt
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		inviteID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid invite id", http.StatusBadRequest)
+		inviteID, ok := pathInviteID(w, r, "id")
+		if !ok {
 			return
 		}
-		err = svc.DeclineInvite(r.Context(), inviteID, currentID)
+		err := svc.DeclineInvite(r.Context(), inviteID, currentID)
 		switch {
 		case errors.Is(err, store.ErrInviteNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		case err != nil:
-			slog.Error("decline invite", "err", err)
+			loggerFromContext(r.Context()).Error("decline invite", "err", err)
 			http.Error(w, "failed to decline invite", http.StatusInternalServerError)
 			return
 		}
@@ -143,9 +147,8 @@ func handleCancelInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		inviteID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid invite id", http.StatusBadRequest)
+		inviteID, ok := pathInviteID(w, r, "id")
+		if !ok {
 			return
 		}
 
@@ -158,7 +161,7 @@ func handleCancelInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		case err != nil:
-			slog.Error("cancel invite", "err", err)
+			loggerFromContext(r.Context()).Error("cancel invite", "err", err)
 			http.Error(w, "failed to cancel invite", http.StatusInternalServerError)
 			return
 		}

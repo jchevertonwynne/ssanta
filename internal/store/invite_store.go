@@ -3,31 +3,31 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type InviteStore struct {
-	pool *pgxpool.Pool
+	db dbtx
 }
 
-func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string, expiresAt time.Time) error {
+func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID UserID, inviteeUsername string, expiresAt time.Time) error {
 	inviteeName := strings.TrimSpace(inviteeUsername)
 	if inviteeName == "" {
 		return ErrInviteeNotFound
 	}
 
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var creatorID int64
+	var creatorID UserID
 	var membersCanInvite bool
 	err = tx.QueryRow(ctx,
 		`SELECT creator_id, members_can_invite FROM rooms WHERE id = $1`,
@@ -57,7 +57,7 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64,
 		}
 	}
 
-	var inviteeID int64
+	var inviteeID UserID
 	err = tx.QueryRow(ctx,
 		`SELECT id FROM users WHERE username = $1`,
 		inviteeName,
@@ -101,11 +101,16 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64,
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	slog.InfoContext(ctx, "invite created in db", "room_id", roomID, "inviter_id", inviterID, "invitee_id", inviteeID)
+	return nil
 }
 
-func (s *InviteStore) ListInvitesForUser(ctx context.Context, userID int64) ([]InviteForUser, error) {
-	rows, err := s.pool.Query(ctx,
+func (s *InviteStore) ListInvitesForUser(ctx context.Context, userID UserID) ([]InviteForUser, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT i.id, r.id, r.display_name, u.id, u.username, i.created_at
 		 FROM room_invites i
 		 JOIN rooms r ON r.id = i.room_id
@@ -129,8 +134,8 @@ func (s *InviteStore) ListInvitesForUser(ctx context.Context, userID int64) ([]I
 	return invites, rows.Err()
 }
 
-func (s *InviteStore) ListInvitesForRoom(ctx context.Context, roomID int64) ([]InviteForRoom, error) {
-	rows, err := s.pool.Query(ctx,
+func (s *InviteStore) ListInvitesForRoom(ctx context.Context, roomID RoomID) ([]InviteForRoom, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT i.id, inviter.id, inviter.username, invitee.id, invitee.username, i.created_at
 		 FROM room_invites i
 		 JOIN users inviter ON inviter.id = i.inviter_id
@@ -154,26 +159,27 @@ func (s *InviteStore) ListInvitesForRoom(ctx context.Context, roomID int64) ([]I
 	return invites, rows.Err()
 }
 
-func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID, userID int64) error {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userID UserID) (RoomID, error) {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer tx.Rollback(ctx)
 
-	var roomID, inviteeID int64
+	var roomID RoomID
+	var inviteeID UserID
 	err = tx.QueryRow(ctx,
 		`SELECT room_id, invitee_id FROM room_invites WHERE id = $1 FOR UPDATE`,
 		inviteID,
 	).Scan(&roomID, &inviteeID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrInviteNotFound
+		return 0, ErrInviteNotFound
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if inviteeID != userID {
-		return ErrInviteNotFound
+		return 0, ErrInviteNotFound
 	}
 
 	_, err = tx.Exec(ctx,
@@ -182,19 +188,24 @@ func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID, userID int64) 
 		roomID, userID,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	_, err = tx.Exec(ctx, `DELETE FROM room_invites WHERE id = $1`, inviteID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+
+	slog.InfoContext(ctx, "invite accepted in db", "invite_id", inviteID, "room_id", roomID, "user_id", userID)
+	return roomID, nil
 }
 
-func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID, userID int64) error {
-	tag, err := s.pool.Exec(ctx,
+func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID InviteID, userID UserID) error {
+	tag, err := s.db.Exec(ctx,
 		`DELETE FROM room_invites WHERE id = $1 AND invitee_id = $2`,
 		inviteID, userID,
 	)
@@ -207,14 +218,15 @@ func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID, userID int64)
 	return nil
 }
 
-func (s *InviteStore) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+func (s *InviteStore) CancelInvite(ctx context.Context, inviteID InviteID, actingUserID UserID) (RoomID, UserID, error) {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer tx.Rollback(ctx)
 
-	var inviterID, creatorID, roomID, inviteeID int64
+	var inviterID, creatorID, inviteeID UserID
+	var roomID RoomID
 	err = tx.QueryRow(ctx,
 		`SELECT i.inviter_id, r.creator_id, i.room_id, i.invitee_id
 		 FROM room_invites i
@@ -245,9 +257,9 @@ func (s *InviteStore) CancelInvite(ctx context.Context, inviteID, actingUserID i
 	return roomID, inviteeID, nil
 }
 
-func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	var roomID int64
-	err := s.pool.QueryRow(ctx,
+func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID InviteID) (RoomID, error) {
+	var roomID RoomID
+	err := s.db.QueryRow(ctx,
 		`SELECT room_id FROM room_invites WHERE id = $1`,
 		inviteID,
 	).Scan(&roomID)
@@ -256,4 +268,3 @@ func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID int64) (int6
 	}
 	return roomID, err
 }
-

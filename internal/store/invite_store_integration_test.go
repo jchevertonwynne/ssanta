@@ -56,7 +56,8 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			errCh <- st.Invites.AcceptInvite(ctx, inviteID, inviteeID)
+			_, err := st.Invites.AcceptInvite(ctx, inviteID, inviteeID)
+			errCh <- err
 		}()
 	}
 	close(start)
@@ -246,7 +247,7 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 	}
 	inviteID := invites[0].InviteID
 
-	if err := st.Invites.AcceptInvite(ctx, inviteID, otherID); err != ErrInviteNotFound {
+	if _, err := st.Invites.AcceptInvite(ctx, inviteID, otherID); err != ErrInviteNotFound {
 		t.Fatalf("expected ErrInviteNotFound, got %v", err)
 	}
 

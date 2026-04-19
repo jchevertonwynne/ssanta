@@ -2,15 +2,20 @@ package server
 
 import (
 	"errors"
-	"log/slog"
 	"net/http"
-	"strconv"
 
+	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "CreateUser")
+		defer span.End()
+
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
@@ -18,28 +23,43 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.Han
 		attempted := r.FormValue("username")
 		password := r.FormValue("password")
 		confirm := r.FormValue("password_confirm")
+		span.SetAttributes(attribute.String("username", attempted))
+
 		if password != confirm {
-			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, "passwords do not match")
+			span.SetStatus(codes.Error, "passwords do not match")
+			renderContentWithUserFormError(w, ctx, svc, 0, attempted, "passwords do not match")
 			return
 		}
-		id, err := svc.CreateUser(r.Context(), attempted, password)
+		id, err := svc.CreateUser(ctx, attempted, password)
 		switch {
 		case errors.Is(err, store.ErrUsernameInvalid):
-			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrUsernameTaken):
-			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrPasswordTooShort):
-			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithUserFormError(w, ctx, svc, 0, attempted, err.Error())
 			return
 		case err != nil:
-			slog.Error("create user", "err", err)
+			span.SetStatus(codes.Error, err.Error())
+			loggerFromContext(ctx).Error("create user", "err", err, "username", attempted)
 			http.Error(w, "failed to create user", http.StatusInternalServerError)
 			return
 		}
+
+		span.SetAttributes(attribute.Int64("user_id", id.Int64()))
+		loggerFromContext(ctx).Info("user created", "user_id", id, "username", attempted)
+
+		if metrics := observability.GetMetrics(); metrics != nil {
+			metrics.UsersRegistered.Add(ctx, 1)
+		}
+
 		sessions.Set(w, id)
-		renderContent(w, r.Context(), svc, id)
+		renderContent(w, ctx, svc, id)
 	}
 }
 
@@ -50,9 +70,8 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.Han
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
-		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid user id", http.StatusBadRequest)
+		id, ok := pathUserID(w, r, "id")
+		if !ok {
 			return
 		}
 		if id != currentID {
@@ -60,7 +79,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.Han
 			return
 		}
 		if err := svc.DeleteUser(r.Context(), id); err != nil {
-			slog.Error("delete user", "err", err)
+			loggerFromContext(r.Context()).Error("delete user", "err", err)
 			http.Error(w, "failed to delete user", http.StatusInternalServerError)
 			return
 		}
@@ -71,24 +90,40 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.Han
 
 func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "Login")
+		defer span.End()
+
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
 		username := r.FormValue("username")
 		password := r.FormValue("password")
-		id, err := svc.LoginUser(r.Context(), username, password)
+		span.SetAttributes(attribute.String("username", username))
+
+		id, err := svc.LoginUser(ctx, username, password)
 		if errors.Is(err, store.ErrInvalidCredentials) {
-			renderContentWithLoginFormError(w, r.Context(), svc, username, err.Error())
+			span.SetStatus(codes.Error, "invalid credentials")
+			loggerFromContext(ctx).Warn("login failed", "username", username, "reason", "invalid_credentials")
+			renderContentWithLoginFormError(w, ctx, svc, username, err.Error())
 			return
 		}
 		if err != nil {
-			slog.Error("login user", "err", err)
+			span.SetStatus(codes.Error, err.Error())
+			loggerFromContext(ctx).Error("login user", "err", err, "username", username)
 			http.Error(w, "failed to log in", http.StatusInternalServerError)
 			return
 		}
+
+		span.SetAttributes(attribute.Int64("user_id", id.Int64()))
+		loggerFromContext(ctx).Info("user logged in", "user_id", id, "username", username)
+
+		if metrics := observability.GetMetrics(); metrics != nil {
+			metrics.UsersLoggedIn.Add(ctx, 1)
+		}
+
 		sessions.Set(w, id)
-		renderContent(w, r.Context(), svc, id)
+		renderContent(w, ctx, svc, id)
 	}
 }
 

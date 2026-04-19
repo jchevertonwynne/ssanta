@@ -13,7 +13,7 @@ func testCtx(t *testing.T) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 10*time.Second)
 }
 
-func createUser(t *testing.T, pool *pgxpool.Pool, username string) int64 {
+func createUser(t *testing.T, pool *pgxpool.Pool, username string) UserID {
 	t.Helper()
 	st := New(pool)
 	ctx, cancel := testCtx(t)
@@ -25,7 +25,7 @@ func createUser(t *testing.T, pool *pgxpool.Pool, username string) int64 {
 	return id
 }
 
-func createRoom(t *testing.T, pool *pgxpool.Pool, name string, creatorID int64) int64 {
+func createRoom(t *testing.T, pool *pgxpool.Pool, name string, creatorID UserID) RoomID {
 	t.Helper()
 	st := New(pool)
 	ctx, cancel := testCtx(t)
@@ -43,7 +43,7 @@ func createRoom(t *testing.T, pool *pgxpool.Pool, name string, creatorID int64) 
 	return rooms[0].ID
 }
 
-func createInvite(t *testing.T, pool *pgxpool.Pool, roomID, inviterID int64, inviteeUsername string) int64 {
+func createInvite(t *testing.T, pool *pgxpool.Pool, roomID RoomID, inviterID UserID, inviteeUsername string) InviteID {
 	t.Helper()
 	st := New(pool)
 	ctx, cancel := testCtx(t)

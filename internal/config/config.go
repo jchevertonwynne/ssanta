@@ -11,17 +11,32 @@ import (
 )
 
 type Config struct {
-	HTTPAddr      string `env:"HTTP_ADDR,:8080"`
-	DatabaseURL   string `env:"DATABASE_URL"`
-	DatabaseSchema string `env:"DATABASE_SCHEMA,"`
+	HTTPAddr           string `env:"HTTP_ADDR,:8080"`
+	DatabaseURL        string `env:"DATABASE_URL"`
+	DatabaseSchema     string `env:"DATABASE_SCHEMA,"`
 	MigrateDatabaseURL string `env:"MIGRATE_DATABASE_URL,"`
-	MigrationsDir string `env:"MIGRATIONS_DIR,migrations"`
-	SessionSecret string `env:"SESSION_SECRET"`
+	MigrationsDir      string `env:"MIGRATIONS_DIR,migrations"`
+	SessionSecret      string `env:"SESSION_SECRET"`
 
 	SecureCookies bool `env:"SECURE_COOKIES,true"`
 
-	InviteMaxAge    time.Duration `env:"INVITE_MAX_AGE,24h"`
-	JanitorInterval time.Duration `env:"JANITOR_INTERVAL,1m"`
+	InviteMaxAge        time.Duration `env:"INVITE_MAX_AGE,24h"`
+	JanitorInterval     time.Duration `env:"JANITOR_INTERVAL,1m"`
+	SessionTTL          time.Duration `env:"SESSION_TTL,168h"`
+	RoomPGPChallengeTTL time.Duration `env:"ROOM_PGP_CHALLENGE_TTL,10m"`
+
+	Argon2Memory      uint32 `env:"ARGON2_MEMORY,65536"`
+	Argon2Iterations  uint32 `env:"ARGON2_ITERATIONS,1"`
+	Argon2Parallelism uint8  `env:"ARGON2_PARALLELISM,4"`
+
+	LoginRateLimitPerMin int  `env:"LOGIN_RATE_LIMIT_PER_MIN,10"`
+	LoginIPBurst         int  `env:"LOGIN_IP_BURST,30"`
+	TrustForwardedFor    bool `env:"TRUST_FORWARDED_FOR,false"`
+
+	OTLPEndpoint string `env:"OTLP_ENDPOINT,"`
+	OTLPInsecure bool   `env:"OTLP_INSECURE,true"`
+	ServiceName  string `env:"OTEL_SERVICE_NAME,ssanta"`
+	Environment  string `env:"DEPLOYMENT_ENVIRONMENT,local"`
 }
 
 func Load() (Config, error) {
@@ -59,11 +74,22 @@ func loadFromEnv(dst any) error {
 		}
 
 		raw, ok := os.LookupEnv(name)
-		if !ok || strings.TrimSpace(raw) == "" {
+		if !ok {
 			if !hasDefault {
 				return fmt.Errorf("%s is required", name)
 			}
 			raw = def
+		}
+
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			if !hasDefault {
+				return fmt.Errorf("%s is required", name)
+			}
+			raw = strings.TrimSpace(def)
+			if raw == "" {
+				continue
+			}
 		}
 
 		if err := setFromString(rv.Field(i), raw); err != nil {

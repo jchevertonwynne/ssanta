@@ -6,13 +6,18 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/pgp"
+	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 const maxMessageLength = 4096
@@ -34,8 +39,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type ChatHub struct {
-	rooms           map[int64]*ChatRoom
-	userConnections map[int64]map[*ChatClient]bool
+	rooms           map[store.RoomID]*ChatRoom
+	userConnections map[store.UserID]map[*ChatClient]bool
 	register        chan *ChatClient
 	unregister      chan *ChatClient
 	done            chan struct{}
@@ -44,7 +49,7 @@ type ChatHub struct {
 }
 
 type ChatRoom struct {
-	roomID  int64
+	roomID  store.RoomID
 	clients map[*ChatClient]bool
 	mu      sync.RWMutex
 }
@@ -54,8 +59,8 @@ type ChatClient struct {
 	conn      *websocket.Conn
 	send      chan []byte
 	closeOnce sync.Once
-	roomID    int64
-	userID    int64
+	roomID    store.RoomID
+	userID    store.UserID
 	username  string
 	svc       WebSocketHandlersService
 }
@@ -69,11 +74,23 @@ type ChatMessagePayload struct {
 
 func NewChatHub() *ChatHub {
 	return &ChatHub{
-		rooms:           make(map[int64]*ChatRoom),
-		userConnections: make(map[int64]map[*ChatClient]bool),
+		rooms:           make(map[store.RoomID]*ChatRoom),
+		userConnections: make(map[store.UserID]map[*ChatClient]bool),
 		register:        make(chan *ChatClient),
 		unregister:      make(chan *ChatClient),
 		done:            make(chan struct{}),
+	}
+}
+
+// tryRegister enqueues a client onto the hub's register channel, but bails
+// out if the hub has been stopped — avoiding a goroutine leak / deadlock when
+// an HTTP upgrade races with shutdown.
+func (h *ChatHub) tryRegister(c *ChatClient) bool {
+	select {
+	case h.register <- c:
+		return true
+	case <-h.done:
+		return false
 	}
 }
 
@@ -118,7 +135,7 @@ func (h *ChatHub) Run() {
 				}
 				room.mu.Unlock()
 			}
-			h.rooms = make(map[int64]*ChatRoom)
+			h.rooms = make(map[store.RoomID]*ChatRoom)
 			h.mu.Unlock()
 			return
 
@@ -129,6 +146,12 @@ func (h *ChatHub) Run() {
 				h.userConnections[client.userID] = make(map[*ChatClient]bool)
 			}
 			h.userConnections[client.userID][client] = true
+
+			// Record active connection metric
+			if metrics := observability.GetMetrics(); metrics != nil {
+				metrics.WSActiveConnections.Add(context.Background(), 1)
+			}
+			slog.Info("websocket connected", "user_id", client.userID, "room_id", client.roomID)
 
 			// If in a room, add to room
 			if client.roomID > 0 {
@@ -148,46 +171,43 @@ func (h *ChatHub) Run() {
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			// Remove from user connections
+			// Remove from user connections.
 			if connections, ok := h.userConnections[client.userID]; ok {
 				if _, exists := connections[client]; exists {
 					delete(connections, client)
 					client.closeOnce.Do(func() { close(client.send) })
+
+					// Record disconnection metric
+					if metrics := observability.GetMetrics(); metrics != nil {
+						metrics.WSActiveConnections.Add(context.Background(), -1)
+					}
+					slog.Info("websocket disconnected", "user_id", client.userID, "room_id", client.roomID)
 				}
 				if len(connections) == 0 {
 					delete(h.userConnections, client.userID)
 				}
 			}
-			h.mu.Unlock()
-
-			// Remove from room if in one
+			// Remove from the room and delete the room atomically if empty.
+			// Hold h.mu across the emptiness check + delete so a concurrent
+			// register for the same roomID can't slot a client into a room
+			// we're about to discard.
 			if client.roomID > 0 {
-				h.mu.RLock()
-				room, ok := h.rooms[client.roomID]
-				h.mu.RUnlock()
-
-				if ok {
+				if room, ok := h.rooms[client.roomID]; ok {
 					room.mu.Lock()
 					delete(room.clients, client)
+					empty := len(room.clients) == 0
 					room.mu.Unlock()
-
-					// Clean up empty rooms
-					room.mu.RLock()
-					isEmpty := len(room.clients) == 0
-					room.mu.RUnlock()
-
-					if isEmpty {
-						h.mu.Lock()
+					if empty {
 						delete(h.rooms, client.roomID)
-						h.mu.Unlock()
 					}
 				}
 			}
+			h.mu.Unlock()
 		}
 	}
 }
 
-func (h *ChatHub) BroadcastToRoom(roomID int64, message []byte) {
+func (h *ChatHub) BroadcastToRoom(roomID store.RoomID, message []byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -209,7 +229,7 @@ func (h *ChatHub) BroadcastToRoom(roomID int64, message []byte) {
 	}
 }
 
-func (h *ChatHub) SendToRoomUsers(roomID int64, perUserMessage map[int64][]byte) {
+func (h *ChatHub) SendToRoomUsers(roomID store.RoomID, perUserMessage map[store.UserID][]byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -234,7 +254,7 @@ func (h *ChatHub) SendToRoomUsers(roomID int64, perUserMessage map[int64][]byte)
 	}
 }
 
-func (h *ChatHub) DisconnectUser(roomID, userID int64) {
+func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -247,32 +267,29 @@ func (h *ChatHub) DisconnectUser(roomID, userID int64) {
 	defer room.mu.Unlock()
 
 	for client := range room.clients {
-		if client.userID == userID {
-			// Send a kicked message - use blocking send to ensure it's queued
-			kickedMsg := ChatMessagePayload{
-				Type:    "kicked",
-				Message: "You have been removed from this room",
-			}
-			if msg, err := json.Marshal(kickedMsg); err == nil {
-				// Try to send with timeout to avoid blocking forever
-				select {
-				case client.send <- msg:
-					// Message queued successfully
-				case <-time.After(1 * time.Second):
-					// Timeout - proceed with close anyway
-				}
-			}
-			// Give writePump time to send the message
-			go func(c *ChatClient) {
-				time.Sleep(200 * time.Millisecond)
-				c.conn.Close()
-			}(client)
-			delete(room.clients, client)
+		if client.userID != userID {
+			continue
 		}
+		// Enqueue a "kicked" frame, then close the send channel. writePump
+		// will drain the queue, write the close frame, and shut the conn
+		// down deterministically — no sleep needed.
+		kickedMsg := ChatMessagePayload{
+			Type:    "kicked",
+			Message: "You have been removed from this room",
+		}
+		if msg, err := json.Marshal(kickedMsg); err == nil {
+			select {
+			case client.send <- msg:
+			case <-time.After(time.Second):
+				// send buffer wedged; fall through to close path.
+			}
+		}
+		client.closeOnce.Do(func() { close(client.send) })
+		delete(room.clients, client)
 	}
 }
 
-func (h *ChatHub) BroadcastSystemMessage(roomID int64, message string) {
+func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
 	sysMsg := ChatMessagePayload{
 		Type:      "system",
 		Message:   message,
@@ -283,7 +300,7 @@ func (h *ChatHub) BroadcastSystemMessage(roomID int64, message string) {
 	}
 }
 
-func (h *ChatHub) NotifyRoomUpdate(roomID int64) {
+func (h *ChatHub) NotifyRoomUpdate(roomID store.RoomID) {
 	refreshMsg := ChatMessagePayload{
 		Type: "refresh",
 	}
@@ -292,7 +309,7 @@ func (h *ChatHub) NotifyRoomUpdate(roomID int64) {
 	}
 }
 
-func (h *ChatHub) NotifyUser(userID int64, msgType, message string) {
+func (h *ChatHub) NotifyUser(userID store.UserID, msgType, message string) {
 	h.mu.RLock()
 	connections, ok := h.userConnections[userID]
 	h.mu.RUnlock()
@@ -342,6 +359,15 @@ func (c *ChatClient) readPump() {
 			break
 		}
 
+		// Record message received metric
+		if metrics := observability.GetMetrics(); metrics != nil {
+			attrs := attribute.NewSet(
+				attribute.Int64("room_id", c.roomID.Int64()),
+				attribute.Int64("user_id", c.userID.Int64()),
+			)
+			metrics.WSMessagesReceived.Add(context.Background(), 1, metric.WithAttributeSet(attrs))
+		}
+
 		var payload ChatMessagePayload
 		if err := json.Unmarshal(message, &payload); err != nil {
 			slog.Error("unmarshal message", "err", err)
@@ -349,14 +375,24 @@ func (c *ChatClient) readPump() {
 		}
 
 		if payload.Type == "message" && payload.Message != "" {
+			ctx, span := otel.Tracer("ssanta").Start(context.Background(), "WebSocket.HandleMessage")
+			span.SetAttributes(
+				attribute.Int64("room_id", c.roomID.Int64()),
+				attribute.Int64("user_id", c.userID.Int64()),
+				attribute.String("username", c.username),
+				attribute.Int("message_length", len(payload.Message)),
+			)
+
 			if len(payload.Message) > maxMessageLength {
+				span.End()
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 			members, err := c.svc.ListRoomMembersWithPGP(ctx, c.roomID)
 			cancel()
 			if err != nil {
-				slog.Error("list room members for chat encryption", "err", err)
+				slog.ErrorContext(ctx, "list room members for chat encryption", "err", err, "room_id", c.roomID)
+				span.End()
 				continue
 			}
 
@@ -388,42 +424,69 @@ func (c *ChatClient) readPump() {
 			plaintext := payload.Message
 			createdAt := time.Now()
 
-			perUser := make(map[int64][]byte, len(members))
-			for _, m := range members {
-				if m.PGPPublicKey == "" {
-					out := ChatMessagePayload{
-						Type:      "message",
-						Username:  c.username,
-						Message:   "<encrypted message>",
-						CreatedAt: createdAt,
-					}
-					b, err := json.Marshal(out)
-					if err != nil {
-						continue
-					}
-					perUser[m.ID] = b
-					continue
-				}
+			// Parallelize per-recipient encryption using errgroup
+			perUser := make(map[store.UserID][]byte, len(members))
+			var mu sync.Mutex
+			var g errgroup.Group
 
-				ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
-				if err != nil {
-					slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
-					continue
-				}
-				out := ChatMessagePayload{
-					Type:      "message",
-					Username:  c.username,
-					Message:   ciphertext,
-					CreatedAt: createdAt,
-				}
-				b, err := json.Marshal(out)
-				if err != nil {
-					continue
-				}
-				perUser[m.ID] = b
+			for _, m := range members {
+				m := m // capture loop variable
+				g.Go(func() error {
+					var b []byte
+					var err error
+
+					if m.PGPPublicKey == "" {
+						out := ChatMessagePayload{
+							Type:      "message",
+							Username:  c.username,
+							Message:   "<encrypted message>",
+							CreatedAt: createdAt,
+						}
+						b, err = json.Marshal(out)
+						if err != nil {
+							return nil // skip on marshal error, don't fail the whole batch
+						}
+					} else {
+						ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
+						if err != nil {
+							slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
+							return nil // skip on encryption error, don't fail the whole batch
+						}
+						out := ChatMessagePayload{
+							Type:      "message",
+							Username:  c.username,
+							Message:   ciphertext,
+							CreatedAt: createdAt,
+						}
+						b, err = json.Marshal(out)
+						if err != nil {
+							return nil // skip on marshal error, don't fail the whole batch
+						}
+					}
+
+					mu.Lock()
+					perUser[m.ID] = b
+					mu.Unlock()
+					return nil
+				})
 			}
 
+			// Wait for all encryptions to complete
+			g.Wait() // ignore error, we handled errors inside goroutines
+
 			c.hub.SendToRoomUsers(c.roomID, perUser)
+
+			// Record messages sent metric (one per recipient)
+			if metrics := observability.GetMetrics(); metrics != nil {
+				attrs := attribute.NewSet(
+					attribute.Int64("room_id", c.roomID.Int64()),
+					attribute.Int64("user_id", c.userID.Int64()),
+				)
+				metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
+			}
+			slog.InfoContext(ctx, "chat message sent", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
+
+			span.End()
 		}
 	}
 }
@@ -466,9 +529,8 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			return
 		}
 
-		roomID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid room id", http.StatusBadRequest)
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
 			return
 		}
 
@@ -507,7 +569,10 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			svc:      svc,
 		}
 
-		client.hub.register <- client
+		if !hub.tryRegister(client) {
+			conn.Close()
+			return
+		}
 
 		hub.wg.Add(2)
 		go client.writePump()
@@ -545,7 +610,10 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 			username: username,
 		}
 
-		client.hub.register <- client
+		if !hub.tryRegister(client) {
+			conn.Close()
+			return
+		}
 
 		hub.wg.Add(2)
 		go client.writePump()

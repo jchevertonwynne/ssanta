@@ -21,7 +21,7 @@ func TestHandleCreateRoom_Unauthorized_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	r := newFormRequest(t, http.MethodPost, "/rooms", url.Values{"display_name": {"room"}})
 	w := serve(t, handleCreateRoom(svc, sessions), r)
@@ -39,8 +39,8 @@ func TestHandleCreateRoom_EmptyName_RendersError(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 1)
-	svc.EXPECT().CreateRoom(gomock.Any(), "", int64(1)).Return(store.ErrRoomNameEmpty)
-	svc.EXPECT().GetContentView(gomock.Any(), int64(1)).Return(stubContentView(""), nil)
+	svc.EXPECT().CreateRoom(gomock.Any(), "", store.UserID(1)).Return(store.ErrRoomNameEmpty)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(1)).Return(stubContentView(""), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/rooms", url.Values{"display_name": {""}})
 	w := serve(t, handleCreateRoom(svc, sessions), r)
@@ -61,8 +61,8 @@ func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	roomID := int64(10)
-	userID := int64(2)
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
@@ -91,8 +91,8 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	roomID := int64(10)
-	userID := int64(1)
+	roomID := store.RoomID(10)
+	userID := store.UserID(1)
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("creator", nil)
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(true, false, nil)
@@ -125,8 +125,8 @@ func TestHandleLeaveRoom_NotMember_Returns403(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	roomID := int64(10)
-	userID := int64(2)
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
@@ -148,7 +148,7 @@ func TestHandleRoomDetail_LoggedOut_NonHTMX_RedirectsHome(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	r := httptest.NewRequest(http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
@@ -169,7 +169,7 @@ func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	r := httptest.NewRequest(http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
@@ -188,8 +188,8 @@ func TestHandleSetMembersCanInvite_NonCreator_Returns403(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	roomID := int64(10)
-	userID := int64(2)
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().SetRoomMembersCanInvite(gomock.Any(), roomID, userID, true).Return(store.ErrNotRoomCreator)
 
@@ -210,9 +210,9 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	roomID := int64(10)
-	creatorID := int64(1)
-	memberID := int64(2)
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	memberID := store.UserID(2)
 	expectLoggedIn(t, svc, sessions, creatorID)
 	svc.EXPECT().RemoveMember(gomock.Any(), roomID, memberID, creatorID).Return(nil)
 	svc.EXPECT().GetUsername(gomock.Any(), memberID).Return("bob", nil)

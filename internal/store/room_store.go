@@ -3,20 +3,20 @@ package store
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RoomStore struct {
-	pool *pgxpool.Pool
+	db dbtx
 }
 
-func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID int64) error {
-	_, err := s.pool.Exec(ctx,
+func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID) error {
+	_, err := s.db.Exec(ctx,
 		`INSERT INTO rooms (display_name, creator_id) VALUES ($1, $2)`,
 		displayName, creatorID,
 	)
@@ -24,11 +24,14 @@ func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorI
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return ErrRoomNameTaken
 	}
+	if err == nil {
+		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID)
+	}
 	return err
 }
 
-func (s *RoomStore) DeleteRoom(ctx context.Context, roomID, creatorID int64) error {
-	tag, err := s.pool.Exec(ctx,
+func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
+	tag, err := s.db.Exec(ctx,
 		`DELETE FROM rooms WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID,
 	)
@@ -38,11 +41,12 @@ func (s *RoomStore) DeleteRoom(ctx context.Context, roomID, creatorID int64) err
 	if tag.RowsAffected() == 0 {
 		return ErrRoomNotFound
 	}
+	slog.InfoContext(ctx, "room deleted from db", "room_id", roomID, "creator_id", creatorID)
 	return nil
 }
 
-func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID int64) ([]Room, error) {
-	rows, err := s.pool.Query(ctx,
+func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT id, display_name, created_at FROM rooms WHERE creator_id = $1 ORDER BY id DESC`,
 		userID,
 	)
@@ -52,8 +56,8 @@ func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID int64) ([]Roo
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID int64) ([]Room, error) {
-	rows, err := s.pool.Query(ctx,
+func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT r.id, r.display_name, r.created_at
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
@@ -67,9 +71,9 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID int64) ([]Room
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID int64) (RoomDetail, error) {
+func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetail, error) {
 	var d RoomDetail
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, u.username
 		 FROM rooms r
 		 JOIN users u ON u.id = r.creator_id
@@ -82,26 +86,26 @@ func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID int64) (RoomDetail
 	return d, err
 }
 
-func (s *RoomStore) IsRoomMember(ctx context.Context, roomID, userID int64) (bool, error) {
+func (s *RoomStore) IsRoomMember(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	var exists bool
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
 		roomID, userID,
 	).Scan(&exists)
 	return exists, err
 }
 
-func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID, userID int64) (bool, error) {
+func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	var exists bool
-	err := s.pool.QueryRow(ctx,
+	err := s.db.QueryRow(ctx,
 		`SELECT EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2)`,
 		roomID, userID,
 	).Scan(&exists)
 	return exists, err
 }
 
-func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error) {
-	err = s.pool.QueryRow(ctx,
+func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID UserID) (isCreator bool, isMember bool, err error) {
+	err = s.db.QueryRow(ctx,
 		`SELECT
 			EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2),
 			EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
@@ -110,16 +114,16 @@ func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID, userID int64) (is
 	return isCreator, isMember, err
 }
 
-func (s *RoomStore) JoinRoom(ctx context.Context, roomID, userID int64) error {
-	_, err := s.pool.Exec(ctx,
+func (s *RoomStore) JoinRoom(ctx context.Context, roomID RoomID, userID UserID) error {
+	_, err := s.db.Exec(ctx,
 		`INSERT INTO room_users (room_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 		roomID, userID,
 	)
 	return err
 }
 
-func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]RoomMember, error) {
-	rows, err := s.pool.Query(ctx,
+func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) ([]RoomMember, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT u.id,
 		        u.username,
 		        u.created_at,
@@ -166,8 +170,8 @@ func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([
 	return out, rows.Err()
 }
 
-func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error {
-	tag, err := s.pool.Exec(ctx,
+func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
+	tag, err := s.db.Exec(ctx,
 		`UPDATE rooms SET members_can_invite = $3 WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID, value,
 	)
@@ -180,16 +184,16 @@ func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID, creator
 	return nil
 }
 
-func (s *RoomStore) LeaveRoom(ctx context.Context, roomID, userID int64) error {
+func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID) error {
 	// Start transaction to ensure atomicity
-	tx, err := s.pool.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
 	// Check if room exists and if user is the creator
-	var creatorID int64
+	var creatorID UserID
 	err = tx.QueryRow(ctx,
 		`SELECT creator_id FROM rooms WHERE id = $1`,
 		roomID,
@@ -228,15 +232,15 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID, userID int64) error {
 	return tx.Commit(ctx)
 }
 
-func (s *RoomStore) RemoveMember(ctx context.Context, roomID, memberID, creatorID int64) error {
-	tx, err := s.pool.Begin(ctx)
+func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, creatorID UserID) error {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
 	// Verify the actor is the creator
-	var actualCreatorID int64
+	var actualCreatorID UserID
 	err = tx.QueryRow(ctx,
 		`SELECT creator_id FROM rooms WHERE id = $1`,
 		roomID,

@@ -31,7 +31,7 @@ func serve(t *testing.T, h http.Handler, r *http.Request) *httptest.ResponseReco
 	return w
 }
 
-func expectLoggedIn(t *testing.T, svc *servermocks.MockServerService, sessions *servermocks.MockSessionManager, userID int64) {
+func expectLoggedIn(t *testing.T, svc *servermocks.MockServerService, sessions *servermocks.MockSessionManager, userID store.UserID) {
 	t.Helper()
 	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true)
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil)
@@ -47,7 +47,7 @@ func stubContentView(username string) *service.ContentView {
 	}
 }
 
-func stubRoomDetailView(roomID int64, currentUsername string) *service.RoomDetailView {
+func stubRoomDetailView(roomID store.RoomID, currentUsername string) *service.RoomDetailView {
 	return &service.RoomDetailView{
 		CurrentUsername: currentUsername,
 		Room: store.RoomDetail{

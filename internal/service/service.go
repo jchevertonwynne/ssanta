@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
@@ -10,22 +13,43 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
 
 type Service struct {
-	store        *store.Store
-	inviteMaxAge time.Duration
+	store               *store.Store
+	inviteMaxAge        time.Duration
+	roomPGPChallengeTTL time.Duration
+	argon2              Argon2Params
 }
 
 func New(store *store.Store) *Service {
-	return &Service{store: store, inviteMaxAge: 24 * time.Hour}
+	return &Service{
+		store:               store,
+		inviteMaxAge:        24 * time.Hour,
+		roomPGPChallengeTTL: 10 * time.Minute,
+		argon2:              DefaultArgon2Params(),
+	}
 }
 
 func (s *Service) SetInviteMaxAge(d time.Duration) {
 	if d > 0 {
 		s.inviteMaxAge = d
+	}
+}
+
+func (s *Service) SetRoomPGPChallengeTTL(d time.Duration) {
+	if d > 0 {
+		s.roomPGPChallengeTTL = d
+	}
+}
+
+func (s *Service) SetArgon2Params(p Argon2Params) {
+	if p.Memory > 0 && p.Iterations > 0 && p.Parallelism > 0 {
+		s.argon2 = p
 	}
 }
 
@@ -55,7 +79,7 @@ type RoomDetailView struct {
 }
 
 // GetContentView loads all data needed for the main content page
-func (s *Service) GetContentView(ctx context.Context, userID int64) (*ContentView, error) {
+func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*ContentView, error) {
 	view := &ContentView{}
 
 	users, err := s.store.Users.ListUsers(ctx)
@@ -93,7 +117,7 @@ func (s *Service) GetContentView(ctx context.Context, userID int64) (*ContentVie
 // GetRoomDetailView loads all data needed for a room detail page.
 // Phase 1 fetches user info, room detail, and membership concurrently.
 // Phase 2 fetches members and invites concurrently, but only after the auth guard passes.
-func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (*RoomDetailView, error) {
+func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*RoomDetailView, error) {
 	var (
 		user     store.User
 		room     store.RoomDetail
@@ -153,13 +177,11 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (
 	}, nil
 }
 
-func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
+func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
-const roomPGPChallengeTTL = 10 * time.Minute
-
-func (s *Service) SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error {
+func (s *Service) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
 	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 	if err != nil {
 		return err
@@ -183,13 +205,13 @@ func (s *Service) SetRoomPGPKey(ctx context.Context, roomID, userID int64, armor
 		return err
 	}
 
-	expiresAt := now.Add(roomPGPChallengeTTL)
+	expiresAt := now.Add(s.roomPGPChallengeTTL)
 	hash := pgp.HashChallenge(challenge)
 
 	return s.store.Rooms.UpsertRoomUserPGPKeyWithChallenge(ctx, roomID, userID, normalized, fingerprint, ciphertext, hash, expiresAt)
 }
 
-func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, decryptedChallenge string) error {
+func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
 	plaintext := strings.TrimSpace(decryptedChallenge)
 	if plaintext == "" {
 		return store.ErrPGPChallengeIncorrect
@@ -197,7 +219,7 @@ func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, de
 	return s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now())
 }
 
-func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error {
+func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
 	if targetUserID != actingUserID {
 		isCreator, err := s.store.Rooms.IsRoomCreator(ctx, roomID, actingUserID)
 		if err != nil {
@@ -213,112 +235,173 @@ func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID
 
 // User operations
 
-func (s *Service) UserExists(ctx context.Context, id int64) (bool, error) {
+func (s *Service) UserExists(ctx context.Context, id store.UserID) (bool, error) {
 	return s.store.Users.UserExists(ctx, id)
 }
 
-func (s *Service) CreateUser(ctx context.Context, username, password string) (int64, error) {
+func (s *Service) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateUser")
+	defer span.End()
+
 	name := strings.TrimSpace(username)
+	span.SetAttributes(attribute.String("username", name))
+
 	if !usernameRE.MatchString(name) {
 		return 0, store.ErrUsernameInvalid
 	}
 	if len(password) < 8 {
 		return 0, store.ErrPasswordTooShort
 	}
-	hash, err := hashPassword(password)
+	hash, err := hashPassword(password, s.argon2)
+	if err != nil {
+		slog.ErrorContext(ctx, "hash password", "err", err)
+		return 0, err
+	}
+	id, err := s.store.Users.CreateUser(ctx, name, hash)
 	if err != nil {
 		return 0, err
 	}
-	return s.store.Users.CreateUser(ctx, name, hash)
+	span.SetAttributes(attribute.Int64("user_id", id.Int64()))
+	return id, nil
 }
 
-func (s *Service) LoginUser(ctx context.Context, username, password string) (int64, error) {
+func (s *Service) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.LoginUser")
+	defer span.End()
+	span.SetAttributes(attribute.String("username", username))
+
 	user, err := s.store.Users.GetUserWithPassword(ctx, username)
-	if err != nil {
+	if errors.Is(err, store.ErrUserNotFound) {
+		// Constant-cost dummy verify so missing-user path takes ~the same time
+		// as wrong-password path. Removes a username enumeration oracle.
+		_, _ = verifyPassword(password, dummyHashSentinel)
 		return 0, store.ErrInvalidCredentials
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lookup user: %w", err)
 	}
 	ok, err := verifyPassword(password, user.PasswordHash)
-	if err != nil || !ok {
+	if err != nil {
+		return 0, fmt.Errorf("verify password: %w", err)
+	}
+	if !ok {
 		return 0, store.ErrInvalidCredentials
 	}
+	span.SetAttributes(attribute.Int64("user_id", user.ID.Int64()))
 	return user.ID, nil
 }
 
-func (s *Service) DeleteUser(ctx context.Context, id int64) error {
+func (s *Service) DeleteUser(ctx context.Context, id store.UserID) error {
 	return s.store.Users.DeleteUser(ctx, id)
 }
 
 // Room operations
 
-func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID int64) error {
+func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateRoom")
+	defer span.End()
+
 	name := strings.TrimSpace(displayName)
+	span.SetAttributes(
+		attribute.String("room_name", name),
+		attribute.Int64("creator_id", creatorID.Int64()),
+	)
+
 	if name == "" {
 		return store.ErrRoomNameEmpty
 	}
 	if len(name) > store.MaxRoomNameLength {
 		return store.ErrRoomNameTooLong
 	}
-	return s.store.Rooms.CreateRoom(ctx, name, creatorID)
+	err := s.store.Rooms.CreateRoom(ctx, name, creatorID)
+	if err == nil {
+		slog.InfoContext(ctx, "room created", "room_name", name, "creator_id", creatorID)
+	}
+	return err
 }
 
-func (s *Service) DeleteRoom(ctx context.Context, roomID, creatorID int64) error {
+func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
 	return s.store.Rooms.DeleteRoom(ctx, roomID, creatorID)
 }
 
-func (s *Service) LeaveRoom(ctx context.Context, roomID, userID int64) error {
+func (s *Service) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
 	return s.store.Rooms.LeaveRoom(ctx, roomID, userID)
 }
 
-func (s *Service) JoinRoom(ctx context.Context, roomID, userID int64) error {
+func (s *Service) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
 	return s.store.Rooms.JoinRoom(ctx, roomID, userID)
 }
 
-func (s *Service) IsRoomCreator(ctx context.Context, roomID, userID int64) (bool, error) {
+func (s *Service) IsRoomCreator(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
 	return s.store.Rooms.IsRoomCreator(ctx, roomID, userID)
 }
 
-func (s *Service) GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error) {
+func (s *Service) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error) {
 	return s.store.Rooms.GetRoomAccess(ctx, roomID, userID)
 }
 
-func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error {
+func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
-func (s *Service) RemoveMember(ctx context.Context, roomID, memberID, creatorID int64) error {
+func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
 	return s.store.Rooms.RemoveMember(ctx, roomID, memberID, creatorID)
 }
 
 // Invite operations
 
-func (s *Service) CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error {
+func (s *Service) CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateInvite")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("room_id", roomID.Int64()),
+		attribute.Int64("inviter_id", inviterID.Int64()),
+		attribute.String("invitee_username", inviteeUsername),
+	)
+
 	expiresAt := time.Now().Add(s.inviteMaxAge)
-	return s.store.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername, expiresAt)
+	err := s.store.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername, expiresAt)
+	if err == nil {
+		slog.InfoContext(ctx, "invite created", "room_id", roomID, "inviter_id", inviterID, "invitee", inviteeUsername)
+	}
+	return err
 }
 
-func (s *Service) AcceptInvite(ctx context.Context, inviteID, userID int64) error {
-	return s.store.Invites.AcceptInvite(ctx, inviteID, userID)
+func (s *Service) AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.AcceptInvite")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("invite_id", inviteID.Int64()),
+		attribute.Int64("user_id", userID.Int64()),
+	)
+
+	roomID, err := s.store.Invites.AcceptInvite(ctx, inviteID, userID)
+	if err == nil {
+		span.SetAttributes(attribute.Int64("room_id", roomID.Int64()))
+		slog.InfoContext(ctx, "invite accepted", "invite_id", inviteID, "user_id", userID, "room_id", roomID)
+	}
+	return roomID, err
 }
 
-func (s *Service) DeclineInvite(ctx context.Context, inviteID, userID int64) error {
+func (s *Service) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
 	return s.store.Invites.DeclineInvite(ctx, inviteID, userID)
 }
 
-func (s *Service) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
+func (s *Service) CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error) {
 	return s.store.Invites.CancelInvite(ctx, inviteID, actingUserID)
 }
 
-func (s *Service) RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
+func (s *Service) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
 	return s.store.Invites.RoomIDForInvite(ctx, inviteID)
 }
 
 // Helper operations
 
-func (s *Service) IsRoomMember(ctx context.Context, roomID, userID int64) (bool, error) {
+func (s *Service) IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
 	return s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 }
 
-func (s *Service) GetUsername(ctx context.Context, userID int64) (string, error) {
+func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	user, err := s.store.Users.GetUserByID(ctx, userID)
 	if err != nil {
 		return "", err

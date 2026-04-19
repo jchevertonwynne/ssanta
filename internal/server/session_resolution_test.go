@@ -7,6 +7,8 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/jchevertonwynne/ssanta/internal/store"
+
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
 
@@ -17,7 +19,7 @@ func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -38,8 +40,8 @@ func TestResolveSessionUser_SignedCookieForDeletedUser_ClearsCookie(t *testing.T
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(123), true)
-	svc.EXPECT().UserExists(gomock.Any(), int64(123)).Return(false, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(123), true)
+	svc.EXPECT().UserExists(gomock.Any(), store.UserID(123)).Return(false, nil)
 	sessions.EXPECT().Clear(gomock.Any())
 
 	w := httptest.NewRecorder()

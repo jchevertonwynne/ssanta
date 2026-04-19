@@ -1,0 +1,304 @@
+package server
+
+import (
+	"bufio"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"log/slog"
+	"net"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/jchevertonwynne/ssanta/internal/observability"
+	"github.com/jchevertonwynne/ssanta/internal/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
+)
+
+type contextKey int
+
+const (
+	ctxKeyUserID contextKey = iota
+	ctxKeyLogger
+	ctxKeyRequestID
+	ctxKeyCSRFID
+)
+
+// Chain wraps h with the given middlewares, with the *first* middleware as the
+// outermost layer. So Chain(h, A, B) is equivalent to A(B(h)).
+func Chain(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(mws) - 1; i >= 0; i-- {
+		h = mws[i](h)
+	}
+	return h
+}
+
+// userIDFromContext returns the user ID injected by RequireAuth, or 0.
+func userIDFromContext(ctx context.Context) store.UserID {
+	v, _ := ctx.Value(ctxKeyUserID).(store.UserID)
+	return v
+}
+
+// optionalUserIDFromContext is for routes that can be hit while logged out;
+// pair it with WithOptionalAuth.
+func optionalUserIDFromContext(ctx context.Context) store.UserID {
+	return userIDFromContext(ctx)
+}
+
+func loggerFromContext(ctx context.Context) *slog.Logger {
+	if l, ok := ctx.Value(ctxKeyLogger).(*slog.Logger); ok {
+		return l
+	}
+	return slog.Default()
+}
+
+func requestIDFromContext(ctx context.Context) string {
+	if v, ok := ctx.Value(ctxKeyRequestID).(string); ok {
+		return v
+	}
+	return ""
+}
+
+func csrfIDFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(ctxKeyCSRFID).(string)
+	return v
+}
+
+// RequireAuth resolves the session, hits UserExists, and on success injects
+// the user ID into the request context. On failure the handler short-circuits
+// with 401.
+func RequireAuth(svc UserExistsService, sessions SessionManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
+			if !ok {
+				http.Error(w, "login required", http.StatusUnauthorized)
+				return
+			}
+			ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
+			ctx = context.WithValue(ctx, ctxKeyLogger, loggerFromContext(ctx).With("user_id", id))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// WithOptionalAuth resolves the session if present (so handlers can vary
+// behaviour for logged-in users) but never short-circuits the request.
+func WithOptionalAuth(svc UserExistsService, sessions SessionManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
+			if ok {
+				ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
+				ctx = context.WithValue(ctx, ctxKeyLogger, loggerFromContext(ctx).With("user_id", id))
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// WithRequestLogger derives a request-scoped logger holding request_id, method
+// and path. Handlers retrieve it via loggerFromContext.
+func WithRequestLogger(base *slog.Logger) func(http.Handler) http.Handler {
+	if base == nil {
+		base = slog.Default()
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rid := r.Header.Get("X-Request-Id")
+			if rid == "" {
+				rid = newRequestID()
+			}
+			logger := base.With(
+				"request_id", rid,
+				"method", r.Method,
+				"path", r.URL.Path,
+			)
+			ctx := context.WithValue(r.Context(), ctxKeyRequestID, rid)
+			ctx = context.WithValue(ctx, ctxKeyLogger, logger)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RecoverPanic catches panics from downstream handlers and returns 500.
+func RecoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				loggerFromContext(r.Context()).Error("handler panic", "panic", rec)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func newRequestID() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 16)
+	}
+	return hex.EncodeToString(b[:])
+}
+
+// pathInt64 parses a numeric path parameter and writes a 400 on failure.
+func pathInt64(w http.ResponseWriter, r *http.Request, name string) (int64, bool) {
+	raw := r.PathValue(name)
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid "+name, http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
+}
+
+// pathUserID parses a user ID from a path parameter.
+func pathUserID(w http.ResponseWriter, r *http.Request, name string) (store.UserID, bool) {
+	v, ok := pathInt64(w, r, name)
+	return store.UserID(v), ok
+}
+
+// pathRoomID parses a room ID from a path parameter.
+func pathRoomID(w http.ResponseWriter, r *http.Request, name string) (store.RoomID, bool) {
+	v, ok := pathInt64(w, r, name)
+	return store.RoomID(v), ok
+}
+
+// pathInviteID parses an invite ID from a path parameter.
+func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (store.InviteID, bool) {
+	v, ok := pathInt64(w, r, name)
+	return store.InviteID(v), ok
+}
+
+// clientIP returns the best-effort source IP for rate-limiting. Honors
+// X-Forwarded-For only when explicitly trusted, since clients can spoof it.
+func clientIP(r *http.Request, trustForwardedFor bool) string {
+	if trustForwardedFor {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if i := strings.IndexByte(xff, ','); i >= 0 {
+				xff = xff[:i]
+			}
+			return strings.TrimSpace(xff)
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// responseWriter captures status code and response size
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	written    int64
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	n, err := rw.ResponseWriter.Write(b)
+	rw.written += int64(n)
+	return n, err
+}
+
+// Hijack implements http.Hijacker for WebSocket upgrades
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := rw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("hijack not supported")
+	}
+	return h.Hijack()
+}
+
+// TracingMiddleware extracts trace context from headers and creates a root span for each request
+func TracingMiddleware(serviceName string) func(http.Handler) http.Handler {
+	tracer := otel.Tracer(serviceName)
+	propagator := otel.GetTextMapPropagator()
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract trace context from headers
+			ctx := propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+
+			// Create a new span for this request
+			spanName := r.Method + " " + r.URL.Path
+			ctx, span := tracer.Start(ctx, spanName,
+				trace.WithSpanKind(trace.SpanKindServer),
+				trace.WithAttributes(
+					attribute.String("http.method", r.Method),
+					attribute.String("http.target", r.URL.Path),
+					attribute.String("http.scheme", r.URL.Scheme),
+					attribute.String("http.host", r.Host),
+					attribute.String("http.user_agent", r.UserAgent()),
+				),
+			)
+			defer span.End()
+
+			// Capture response status
+			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+			next.ServeHTTP(rw, r.WithContext(ctx))
+
+			// Record status code
+			span.SetAttributes(attribute.Int("http.status_code", rw.statusCode))
+
+			// Mark span as error if 5xx
+			if rw.statusCode >= 500 {
+				span.SetStatus(codes.Error, http.StatusText(rw.statusCode))
+			}
+		})
+	}
+}
+
+// MetricsMiddleware records HTTP metrics for each request
+func MetricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metrics := observability.GetMetrics()
+		if metrics == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		start := time.Now()
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next.ServeHTTP(rw, r)
+
+		duration := time.Since(start).Seconds()
+		statusCode := strconv.Itoa(rw.statusCode)
+
+		// Common attributes
+		attrs := attribute.NewSet(
+			attribute.String("http.method", r.Method),
+			attribute.String("http.route", r.URL.Path),
+			attribute.String("http.status_code", statusCode),
+		)
+
+		// Record metrics
+		metrics.HTTPRequestCount.Add(r.Context(), 1, metric.WithAttributeSet(attrs))
+		metrics.HTTPRequestDuration.Record(r.Context(), duration, metric.WithAttributeSet(attrs))
+
+		if r.ContentLength > 0 {
+			metrics.HTTPRequestSize.Record(r.Context(), r.ContentLength, metric.WithAttributeSet(attrs))
+		}
+
+		if rw.written > 0 {
+			metrics.HTTPResponseSize.Record(r.Context(), rw.written, metric.WithAttributeSet(attrs))
+		}
+	})
+}

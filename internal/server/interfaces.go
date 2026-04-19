@@ -17,35 +17,35 @@ type HealthService interface {
 }
 
 type ContentViewService interface {
-	GetContentView(ctx context.Context, userID int64) (*service.ContentView, error)
+	GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error)
 }
 
 type RoomDetailViewService interface {
-	GetRoomDetailView(ctx context.Context, roomID, userID int64) (*service.RoomDetailView, error)
+	GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error)
 }
 
 type RoomMembersWithPGPService interface {
-	ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error)
+	ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error)
 }
 
 type UserExistsService interface {
-	UserExists(ctx context.Context, id int64) (bool, error)
+	UserExists(ctx context.Context, id store.UserID) (bool, error)
 }
 
 type CreateUserService interface {
-	CreateUser(ctx context.Context, username, password string) (int64, error)
+	CreateUser(ctx context.Context, username, password string) (store.UserID, error)
 }
 
 type LoginUserService interface {
-	LoginUser(ctx context.Context, username, password string) (int64, error)
+	LoginUser(ctx context.Context, username, password string) (store.UserID, error)
 }
 
 type DeleteUserService interface {
-	DeleteUser(ctx context.Context, id int64) error
+	DeleteUser(ctx context.Context, id store.UserID) error
 }
 
 type UsernameService interface {
-	GetUsername(ctx context.Context, userID int64) (string, error)
+	GetUsername(ctx context.Context, userID store.UserID) (string, error)
 }
 
 type UserLookupService interface {
@@ -53,53 +53,53 @@ type UserLookupService interface {
 }
 
 type CreateRoomService interface {
-	CreateRoom(ctx context.Context, displayName string, creatorID int64) error
+	CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error
 }
 
 type DeleteRoomService interface {
-	DeleteRoom(ctx context.Context, roomID, creatorID int64) error
+	DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error
 }
 
 type JoinRoomService interface {
-	JoinRoom(ctx context.Context, roomID, userID int64) error
+	JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error
 }
 
 type LeaveRoomService interface {
-	LeaveRoom(ctx context.Context, roomID, userID int64) error
+	LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error
 }
 
 type RemoveMemberService interface {
-	RemoveMember(ctx context.Context, roomID, memberID, creatorID int64) error
+	RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error
 }
 
 type IsRoomCreatorService interface {
-	IsRoomCreator(ctx context.Context, roomID, userID int64) (bool, error)
+	IsRoomCreator(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error)
 }
 
 type IsRoomMemberService interface {
-	IsRoomMember(ctx context.Context, roomID, userID int64) (bool, error)
+	IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error)
 }
 
 type RoomAccessService interface {
-	GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error)
+	GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error)
 }
 
 type SetRoomMembersCanInviteService interface {
-	SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error
+	SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error
 }
 
 type RoomPGPService interface {
-	SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error
-	VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, decryptedChallenge string) error
-	RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error
+	SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error
+	VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error
+	RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error
 }
 
 type InviteOpsService interface {
-	CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error
-	AcceptInvite(ctx context.Context, inviteID, userID int64) error
-	DeclineInvite(ctx context.Context, inviteID, userID int64) error
-	CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error)
-	RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error)
+	CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error
+	AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error)
+	DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error
+	CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error)
+	RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error)
 }
 
 // Handler-facing composite interfaces (stable surfaces for mocks).
@@ -160,14 +160,14 @@ type ServerService interface {
 }
 
 type SessionManager interface {
-	Set(w http.ResponseWriter, userID int64)
+	Set(w http.ResponseWriter, userID store.UserID)
 	Clear(w http.ResponseWriter)
-	UserID(r *http.Request) (int64, bool)
+	UserID(r *http.Request) (store.UserID, bool)
 }
 
 type Hub interface {
-	BroadcastSystemMessage(roomID int64, message string)
-	NotifyRoomUpdate(roomID int64)
-	NotifyUser(userID int64, msgType, message string)
-	DisconnectUser(roomID, userID int64)
+	BroadcastSystemMessage(roomID store.RoomID, message string)
+	NotifyRoomUpdate(roomID store.RoomID)
+	NotifyUser(userID store.UserID, msgType, message string)
+	DisconnectUser(roomID store.RoomID, userID store.UserID)
 }

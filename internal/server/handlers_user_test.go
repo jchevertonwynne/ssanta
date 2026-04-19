@@ -21,9 +21,9 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(int64(42), nil)
-	sessions.EXPECT().Set(gomock.Any(), int64(42))
-	svc.EXPECT().GetContentView(gomock.Any(), int64(42)).Return(stubContentView("Alice"), nil)
+	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(store.UserID(42), nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(42))
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(42)).Return(stubContentView("Alice"), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
 		"username":         {"Alice"},
@@ -47,7 +47,7 @@ func TestHandleCreateUser_PasswordMismatch_RendersError(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
 		"username":         {"alice"},
@@ -71,8 +71,8 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().CreateUser(gomock.Any(), "bad name", "secret123").Return(int64(0), store.ErrUsernameInvalid)
-	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+	svc.EXPECT().CreateUser(gomock.Any(), "bad name", "secret123").Return(store.UserID(0), store.ErrUsernameInvalid)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
 		"username":         {"bad name"},
@@ -96,7 +96,7 @@ func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(int64(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	r := httptest.NewRequest(http.MethodDelete, "/users/1", nil)
 	r.SetPathValue("id", "1")
@@ -133,9 +133,9 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 7)
-	svc.EXPECT().DeleteUser(gomock.Any(), int64(7)).Return(nil)
+	svc.EXPECT().DeleteUser(gomock.Any(), store.UserID(7)).Return(nil)
 	sessions.EXPECT().Clear(gomock.Any())
-	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := httptest.NewRequest(http.MethodDelete, "/users/7", nil)
 	r.SetPathValue("id", "7")
@@ -153,8 +153,8 @@ func TestHandleLogin_InvalidCredentials_RendersError(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().LoginUser(gomock.Any(), "alice", "wrongpass").Return(int64(0), store.ErrInvalidCredentials)
-	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "wrongpass").Return(store.UserID(0), store.ErrInvalidCredentials)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
 		"username": {"alice"},
@@ -177,9 +177,9 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().LoginUser(gomock.Any(), "alice", "correctpass").Return(int64(5), nil)
-	sessions.EXPECT().Set(gomock.Any(), int64(5))
-	svc.EXPECT().GetContentView(gomock.Any(), int64(5)).Return(stubContentView("alice"), nil)
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "correctpass").Return(store.UserID(5), nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(5))
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(5)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
 		"username": {"alice"},
@@ -200,7 +200,7 @@ func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	sessions.EXPECT().Clear(gomock.Any())
-	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	w := serve(t, handleLogout(svc, sessions), r)
