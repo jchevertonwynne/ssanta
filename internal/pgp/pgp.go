@@ -15,6 +15,10 @@ const (
 	// MaxArmoredKeySize is a sanity limit to avoid gigantic uploads.
 	MaxArmoredKeySize = 64 * 1024
 
+	// VerificationChallengePrefix is prepended to every generated challenge so
+	// users can more easily recognize what the decrypted plaintext is for.
+	VerificationChallengePrefix = "ssanta-verification-"
+
 	// DefaultChallengeSize is the number of random bytes in the challenge token.
 	DefaultChallengeSize = 32
 )
@@ -69,7 +73,8 @@ func NormalizePublicKey(armored string, now time.Time) (normalizedArmored string
 	return strings.TrimSpace(normalizedArmored), fingerprint, nil
 }
 
-// NewChallengeString returns a URL-safe random token string.
+// NewChallengeString returns a URL-safe challenge string prefixed with
+// VerificationChallengePrefix.
 func NewChallengeString(size int) (string, error) {
 	if size <= 0 {
 		size = DefaultChallengeSize
@@ -78,7 +83,7 @@ func NewChallengeString(size int) (string, error) {
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
-	return base64.RawURLEncoding.EncodeToString(buf), nil
+	return VerificationChallengePrefix + base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
 func HashChallenge(challenge string) []byte {
