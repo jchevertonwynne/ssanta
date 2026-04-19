@@ -161,7 +161,15 @@
             msgDiv.style.marginBottom = '0.5rem';
             
             const time = new Date(data.created_at).toLocaleTimeString();
-            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small><br>' + escapeHtml(data.message);
+
+            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small><br>';
+
+            const pre = document.createElement('pre');
+            pre.style.margin = '0.25rem 0 0 0';
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.style.fontFamily = 'monospace';
+            pre.textContent = data.message;
+            msgDiv.appendChild(pre);
             
             chatMessages.appendChild(msgDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;

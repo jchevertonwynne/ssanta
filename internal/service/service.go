@@ -154,6 +154,10 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (
 	return view, nil
 }
 
+func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
+	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
+}
+
 const roomPGPChallengeTTL = 10 * time.Minute
 
 func (s *Service) SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error {

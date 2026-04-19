@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
 )
 
 const maxMessageLength = 4096
@@ -53,6 +56,7 @@ type ChatClient struct {
 	roomID   int64
 	userID   int64
 	username string
+	svc      WebSocketHandlersService
 }
 
 type ChatMessagePayload struct {
@@ -204,6 +208,31 @@ func (h *ChatHub) BroadcastToRoom(roomID int64, message []byte) {
 	}
 }
 
+func (h *ChatHub) SendToRoomUsers(roomID int64, perUserMessage map[int64][]byte) {
+	h.mu.RLock()
+	room, ok := h.rooms[roomID]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	for client := range room.clients {
+		msg, ok := perUserMessage[client.userID]
+		if !ok {
+			continue
+		}
+		select {
+		case client.send <- msg:
+		default:
+			close(client.send)
+			delete(room.clients, client)
+		}
+	}
+}
+
 func (h *ChatHub) DisconnectUser(roomID, userID int64) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
@@ -322,15 +351,41 @@ func (c *ChatClient) readPump() {
 			if len(payload.Message) > maxMessageLength {
 				continue
 			}
-			// Broadcast to all clients in the room
-			broadcast := ChatMessagePayload{
-				Type:      "message",
-				Username:  c.username,
-				Message:   payload.Message,
-				CreatedAt: time.Now(),
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			members, err := c.svc.ListRoomMembersWithPGP(ctx, c.roomID)
+			cancel()
+			if err != nil {
+				slog.Error("list room members for chat encryption", "err", err)
+				continue
 			}
-			broadcastJSON, _ := json.Marshal(broadcast)
-			c.hub.BroadcastToRoom(c.roomID, broadcastJSON)
+
+			plaintext := payload.Message
+			createdAt := time.Now()
+
+			perUser := make(map[int64][]byte, len(members))
+			for _, m := range members {
+				if m.PGPPublicKey == "" {
+					continue
+				}
+				ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
+				if err != nil {
+					slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
+					continue
+				}
+				out := ChatMessagePayload{
+					Type:      "message",
+					Username:  c.username,
+					Message:   ciphertext,
+					CreatedAt: createdAt,
+				}
+				b, err := json.Marshal(out)
+				if err != nil {
+					continue
+				}
+				perUser[m.ID] = b
+			}
+
+			c.hub.SendToRoomUsers(c.roomID, perUser)
 		}
 	}
 }
@@ -411,6 +466,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			roomID:   roomID,
 			userID:   currentID,
 			username: username,
+			svc:      svc,
 		}
 
 		client.hub.register <- client

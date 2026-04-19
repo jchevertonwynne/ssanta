@@ -24,6 +24,10 @@ type RoomDetailViewService interface {
 	GetRoomDetailView(ctx context.Context, roomID, userID int64) (*service.RoomDetailView, error)
 }
 
+type RoomMembersWithPGPService interface {
+	ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error)
+}
+
 type UserExistsService interface {
 	UserExists(ctx context.Context, id int64) (bool, error)
 }
@@ -132,6 +136,7 @@ type WebSocketHandlersService interface {
 	UserExistsService
 	UsernameService
 	IsRoomMemberService
+	RoomMembersWithPGPService
 }
 
 // ServerService is the full surface required to wire all routes.

@@ -207,6 +207,69 @@ func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) DoAndReturn(f func(cont
 	return c
 }
 
+// MockRoomMembersWithPGPService is a mock of RoomMembersWithPGPService interface.
+type MockRoomMembersWithPGPService struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomMembersWithPGPServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockRoomMembersWithPGPServiceMockRecorder is the mock recorder for MockRoomMembersWithPGPService.
+type MockRoomMembersWithPGPServiceMockRecorder struct {
+	mock *MockRoomMembersWithPGPService
+}
+
+// NewMockRoomMembersWithPGPService creates a new mock instance.
+func NewMockRoomMembersWithPGPService(ctrl *gomock.Controller) *MockRoomMembersWithPGPService {
+	mock := &MockRoomMembersWithPGPService{ctrl: ctrl}
+	mock.recorder = &MockRoomMembersWithPGPServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomMembersWithPGPService) EXPECT() *MockRoomMembersWithPGPServiceMockRecorder {
+	return m.recorder
+}
+
+// ListRoomMembersWithPGP mocks base method.
+func (m *MockRoomMembersWithPGPService) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
+	ret0, _ := ret[0].([]store.RoomMember)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMembersWithPGP indicates an expected call of ListRoomMembersWithPGP.
+func (mr *MockRoomMembersWithPGPServiceMockRecorder) ListRoomMembersWithPGP(ctx, roomID any) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMembersWithPGP", reflect.TypeOf((*MockRoomMembersWithPGPService)(nil).ListRoomMembersWithPGP), ctx, roomID)
+	return &MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall{Call: call}
+}
+
+// MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall wrap *gomock.Call
+type MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Do(f func(context.Context, int64) ([]store.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, int64) ([]store.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockUserExistsService is a mock of UserExistsService interface.
 type MockUserExistsService struct {
 	ctrl     *gomock.Controller
@@ -2728,6 +2791,45 @@ func (c *MockWebSocketHandlersServiceIsRoomMemberCall) DoAndReturn(f func(contex
 	return c
 }
 
+// ListRoomMembersWithPGP mocks base method.
+func (m *MockWebSocketHandlersService) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
+	ret0, _ := ret[0].([]store.RoomMember)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMembersWithPGP indicates an expected call of ListRoomMembersWithPGP.
+func (mr *MockWebSocketHandlersServiceMockRecorder) ListRoomMembersWithPGP(ctx, roomID any) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMembersWithPGP", reflect.TypeOf((*MockWebSocketHandlersService)(nil).ListRoomMembersWithPGP), ctx, roomID)
+	return &MockWebSocketHandlersServiceListRoomMembersWithPGPCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceListRoomMembersWithPGPCall wrap *gomock.Call
+type MockWebSocketHandlersServiceListRoomMembersWithPGPCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Do(f func(context.Context, int64) ([]store.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, int64) ([]store.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UserExists mocks base method.
 func (m *MockWebSocketHandlersService) UserExists(ctx context.Context, id int64) (bool, error) {
 	m.ctrl.T.Helper()
@@ -3441,6 +3543,45 @@ func (c *MockServerServiceLeaveRoomCall) Do(f func(context.Context, int64, int64
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceLeaveRoomCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockServerServiceLeaveRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListRoomMembersWithPGP mocks base method.
+func (m *MockServerService) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
+	ret0, _ := ret[0].([]store.RoomMember)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMembersWithPGP indicates an expected call of ListRoomMembersWithPGP.
+func (mr *MockServerServiceMockRecorder) ListRoomMembersWithPGP(ctx, roomID any) *MockServerServiceListRoomMembersWithPGPCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMembersWithPGP", reflect.TypeOf((*MockServerService)(nil).ListRoomMembersWithPGP), ctx, roomID)
+	return &MockServerServiceListRoomMembersWithPGPCall{Call: call}
+}
+
+// MockServerServiceListRoomMembersWithPGPCall wrap *gomock.Call
+type MockServerServiceListRoomMembersWithPGPCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockServerServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceListRoomMembersWithPGPCall) Do(f func(context.Context, int64) ([]store.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, int64) ([]store.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
