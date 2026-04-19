@@ -328,6 +328,7 @@ if "instance_size_slug" in service:
 job_envs = job.get("envs") or []
 upsert_env(job_envs, "MIGRATE_DATABASE_URL", admin_uri, env_type="SECRET")
 upsert_env(job_envs, "MIGRATIONS_DIR", "/app/migrations", env_type="GENERAL")
+upsert_env(job_envs, "RUNTIME_DB_USER", "ssanta_app", env_type="GENERAL")
 job["envs"] = job_envs
 
 spec["jobs"] = jobs

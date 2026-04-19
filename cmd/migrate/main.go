@@ -25,6 +25,7 @@ func run() error {
 
 	migrationsDir := envOrDefault("MIGRATIONS_DIR", "migrations")
 	databaseSchema := strings.TrimSpace(os.Getenv("DATABASE_SCHEMA"))
+	runtimeDBUser := strings.TrimSpace(os.Getenv("RUNTIME_DB_USER"))
 
 	dbURL := strings.TrimSpace(os.Getenv("MIGRATE_DATABASE_URL"))
 	if dbURL == "" {
@@ -45,7 +46,18 @@ func run() error {
 		dbURL = urlWithSP
 	}
 
-	return db.Migrate(dbURL, migrationsDir)
+	if err := db.Migrate(dbURL, migrationsDir); err != nil {
+		return err
+	}
+
+	if runtimeDBUser != "" {
+		if err := db.GrantRuntimePrivileges(ctx, dbURL, databaseSchema, runtimeDBUser); err != nil {
+			return err
+		}
+		slog.Info("runtime privileges granted", "role", runtimeDBUser, "schema", envOrDefault("DATABASE_SCHEMA", "public"))
+	}
+
+	return nil
 }
 
 func envOrDefault(key, def string) string {

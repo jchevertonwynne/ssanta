@@ -78,6 +78,8 @@ For better security, don’t run migrations in the publicly accessible web proce
 
 This repo includes a `/app/migrate` binary in the Docker image for that purpose.
 
+If you also set `RUNTIME_DB_USER` on the job (for example `ssanta_app`), the migrate job will grant that role the required table/sequence privileges after applying migrations.
+
 ## Architecture
 
 High-level request flow:
