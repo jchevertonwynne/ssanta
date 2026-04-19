@@ -31,6 +31,11 @@ var (
 	ErrNotRoomMember            = errors.New("not a member of this room")
 	ErrNotRoomCreator           = errors.New("not the room creator")
 	ErrCannotRemoveCreator      = errors.New("cannot remove the room creator")
+
+	ErrPGPKeyInvalid        = errors.New("invalid pgp public key")
+	ErrPGPChallengeMissing  = errors.New("pgp challenge missing")
+	ErrPGPChallengeExpired  = errors.New("pgp challenge expired")
+	ErrPGPChallengeIncorrect = errors.New("pgp challenge incorrect")
 )
 
 type Store struct {
@@ -55,6 +60,18 @@ type User struct {
 	ID        int64
 	Username  string
 	CreatedAt time.Time
+}
+
+type RoomMember struct {
+	ID        int64
+	Username  string
+	CreatedAt time.Time
+
+	PGPPublicKey           string
+	PGPFingerprint         string
+	PGPVerifiedAt          *time.Time
+	PGPChallengeCiphertext string
+	PGPChallengeExpiresAt  *time.Time
 }
 
 type Room struct {

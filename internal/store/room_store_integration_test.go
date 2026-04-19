@@ -46,7 +46,7 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 		t.Fatalf("enable members_can_invite: %v", err)
 	}
 
-	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
 	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)
@@ -101,7 +101,7 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 	if err := st.Rooms.JoinRoom(ctx, roomID, creatorID); err != nil {
 		t.Fatalf("join room: %v", err)
 	}
-	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
 
@@ -150,7 +150,7 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 		t.Fatalf("join room (second time): %v", err)
 	}
 
-	members, err := st.Rooms.ListRoomMembers(ctx, roomID)
+	members, err := st.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 	if err != nil {
 		t.Fatalf("list members: %v", err)
 	}

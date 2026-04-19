@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -14,7 +15,7 @@ type InviteStore struct {
 	pool *pgxpool.Pool
 }
 
-func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error {
+func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string, expiresAt time.Time) error {
 	inviteeName := strings.TrimSpace(inviteeUsername)
 	if inviteeName == "" {
 		return ErrInviteeNotFound
@@ -89,8 +90,8 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID, inviterID int64,
 	}
 
 	_, err = tx.Exec(ctx,
-		`INSERT INTO room_invites (room_id, inviter_id, invitee_id) VALUES ($1, $2, $3)`,
-		roomID, inviterID, inviteeID,
+		`INSERT INTO room_invites (room_id, inviter_id, invitee_id, expires_at) VALUES ($1, $2, $3, $4)`,
+		roomID, inviterID, inviteeID, expiresAt,
 	)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {

@@ -3,9 +3,11 @@ package store
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -106,9 +108,16 @@ func (s *RoomStore) JoinRoom(ctx context.Context, roomID, userID int64) error {
 	return err
 }
 
-func (s *RoomStore) ListRoomMembers(ctx context.Context, roomID int64) ([]User, error) {
+func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]RoomMember, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT u.id, u.username, u.created_at
+		`SELECT u.id,
+		        u.username,
+		        u.created_at,
+		        ru.pgp_public_key,
+		        ru.pgp_fingerprint,
+		        ru.pgp_verified_at,
+		        ru.pgp_challenge_ciphertext,
+		        ru.pgp_challenge_expires_at
 		 FROM users u
 		 JOIN room_users ru ON ru.user_id = u.id
 		 WHERE ru.room_id = $1
@@ -119,15 +128,32 @@ func (s *RoomStore) ListRoomMembers(ctx context.Context, roomID int64) ([]User, 
 		return nil, err
 	}
 	defer rows.Close()
-	var users []User
+
+	var out []RoomMember
 	for rows.Next() {
-		var u User
-		if err := rows.Scan(&u.ID, &u.Username, &u.CreatedAt); err != nil {
+		var m RoomMember
+		var pubKey pgtype.Text
+		var fingerprint pgtype.Text
+		var verifiedAt *time.Time
+		var challengeCipher pgtype.Text
+		var challengeExp *time.Time
+		if err := rows.Scan(&m.ID, &m.Username, &m.CreatedAt, &pubKey, &fingerprint, &verifiedAt, &challengeCipher, &challengeExp); err != nil {
 			return nil, err
 		}
-		users = append(users, u)
+		if pubKey.Valid {
+			m.PGPPublicKey = pubKey.String
+		}
+		if fingerprint.Valid {
+			m.PGPFingerprint = fingerprint.String
+		}
+		m.PGPVerifiedAt = verifiedAt
+		if challengeCipher.Valid {
+			m.PGPChallengeCiphertext = challengeCipher.String
+		}
+		m.PGPChallengeExpiresAt = challengeExp
+		out = append(out, m)
 	}
-	return users, rows.Err()
+	return out, rows.Err()
 }
 
 func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error {

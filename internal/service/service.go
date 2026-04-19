@@ -5,7 +5,9 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -13,10 +15,17 @@ var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
 
 type Service struct {
 	store *store.Store
+	inviteMaxAge time.Duration
 }
 
 func New(store *store.Store) *Service {
-	return &Service{store: store}
+	return &Service{store: store, inviteMaxAge: 24 * time.Hour}
+}
+
+func (s *Service) SetInviteMaxAge(d time.Duration) {
+	if d > 0 {
+		s.inviteMaxAge = d
+	}
 }
 
 // Ping checks the database connection health
@@ -40,7 +49,7 @@ type RoomDetailView struct {
 	IsCreator       bool
 	IsMember        bool
 	CanInvite       bool
-	Members         []store.User
+	Members         []store.RoomMember
 	PendingInvites  []store.InviteForRoom
 }
 
@@ -128,8 +137,8 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (
 	// Creators can always invite, or members can invite if allowed
 	view.CanInvite = isCreator || (isMember && view.Room.MembersCanInvite)
 
-	// Get members
-	view.Members, err = s.store.Rooms.ListRoomMembers(ctx, roomID)
+	// Get members (including per-room PGP fields)
+	view.Members, err = s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 	if err != nil {
 		slog.Error("list room members", "err", err)
 		return nil, err
@@ -143,6 +152,46 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (
 	}
 
 	return view, nil
+}
+
+const roomPGPChallengeTTL = 10 * time.Minute
+
+func (s *Service) SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error {
+	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return store.ErrNotRoomMember
+	}
+
+	now := time.Now()
+	normalized, fingerprint, err := pgp.NormalizePublicKey(armoredPublicKey, now)
+	if err != nil {
+		return err
+	}
+
+	challenge, err := pgp.NewChallengeString(0)
+	if err != nil {
+		return err
+	}
+	ciphertext, err := pgp.EncryptToPublicKey(normalized, []byte(challenge))
+	if err != nil {
+		return err
+	}
+
+	expiresAt := now.Add(roomPGPChallengeTTL)
+	hash := pgp.HashChallenge(challenge)
+
+	return s.store.Rooms.UpsertRoomUserPGPKeyWithChallenge(ctx, roomID, userID, normalized, fingerprint, ciphertext, hash, expiresAt)
+}
+
+func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, decryptedChallenge string) error {
+	plaintext := strings.TrimSpace(decryptedChallenge)
+	if plaintext == "" {
+		return store.ErrPGPChallengeIncorrect
+	}
+	return s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now())
 }
 
 // User operations
@@ -203,7 +252,8 @@ func (s *Service) RemoveMember(ctx context.Context, roomID, memberID, creatorID 
 // Invite operations
 
 func (s *Service) CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error {
-	return s.store.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername)
+	expiresAt := time.Now().Add(s.inviteMaxAge)
+	return s.store.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername, expiresAt)
 }
 
 func (s *Service) AcceptInvite(ctx context.Context, inviteID, userID int64) error {

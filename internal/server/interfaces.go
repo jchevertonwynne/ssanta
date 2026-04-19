@@ -76,6 +76,11 @@ type SetRoomMembersCanInviteService interface {
 	SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error
 }
 
+type RoomPGPService interface {
+	SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error
+	VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, decryptedChallenge string) error
+}
+
 type InviteOpsService interface {
 	CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error
 	AcceptInvite(ctx context.Context, inviteID, userID int64) error
@@ -111,6 +116,7 @@ type RoomHandlersService interface {
 	RemoveMemberService
 	IsRoomCreatorService
 	SetRoomMembersCanInviteService
+	RoomPGPService
 }
 
 type InviteHandlersService interface {

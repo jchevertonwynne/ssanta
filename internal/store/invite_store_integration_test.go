@@ -36,7 +36,7 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	}
 	roomID := rooms[0].ID
 
-	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
 	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)
@@ -126,7 +126,7 @@ func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *tes
 		t.Fatalf("join room: %v", err)
 	}
 
-	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee"); err != ErrNotAllowedToInvite {
+	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee", time.Now().Add(24*time.Hour)); err != ErrNotAllowedToInvite {
 		t.Fatalf("expected ErrNotAllowedToInvite, got %v", err)
 	}
 }
@@ -168,7 +168,7 @@ func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *te
 		t.Fatalf("enable members_can_invite: %v", err)
 	}
 
-	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("expected invite creation success, got %v", err)
 	}
 }
@@ -199,10 +199,10 @@ func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
 	}
 	roomID := rooms[0].ID
 
-	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
-	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != ErrAlreadyInvited {
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(24*time.Hour)); err != ErrAlreadyInvited {
 		t.Fatalf("expected ErrAlreadyInvited, got %v", err)
 	}
 }
@@ -237,7 +237,7 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 	}
 	roomID := rooms[0].ID
 
-	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite: %v", err)
 	}
 	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)

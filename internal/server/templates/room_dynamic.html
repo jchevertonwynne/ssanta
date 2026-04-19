@@ -7,6 +7,21 @@
         {{range .Members}}
             <li>
                 {{.Username}}
+                {{if .PGPPublicKey}}
+                    <div style="margin-top: 0.25rem; font-size: 0.9em;">
+                        <strong>PGP:</strong>
+                        {{if .PGPVerifiedAt}}verified{{else}}unverified{{end}}
+                        {{if .PGPFingerprint}}<span> · {{.PGPFingerprint}}</span>{{end}}
+                        <details style="margin-top: 0.25rem;">
+                            <summary>Show public key</summary>
+                            <textarea readonly rows="6" style="width: 100%; font-family: monospace;">{{.PGPPublicKey}}</textarea>
+                        </details>
+                    </div>
+                {{else}}
+                    <div style="margin-top: 0.25rem; font-size: 0.9em; color: #666;">
+                        <strong>PGP:</strong> none
+                    </div>
+                {{end}}
                 {{if and $isCreator (ne .ID $currentID)}}
                     <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
                             hx-target="#room-dynamic"
@@ -18,6 +33,38 @@
         </ul>
     {{else}}
         <p>No members yet.</p>
+    {{end}}
+
+    {{if .IsMember}}
+    <h3>Your PGP key</h3>
+
+    <form hx-post="/rooms/{{.Room.ID}}/pgp-key" hx-target="#room-dynamic" hx-swap="outerHTML">
+        <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{.PGPKeyFormAttempted}}</textarea>
+        <button type="submit">Upload public key &amp; get challenge</button>
+    </form>
+    {{if .PGPKeyFormError}}
+        <p class="error">{{.PGPKeyFormError}}</p>
+    {{end}}
+
+    {{range .Members}}
+        {{if eq .ID $.CurrentUserID}}
+            {{if .PGPChallengeCiphertext}}
+                <p style="margin-top: 1rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>
+                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+                    <button type="button" onclick="(function(){var t=document.getElementById('pgp-challenge-ciphertext'); if(!t) return; var v=t.value||t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){t.focus();t.select();document.execCommand('copy');});} else {t.focus();t.select();document.execCommand('copy');}})()">Copy</button>
+                </div>
+                <textarea id="pgp-challenge-ciphertext" readonly rows="8" style="width: 100%; font-family: monospace;">{{.PGPChallengeCiphertext}}</textarea>
+
+                <form hx-post="/rooms/{{$.Room.ID}}/pgp-key/verify" hx-target="#room-dynamic" hx-swap="outerHTML" style="margin-top: 0.5rem;">
+                    <input name="decrypted_challenge" placeholder="Paste decrypted plaintext" style="width: 100%;" value="{{$.PGPVerifyAttempted}}" required>
+                    <button type="submit">Verify</button>
+                </form>
+                {{if $.PGPVerifyFormError}}
+                    <p class="error">{{$.PGPVerifyFormError}}</p>
+                {{end}}
+            {{end}}
+        {{end}}
+    {{end}}
     {{end}}
 
     <h3>Pending invites</h3>

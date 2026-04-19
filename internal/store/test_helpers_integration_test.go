@@ -48,7 +48,7 @@ func createInvite(t *testing.T, pool *pgxpool.Pool, roomID, inviterID int64, inv
 	st := New(pool)
 	ctx, cancel := testCtx(t)
 	defer cancel()
-	if err := st.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername); err != nil {
+	if err := st.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername, time.Now().Add(24*time.Hour)); err != nil {
 		t.Fatalf("create invite to %q: %v", inviteeUsername, err)
 	}
 	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)

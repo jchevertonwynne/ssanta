@@ -1,0 +1,71 @@
+package config
+
+import (
+	"testing"
+	"time"
+)
+
+func TestLoad_RequiredMissing(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("SESSION_SECRET", "")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestLoad_DefaultsApplied(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
+	t.Setenv("SESSION_SECRET", "secret")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.HTTPAddr != ":8080" {
+		t.Fatalf("HTTPAddr: got %q", cfg.HTTPAddr)
+	}
+	if cfg.MigrationsDir != "migrations" {
+		t.Fatalf("MigrationsDir: got %q", cfg.MigrationsDir)
+	}
+	if cfg.InviteMaxAge != 24*time.Hour {
+		t.Fatalf("InviteMaxAge: got %v", cfg.InviteMaxAge)
+	}
+	if cfg.JanitorInterval != 1*time.Minute {
+		t.Fatalf("JanitorInterval: got %v", cfg.JanitorInterval)
+	}
+}
+
+func TestLoad_ParsesOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
+	t.Setenv("SESSION_SECRET", "secret")
+	t.Setenv("HTTP_ADDR", ":9999")
+	t.Setenv("INVITE_MAX_AGE", "2h")
+	t.Setenv("JANITOR_INTERVAL", "5s")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.HTTPAddr != ":9999" {
+		t.Fatalf("HTTPAddr: got %q", cfg.HTTPAddr)
+	}
+	if cfg.InviteMaxAge != 2*time.Hour {
+		t.Fatalf("InviteMaxAge: got %v", cfg.InviteMaxAge)
+	}
+	if cfg.JanitorInterval != 5*time.Second {
+		t.Fatalf("JanitorInterval: got %v", cfg.JanitorInterval)
+	}
+}
+
+func TestLoad_InvalidDurationErrors(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
+	t.Setenv("SESSION_SECRET", "secret")
+	t.Setenv("INVITE_MAX_AGE", "not-a-duration")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+}
