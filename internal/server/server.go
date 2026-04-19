@@ -10,8 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/jchevertonwynne/ssanta/internal/service"
-	"github.com/jchevertonwynne/ssanta/internal/session"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -46,21 +44,10 @@ type roomDetailData struct {
 	InviteFormAttempted string
 }
 
-type serverContext struct {
-	svc      *service.Service
-	sessions *session.Manager
-	hub      *ChatHub
-}
-
-func New(svc *service.Service, sessions *session.Manager) (http.Handler, func()) {
+func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
-
-	ctx := &serverContext{
-		svc:      svc,
-		sessions: sessions,
-		hub:      hub,
-	}
+	hubAPI := Hub(hub)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handleHealth(svc))
@@ -73,23 +60,23 @@ func New(svc *service.Service, sessions *session.Manager) (http.Handler, func())
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
 	mux.HandleFunc("POST /rooms", handleCreateRoom(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(ctx))
-	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(ctx))
-	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(ctx))
+	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
 	mux.HandleFunc("GET /rooms/{id}", handleRoomDetail(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/invites", handleCreateInvite(ctx))
+	mux.HandleFunc("POST /rooms/{id}/invites", handleCreateInvite(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
-	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(ctx))
+	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /invites/{id}/decline", handleDeclineInvite(svc, sessions))
-	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(ctx))
+	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(svc, sessions, hubAPI))
 	return mux, hub.Stop
 }
 
-func handleHealth(svc *service.Service) http.HandlerFunc {
+func handleHealth(svc HealthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := svc.Ping(r.Context()); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "db_unavailable"})
@@ -103,14 +90,14 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 	render(w, "index.html", nil)
 }
 
-func handleContent(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleContent(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, _ := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		renderContent(w, r.Context(), svc, currentID)
 	}
 }
 
-func handleContentInvites(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleContentInvites(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -124,7 +111,7 @@ func handleContentInvites(svc *service.Service, sessions *session.Manager) http.
 // resolveSessionUser returns the logged-in user ID, or 0 if no valid session.
 // If the cookie is signed but references a user that no longer exists (e.g.
 // after a DB wipe), the cookie is cleared so the caller sees a logged-out state.
-func resolveSessionUser(ctx context.Context, svc *service.Service, sessions *session.Manager, w http.ResponseWriter, r *http.Request) (int64, bool) {
+func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, ok := sessions.UserID(r)
 	if !ok {
 		return 0, false
@@ -141,11 +128,11 @@ func resolveSessionUser(ctx context.Context, svc *service.Service, sessions *ses
 	return id, true
 }
 
-func renderContent(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID int64) {
+func renderContent(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64) {
 	renderContentData(w, ctx, svc, contentData{CurrentUserID: currentID})
 }
 
-func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID int64) {
+func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64) {
 	view, err := svc.GetContentView(ctx, currentID)
 	if err != nil {
 		slog.Error("get content view", "err", err)
@@ -158,7 +145,7 @@ func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc *servi
 	})
 }
 
-func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID int64, attempted, formErr string) {
+func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		RoomFormAttempted: attempted,
@@ -166,7 +153,7 @@ func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, 
 	})
 }
 
-func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID int64, attempted, formErr string) {
+func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID int64, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		UserFormAttempted: attempted,
@@ -174,14 +161,14 @@ func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, 
 	})
 }
 
-func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64) {
+func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
 	renderRoomDetailData(w, ctx, svc, roomDetailData{
 		CurrentUserID: currentID,
 		Room:          store.RoomDetail{Room: store.Room{ID: roomID}},
 	})
 }
 
-func renderRoomDetailWithInviteError(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64, attempted, formErr string) {
+func renderRoomDetailWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
 	renderRoomDetailData(w, ctx, svc, roomDetailData{
 		CurrentUserID:       currentID,
 		Room:                store.RoomDetail{Room: store.Room{ID: roomID}},
@@ -190,7 +177,7 @@ func renderRoomDetailWithInviteError(w http.ResponseWriter, ctx context.Context,
 	})
 }
 
-func renderRoomDetailData(w http.ResponseWriter, ctx context.Context, svc *service.Service, data roomDetailData) {
+func renderRoomDetailData(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, data roomDetailData) {
 	view, err := svc.GetRoomDetailView(ctx, data.Room.ID, data.CurrentUserID)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -221,7 +208,7 @@ func renderRoomDetailData(w http.ResponseWriter, ctx context.Context, svc *servi
 // renderContentData takes a partially-populated contentData (caller supplies
 // CurrentUserID and any form error state), fills in the user/room lists plus
 // CurrentUsername, and renders the content fragment.
-func renderContentData(w http.ResponseWriter, ctx context.Context, svc *service.Service, data contentData) {
+func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentViewService, data contentData) {
 	view, err := svc.GetContentView(ctx, data.CurrentUserID)
 	if err != nil {
 		slog.Error("get content view", "err", err)
@@ -239,7 +226,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc *service.
 	render(w, "content.html", data)
 }
 
-func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64) {
+func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -269,7 +256,7 @@ func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc *servi
 	render(w, "room_detail_page.html", data)
 }
 
-func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64) {
+func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -299,7 +286,7 @@ func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc *service.
 	render(w, "room_dynamic.html", data)
 }
 
-func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64) {
+func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {
@@ -329,7 +316,7 @@ func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc *service.
 	render(w, "room_sidebar.html", data)
 }
 
-func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc *service.Service, currentID, roomID int64, attempted, formErr string) {
+func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	if err != nil {
 		if errors.Is(err, store.ErrRoomNotFound) {

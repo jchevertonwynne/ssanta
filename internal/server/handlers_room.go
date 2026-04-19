@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/jchevertonwynne/ssanta/internal/service"
-	"github.com/jchevertonwynne/ssanta/internal/session"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-func handleCreateRoom(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -43,7 +41,7 @@ func handleCreateRoom(svc *service.Service, sessions *session.Manager) http.Hand
 	}
 }
 
-func handleDeleteRoom(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -69,9 +67,9 @@ func handleDeleteRoom(svc *service.Service, sessions *session.Manager) http.Hand
 	}
 }
 
-func handleJoinRoom(ctx *serverContext) http.HandlerFunc {
+func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), ctx.svc, ctx.sessions, w, r)
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
@@ -83,21 +81,21 @@ func handleJoinRoom(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Get username before joining
-		username, err := ctx.svc.GetUsername(r.Context(), currentID)
+		username, err := svc.GetUsername(r.Context(), currentID)
 		if err != nil {
 			slog.Error("get username", "err", err)
 			http.Error(w, "failed to get user info", http.StatusInternalServerError)
 			return
 		}
 
-		isCreator, err := ctx.svc.IsRoomCreator(r.Context(), roomID, currentID)
+		isCreator, err := svc.IsRoomCreator(r.Context(), roomID, currentID)
 		if err != nil {
 			slog.Error("check room creator", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
 			return
 		}
 
-		err = ctx.svc.JoinRoom(r.Context(), roomID, currentID)
+		err = svc.JoinRoom(r.Context(), roomID, currentID)
 		if err != nil {
 			slog.Error("join room", "err", err)
 			http.Error(w, "failed to join room", http.StatusInternalServerError)
@@ -105,21 +103,21 @@ func handleJoinRoom(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Send system message and notify other members to update their member lists
-		ctx.hub.BroadcastSystemMessage(roomID, username+" joined the room")
-		ctx.hub.NotifyRoomUpdate(roomID)
+		hub.BroadcastSystemMessage(roomID, username+" joined the room")
+		hub.NotifyRoomUpdate(roomID)
 
 		if isCreator {
-			ctx.hub.NotifyUser(currentID, "membership_gained", "")
-			renderRoomSidebar(w, r.Context(), ctx.svc, currentID, roomID)
+			hub.NotifyUser(currentID, "membership_gained", "")
+			renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 		} else {
-			renderRoomDetail(w, r.Context(), ctx.svc, currentID, roomID)
+			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 		}
 	}
 }
 
-func handleLeaveRoom(ctx *serverContext) http.HandlerFunc {
+func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), ctx.svc, ctx.sessions, w, r)
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
@@ -131,7 +129,7 @@ func handleLeaveRoom(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Get username before leaving
-		username, err := ctx.svc.GetUsername(r.Context(), currentID)
+		username, err := svc.GetUsername(r.Context(), currentID)
 		if err != nil {
 			slog.Error("get username", "err", err)
 			http.Error(w, "failed to get user info", http.StatusInternalServerError)
@@ -139,14 +137,14 @@ func handleLeaveRoom(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Check if user is the creator before leaving
-		isCreator, err := ctx.svc.IsRoomCreator(r.Context(), roomID, currentID)
+		isCreator, err := svc.IsRoomCreator(r.Context(), roomID, currentID)
 		if err != nil {
 			slog.Error("check room creator", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
 			return
 		}
 
-		err = ctx.svc.LeaveRoom(r.Context(), roomID, currentID)
+		err = svc.LeaveRoom(r.Context(), roomID, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -161,21 +159,21 @@ func handleLeaveRoom(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Send system message and notify other members to update their member lists
-		ctx.hub.BroadcastSystemMessage(roomID, username+" left the room")
-		ctx.hub.NotifyRoomUpdate(roomID)
+		hub.BroadcastSystemMessage(roomID, username+" left the room")
+		hub.NotifyRoomUpdate(roomID)
 
 		// If user is the creator, stay on the room detail page
 		// Otherwise, go back to the main content page
 		if isCreator {
-			ctx.hub.NotifyUser(currentID, "membership_lost", "")
-			renderRoomSidebar(w, r.Context(), ctx.svc, currentID, roomID)
+			hub.NotifyUser(currentID, "membership_lost", "")
+			renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 		} else {
-			renderContent(w, r.Context(), ctx.svc, currentID)
+			renderContent(w, r.Context(), svc, currentID)
 		}
 	}
-
 }
-func handleRoomDetail(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+
+func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -204,7 +202,7 @@ func handleRoomDetail(svc *service.Service, sessions *session.Manager) http.Hand
 	}
 }
 
-func handleRoomDynamic(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleRoomDynamic(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -221,7 +219,7 @@ func handleRoomDynamic(svc *service.Service, sessions *session.Manager) http.Han
 	}
 }
 
-func handleRoomSidebar(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -238,7 +236,7 @@ func handleRoomSidebar(svc *service.Service, sessions *session.Manager) http.Han
 	}
 }
 
-func handleSetMembersCanInvite(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -269,9 +267,9 @@ func handleSetMembersCanInvite(svc *service.Service, sessions *session.Manager) 
 	}
 }
 
-func handleRemoveMember(ctx *serverContext) http.HandlerFunc {
+func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), ctx.svc, ctx.sessions, w, r)
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
@@ -286,7 +284,7 @@ func handleRemoveMember(ctx *serverContext) http.HandlerFunc {
 			http.Error(w, "invalid member id", http.StatusBadRequest)
 			return
 		}
-		err = ctx.svc.RemoveMember(r.Context(), roomID, memberID, currentID)
+		err = svc.RemoveMember(r.Context(), roomID, memberID, currentID)
 		switch {
 		case errors.Is(err, store.ErrRoomNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -307,17 +305,17 @@ func handleRemoveMember(ctx *serverContext) http.HandlerFunc {
 		}
 
 		// Get member's username for system message
-		username, err := ctx.svc.GetUsername(r.Context(), memberID)
+		username, err := svc.GetUsername(r.Context(), memberID)
 		if err == nil {
-			ctx.hub.BroadcastSystemMessage(roomID, username+" was removed from the room")
+			hub.BroadcastSystemMessage(roomID, username+" was removed from the room")
 		}
 
 		// Disconnect the user's WebSocket connection
-		ctx.hub.DisconnectUser(roomID, memberID)
+		hub.DisconnectUser(roomID, memberID)
 
 		// Notify remaining members to update their member lists
-		ctx.hub.NotifyRoomUpdate(roomID)
+		hub.NotifyRoomUpdate(roomID)
 
-		renderRoomDynamic(w, r.Context(), ctx.svc, currentID, roomID)
+		renderRoomDynamic(w, r.Context(), svc, currentID, roomID)
 	}
 }

@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/jchevertonwynne/ssanta/internal/service"
-	"github.com/jchevertonwynne/ssanta/internal/session"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-func handleCreateUser(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
@@ -36,7 +34,7 @@ func handleCreateUser(svc *service.Service, sessions *session.Manager) http.Hand
 	}
 }
 
-func handleDeleteUser(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -62,7 +60,7 @@ func handleDeleteUser(svc *service.Service, sessions *session.Manager) http.Hand
 	}
 }
 
-func handleLogin(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 		if err != nil {
@@ -84,7 +82,7 @@ func handleLogin(svc *service.Service, sessions *session.Manager) http.HandlerFu
 	}
 }
 
-func handleLogout(svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleLogout(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessions.Clear(w)
 		renderContent(w, r.Context(), svc, 0)

@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jchevertonwynne/ssanta/internal/service"
-	"github.com/jchevertonwynne/ssanta/internal/session"
 )
 
 const maxMessageLength = 4096
@@ -363,7 +361,7 @@ func (c *ChatClient) writePump() {
 	}
 }
 
-func handleWebSocket(hub *ChatHub, svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -419,7 +417,7 @@ func handleWebSocket(hub *ChatHub, svc *service.Service, sessions *session.Manag
 	}
 }
 
-func handleContentWebSocket(hub *ChatHub, svc *service.Service, sessions *session.Manager) http.HandlerFunc {
+func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
