@@ -295,6 +295,32 @@ func (s *Service) DeleteUser(ctx context.Context, id store.UserID) error {
 	return s.store.Users.DeleteUser(ctx, id)
 }
 
+func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ChangePassword")
+	defer span.End()
+	span.SetAttributes(attribute.Int64("user_id", userID.Int64()))
+
+	user, err := s.store.Users.GetUserWithPasswordByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("lookup user: %w", err)
+	}
+	ok, err := verifyPassword(currentPassword, user.PasswordHash)
+	if err != nil {
+		return fmt.Errorf("verify password: %w", err)
+	}
+	if !ok {
+		return store.ErrCurrentPasswordIncorrect
+	}
+	if len(newPassword) < 8 {
+		return store.ErrPasswordTooShort
+	}
+	hash, err := hashPassword(newPassword, s.argon2)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	return s.store.Users.UpdatePasswordHash(ctx, userID, hash)
+}
+
 // Room operations
 
 func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) error {

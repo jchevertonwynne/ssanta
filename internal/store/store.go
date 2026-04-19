@@ -18,10 +18,11 @@ var (
 	ErrRoomNameTooLong = errors.New("room name too long")
 	ErrRoomNotFound    = errors.New("room not found")
 
-	ErrUsernameTaken      = errors.New("username already taken")
-	ErrUsernameInvalid    = errors.New("username must be 3-32 letters or digits")
-	ErrPasswordTooShort   = errors.New("password must be at least 8 characters")
-	ErrInvalidCredentials = errors.New("invalid username or password")
+	ErrUsernameTaken            = errors.New("username already taken")
+	ErrUsernameInvalid          = errors.New("username must be 3-32 letters or digits")
+	ErrPasswordTooShort         = errors.New("password must be at least 8 characters")
+	ErrInvalidCredentials       = errors.New("invalid username or password")
+	ErrCurrentPasswordIncorrect = errors.New("current password is incorrect")
 
 	ErrUserNotFound = errors.New("user not found")
 

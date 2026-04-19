@@ -44,6 +44,10 @@ type DeleteUserService interface {
 	DeleteUser(ctx context.Context, id store.UserID) error
 }
 
+type ChangePasswordService interface {
+	ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error
+}
+
 type UsernameService interface {
 	GetUsername(ctx context.Context, userID store.UserID) (string, error)
 }
@@ -115,6 +119,7 @@ type UserHandlersService interface {
 	CreateUserService
 	LoginUserService
 	DeleteUserService
+	ChangePasswordService
 }
 
 type RoomHandlersService interface {

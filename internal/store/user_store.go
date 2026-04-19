@@ -83,6 +83,30 @@ func (s *UserStore) DeleteUser(ctx context.Context, id UserID) error {
 	return nil
 }
 
+func (s *UserStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (User, error) {
+	var u User
+	err := s.db.QueryRow(ctx,
+		`SELECT id, username, created_at, password_hash FROM users WHERE id = $1`,
+		id,
+	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, ErrUserNotFound
+	}
+	return u, err
+}
+
+func (s *UserStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordHash string) error {
+	tag, err := s.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	slog.InfoContext(ctx, "password updated in db", "user_id", id)
+	return nil
+}
+
 func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
 	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY id DESC`)
 	if err != nil {

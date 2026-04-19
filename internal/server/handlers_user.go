@@ -133,3 +133,51 @@ func handleLogout(svc UserHandlersService, sessions SessionManager) http.Handler
 		renderContent(w, r.Context(), svc, 0)
 	}
 }
+
+func handleChangePassword(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "ChangePassword")
+		defer span.End()
+
+		currentID, ok := resolveSessionUser(ctx, svc, sessions, w, r)
+		if !ok {
+			http.Error(w, "login required", http.StatusUnauthorized)
+			return
+		}
+		span.SetAttributes(attribute.Int64("user_id", currentID.Int64()))
+
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		currentPassword := r.FormValue("current_password")
+		newPassword := r.FormValue("new_password")
+		confirmPassword := r.FormValue("new_password_confirm")
+
+		if newPassword != confirmPassword {
+			span.SetStatus(codes.Error, "passwords do not match")
+			renderContentWithPasswordFormError(w, ctx, svc, currentID, "new passwords do not match")
+			return
+		}
+
+		err := svc.ChangePassword(ctx, currentID, currentPassword, newPassword)
+		switch {
+		case errors.Is(err, store.ErrCurrentPasswordIncorrect):
+			span.SetStatus(codes.Error, "incorrect current password")
+			renderContentWithPasswordFormError(w, ctx, svc, currentID, err.Error())
+			return
+		case errors.Is(err, store.ErrPasswordTooShort):
+			span.SetStatus(codes.Error, "password too short")
+			renderContentWithPasswordFormError(w, ctx, svc, currentID, err.Error())
+			return
+		case err != nil:
+			span.SetStatus(codes.Error, err.Error())
+			loggerFromContext(ctx).Error("change password", "err", err)
+			http.Error(w, "failed to change password", http.StatusInternalServerError)
+			return
+		}
+
+		loggerFromContext(ctx).Info("password changed", "user_id", currentID)
+		renderContentWithPasswordSuccess(w, ctx, svc, currentID)
+	}
+}

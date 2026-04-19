@@ -3,13 +3,16 @@ package observability
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"runtime/debug"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -27,12 +30,31 @@ type Config struct {
 	Environment  string
 }
 
-// Init initializes OpenTelemetry with OTLP exporters for traces, metrics, and logs.
-// Returns a Shutdown function that must be called to flush and close exporters.
-func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) {
+// InitResult holds the results of initializing observability.
+type InitResult struct {
+	Shutdown       func(context.Context) error
+	MetricsHandler http.Handler
+}
+
+// Init initializes OpenTelemetry with OTLP exporters for traces, metrics, and logs,
+// plus a Prometheus exporter for /metrics scraping.
+func Init(ctx context.Context, cfg Config) (*InitResult, error) {
+	// Always set up Prometheus exporter (works without OTLP)
+	promExporter, err := otelprom.New()
+	if err != nil {
+		return nil, fmt.Errorf("create prometheus exporter: %w", err)
+	}
+
 	if cfg.OTLPEndpoint == "" {
-		// No endpoint configured; return a no-op shutdown
-		return func(context.Context) error { return nil }, nil
+		// No OTLP endpoint; set up meter provider with Prometheus only
+		meterProvider := sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(promExporter),
+		)
+		otel.SetMeterProvider(meterProvider)
+		return &InitResult{
+			Shutdown:       meterProvider.Shutdown,
+			MetricsHandler: promhttp.Handler(),
+		}, nil
 	}
 
 	// Build resource with service info
@@ -97,6 +119,7 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter)),
+		sdkmetric.WithReader(promExporter),
 		sdkmetric.WithResource(res),
 	)
 	otel.SetMeterProvider(meterProvider)
@@ -149,7 +172,10 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 		return nil
 	}
 
-	return shutdown, nil
+	return &InitResult{
+		Shutdown:       shutdown,
+		MetricsHandler: promhttp.Handler(),
+	}, nil
 }
 
 // NewSlogHandler creates a new slog handler that exports logs via OTLP.

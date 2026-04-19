@@ -6,6 +6,17 @@
                 hx-target="#content"
                 hx-swap="innerHTML"
                 hx-confirm="Delete your account? Rooms you created will also be removed.">Delete account</button>
+        <details style="width: 100%; margin-top: 0.5rem;">
+            <summary style="cursor: pointer;">Change password</summary>
+            <form hx-post="/password" hx-target="#content" hx-swap="innerHTML" style="margin-top: 0.5rem;">
+                <input name="current_password" type="password" placeholder="Current password" required>
+                <input name="new_password" type="password" placeholder="New password" required>
+                <input name="new_password_confirm" type="password" placeholder="Confirm new password" required>
+                <button type="submit">Change password</button>
+            </form>
+            {{if .PasswordFormError}}<p class="error">{{.PasswordFormError}}</p>{{end}}
+            {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
+        </details>
     {{else}}
         <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" onsubmit="event.preventDefault();">
             <input name="username" placeholder="Username" required

@@ -40,7 +40,7 @@ func run() error {
 	defer stop()
 
 	// Initialize observability (traces, metrics, logs)
-	shutdown, err := observability.Init(ctx, observability.Config{
+	otelResult, err := observability.Init(ctx, observability.Config{
 		OTLPEndpoint: cfg.OTLPEndpoint,
 		OTLPInsecure: cfg.OTLPInsecure,
 		ServiceName:  cfg.ServiceName,
@@ -52,7 +52,7 @@ func run() error {
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := shutdown(shutdownCtx); err != nil {
+		if err := otelResult.Shutdown(shutdownCtx); err != nil {
 			slog.Error("observability shutdown", "err", err)
 		}
 	}()
@@ -91,7 +91,7 @@ func run() error {
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)
 	startJanitor(ctx, svc, cfg)
 
-	handler, closeHub := server.New(svc, sessions, cfg.ServiceName)
+	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler)
 	defer closeHub()
 
 	srv := &http.Server{

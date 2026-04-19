@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -19,18 +20,20 @@ var templatesFS embed.FS
 var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 type contentData struct {
-	CurrentUserID      store.UserID
-	CurrentUsername    string
-	Users              []store.User
-	CreatedRooms       []store.Room
-	MemberRooms        []store.Room
-	Invites            []store.InviteForUser
-	RoomFormError      string
-	RoomFormAttempted  string
-	UserFormError      string
-	UserFormAttempted  string
-	LoginFormError     string
-	LoginFormAttempted string
+	CurrentUserID       store.UserID
+	CurrentUsername     string
+	Users               []store.User
+	CreatedRooms        []store.Room
+	MemberRooms         []store.Room
+	Invites             []store.InviteForUser
+	RoomFormError       string
+	RoomFormAttempted   string
+	UserFormError       string
+	UserFormAttempted   string
+	LoginFormError      string
+	LoginFormAttempted  string
+	PasswordFormError   string
+	PasswordFormSuccess bool
 }
 
 type roomDetailData struct {
@@ -62,36 +65,48 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
-func New(svc ServerService, sessions SessionManager, serviceName string) (http.Handler, func()) {
+func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
 	hubAPI := Hub(hub)
 
 	mux := http.NewServeMux()
+
+	// Health & pages
 	mux.HandleFunc("GET /healthz", handleHealth(svc))
+	mux.Handle("GET /metrics", metricsHandler)
 	mux.HandleFunc("GET /{$}", handleIndex)
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
+	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
+
+	// Users
 	mux.HandleFunc("POST /users", handleCreateUser(svc, sessions))
 	mux.HandleFunc("DELETE /users/{id}", handleDeleteUser(svc, sessions))
 	mux.HandleFunc("POST /login", handleLogin(svc, sessions))
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
+	mux.HandleFunc("POST /password", handleChangePassword(svc, sessions))
+
+	// Rooms
 	mux.HandleFunc("POST /rooms", handleCreateRoom(svc, sessions))
-	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))
-	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
 	mux.HandleFunc("GET /rooms/{id}", handleRoomDetail(svc, sessions))
+	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
+	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
+	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
+	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
+
+	// PGP keys
 	mux.HandleFunc("POST /rooms/{id}/pgp-key", handleSetRoomPGPKey(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /rooms/{id}/pgp-key/verify", handleVerifyRoomPGPKey(svc, sessions, hubAPI))
 	mux.HandleFunc("DELETE /rooms/{id}/pgp-key", handleRemoveRoomPGPKey(svc, sessions, hubAPI))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}/pgp-key", handleRemoveMemberPGPKey(svc, sessions, hubAPI))
-	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
-	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
+
+	// Invites
 	mux.HandleFunc("POST /rooms/{id}/invites", handleCreateInvite(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
 	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /invites/{id}/decline", handleDeclineInvite(svc, sessions))
 	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(svc, sessions, hubAPI))
@@ -199,6 +214,20 @@ func renderContentWithLoginFormError(w http.ResponseWriter, ctx context.Context,
 	})
 }
 
+func renderContentWithPasswordFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, formErr string) {
+	renderContentData(w, ctx, svc, contentData{
+		CurrentUserID:     currentID,
+		PasswordFormError: formErr,
+	})
+}
+
+func renderContentWithPasswordSuccess(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+	renderContentData(w, ctx, svc, contentData{
+		CurrentUserID:       currentID,
+		PasswordFormSuccess: true,
+	})
+}
+
 func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, opts roomRenderOpts) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	switch {
@@ -213,6 +242,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		http.Error(w, "failed to load room", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("HX-Push-Url", fmt.Sprintf("/rooms/%d", roomID))
 	render(w, opts.template, roomDetailData{
 		CurrentUserID:       currentID,
 		CurrentUsername:     view.CurrentUsername,
@@ -293,6 +323,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.MemberRooms = view.MemberRooms
 	data.Invites = view.Invites
 
+	w.Header().Set("HX-Push-Url", "/")
 	render(w, "content.html", data)
 }
 

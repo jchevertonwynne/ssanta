@@ -521,6 +521,68 @@ func (c *MockDeleteUserServiceDeleteUserCall) DoAndReturn(f func(context.Context
 	return c
 }
 
+// MockChangePasswordService is a mock of ChangePasswordService interface.
+type MockChangePasswordService struct {
+	ctrl     *gomock.Controller
+	recorder *MockChangePasswordServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockChangePasswordServiceMockRecorder is the mock recorder for MockChangePasswordService.
+type MockChangePasswordServiceMockRecorder struct {
+	mock *MockChangePasswordService
+}
+
+// NewMockChangePasswordService creates a new mock instance.
+func NewMockChangePasswordService(ctrl *gomock.Controller) *MockChangePasswordService {
+	mock := &MockChangePasswordService{ctrl: ctrl}
+	mock.recorder = &MockChangePasswordServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockChangePasswordService) EXPECT() *MockChangePasswordServiceMockRecorder {
+	return m.recorder
+}
+
+// ChangePassword mocks base method.
+func (m *MockChangePasswordService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChangePassword indicates an expected call of ChangePassword.
+func (mr *MockChangePasswordServiceMockRecorder) ChangePassword(ctx, userID, currentPassword, newPassword any) *MockChangePasswordServiceChangePasswordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangePassword", reflect.TypeOf((*MockChangePasswordService)(nil).ChangePassword), ctx, userID, currentPassword, newPassword)
+	return &MockChangePasswordServiceChangePasswordCall{Call: call}
+}
+
+// MockChangePasswordServiceChangePasswordCall wrap *gomock.Call
+type MockChangePasswordServiceChangePasswordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockChangePasswordServiceChangePasswordCall) Return(arg0 error) *MockChangePasswordServiceChangePasswordCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockChangePasswordServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockChangePasswordServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockUsernameService is a mock of UsernameService interface.
 type MockUsernameService struct {
 	ctrl     *gomock.Controller
@@ -1689,6 +1751,44 @@ func NewMockUserHandlersService(ctrl *gomock.Controller) *MockUserHandlersServic
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserHandlersService) EXPECT() *MockUserHandlersServiceMockRecorder {
 	return m.recorder
+}
+
+// ChangePassword mocks base method.
+func (m *MockUserHandlersService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChangePassword indicates an expected call of ChangePassword.
+func (mr *MockUserHandlersServiceMockRecorder) ChangePassword(ctx, userID, currentPassword, newPassword any) *MockUserHandlersServiceChangePasswordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangePassword", reflect.TypeOf((*MockUserHandlersService)(nil).ChangePassword), ctx, userID, currentPassword, newPassword)
+	return &MockUserHandlersServiceChangePasswordCall{Call: call}
+}
+
+// MockUserHandlersServiceChangePasswordCall wrap *gomock.Call
+type MockUserHandlersServiceChangePasswordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserHandlersServiceChangePasswordCall) Return(arg0 error) *MockUserHandlersServiceChangePasswordCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserHandlersServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserHandlersServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // CreateUser mocks base method.
@@ -3139,6 +3239,44 @@ func (c *MockServerServiceCancelInviteCall) Do(f func(context.Context, store.Inv
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceCancelInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockServerServiceCancelInviteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ChangePassword mocks base method.
+func (m *MockServerService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChangePassword indicates an expected call of ChangePassword.
+func (mr *MockServerServiceMockRecorder) ChangePassword(ctx, userID, currentPassword, newPassword any) *MockServerServiceChangePasswordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangePassword", reflect.TypeOf((*MockServerService)(nil).ChangePassword), ctx, userID, currentPassword, newPassword)
+	return &MockServerServiceChangePasswordCall{Call: call}
+}
+
+// MockServerServiceChangePasswordCall wrap *gomock.Call
+type MockServerServiceChangePasswordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceChangePasswordCall) Return(arg0 error) *MockServerServiceChangePasswordCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockServerServiceChangePasswordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockServerServiceChangePasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
