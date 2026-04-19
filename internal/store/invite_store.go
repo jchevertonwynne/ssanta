@@ -207,39 +207,42 @@ func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID, userID int64)
 	return nil
 }
 
-func (s *InviteStore) CancelInvite(ctx context.Context, inviteID, actingUserID int64) error {
+func (s *InviteStore) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 	defer tx.Rollback(ctx)
 
-	var inviterID, creatorID int64
+	var inviterID, creatorID, roomID, inviteeID int64
 	err = tx.QueryRow(ctx,
-		`SELECT i.inviter_id, r.creator_id
+		`SELECT i.inviter_id, r.creator_id, i.room_id, i.invitee_id
 		 FROM room_invites i
 		 JOIN rooms r ON r.id = i.room_id
 		 WHERE i.id = $1
 		 FOR UPDATE OF i`,
 		inviteID,
-	).Scan(&inviterID, &creatorID)
+	).Scan(&inviterID, &creatorID, &roomID, &inviteeID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrInviteNotFound
+		return 0, 0, ErrInviteNotFound
 	}
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
 	if actingUserID != inviterID && actingUserID != creatorID {
-		return ErrNotAllowedToCancelInvite
+		return 0, 0, ErrNotAllowedToCancelInvite
 	}
 
 	_, err = tx.Exec(ctx, `DELETE FROM room_invites WHERE id = $1`, inviteID)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, err
+	}
+	return roomID, inviteeID, nil
 }
 
 func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
@@ -254,14 +257,3 @@ func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID int64) (int6
 	return roomID, err
 }
 
-func (s *InviteStore) InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	var inviteeID int64
-	err := s.pool.QueryRow(ctx,
-		`SELECT invitee_id FROM room_invites WHERE id = $1`,
-		inviteID,
-	).Scan(&inviteeID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrInviteNotFound
-	}
-	return inviteeID, err
-}

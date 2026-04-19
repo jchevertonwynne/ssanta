@@ -88,10 +88,15 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 			return
 		}
 
-		isCreator, err := svc.IsRoomCreator(r.Context(), roomID, currentID)
+		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room creator", "err", err)
+			slog.Error("check room access", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
+			return
+		}
+
+		if !isCreator && !isMember {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
 			return
 		}
 
@@ -137,9 +142,9 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 		}
 
 		// Check if user is the creator before leaving
-		isCreator, err := svc.IsRoomCreator(r.Context(), roomID, currentID)
+		isCreator, _, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room creator", "err", err)
+			slog.Error("check room access", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
 			return
 		}

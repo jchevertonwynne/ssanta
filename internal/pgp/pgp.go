@@ -109,9 +109,9 @@ func EncryptToPublicKey(armoredPublicKey string, plaintext []byte) (string, erro
 	if err != nil {
 		return "", err
 	}
-	armoredBytes, err := pgpMessage.ArmorBytes()
+	armored, err := pgpMessage.Armor()
 	if err != nil {
 		return "", err
 	}
-	return string(armoredBytes), nil
+	return armored, nil
 }

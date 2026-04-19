@@ -7,15 +7,23 @@
                 hx-swap="innerHTML"
                 hx-confirm="Delete your account? Rooms you created will also be removed.">Delete account</button>
     {{else}}
-        <form hx-post="/users" hx-target="#content" hx-swap="innerHTML">
+        <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" onsubmit="event.preventDefault();">
             <input name="username" placeholder="Username" required
                    pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
-                   value="{{.UserFormAttempted}}">
-            <button type="submit">Create user</button>
+                   value="{{if .UserFormAttempted}}{{.UserFormAttempted}}{{else}}{{.LoginFormAttempted}}{{end}}">
+            <input name="password" type="password" placeholder="Password" required
+                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('login-btn').click(); }">
+            <input name="password_confirm" type="password" placeholder="Confirm password (register only)"
+                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('register-btn').click(); }">
+            <div style="flex-basis: 100%; display: flex; gap: 0.5rem;">
+                <button id="login-btn" type="button" hx-post="/login" hx-include="closest form">Log in</button>
+                <button id="register-btn" type="button" hx-post="/users" hx-include="closest form">Register</button>
+            </div>
         </form>
+        {{if .LoginFormError}}<p class="error">{{.LoginFormError}}</p>{{end}}
+        {{if .UserFormError}}<p class="error">{{.UserFormError}}</p>{{end}}
     {{end}}
 </div>
-{{if .UserFormError}}<p class="error">{{.UserFormError}}</p>{{end}}
 
 <div class="cols">
     <section>
@@ -32,8 +40,6 @@
                     <td>
                         {{if eq .ID $current}}
                             <em>current</em>
-                        {{else}}
-                            <button hx-post="/login/{{.ID}}" hx-target="#content" hx-swap="innerHTML">Log in</button>
                         {{end}}
                     </td>
                 </tr>

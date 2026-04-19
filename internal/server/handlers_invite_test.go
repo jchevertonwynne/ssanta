@@ -146,9 +146,7 @@ func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 
 	userID := int64(2)
 	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().RoomIDForInvite(gomock.Any(), int64(123)).Return(int64(10), nil)
-	svc.EXPECT().InviteeIDForInvite(gomock.Any(), int64(123)).Return(int64(99), nil)
-	svc.EXPECT().CancelInvite(gomock.Any(), int64(123), userID).Return(store.ErrNotAllowedToCancelInvite)
+	svc.EXPECT().CancelInvite(gomock.Any(), int64(123), userID).Return(int64(0), int64(0), store.ErrNotAllowedToCancelInvite)
 
 	r := httptest.NewRequest(http.MethodPost, "/invites/123/cancel", nil)
 	r.SetPathValue("id", "123")
@@ -156,5 +154,72 @@ func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleAcceptInvite_WrongUser_Returns404(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := int64(2)
+	inviteID := int64(123)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().RoomIDForInvite(gomock.Any(), inviteID).Return(int64(10), nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
+	// store returns ErrInviteNotFound when the invite belongs to a different user
+	svc.EXPECT().AcceptInvite(gomock.Any(), inviteID, userID).Return(store.ErrInviteNotFound)
+
+	r := httptest.NewRequest(http.MethodPost, "/invites/123/accept", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestHandleDeclineInvite_WrongUser_Returns404(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := int64(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	// store returns ErrInviteNotFound when invitee_id doesn't match
+	svc.EXPECT().DeclineInvite(gomock.Any(), int64(123), userID).Return(store.ErrInviteNotFound)
+
+	r := httptest.NewRequest(http.MethodPost, "/invites/123/decline", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleDeclineInvite(svc, sessions), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestHandleDeclineInvite_Success_RendersContent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := int64(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().DeclineInvite(gomock.Any(), int64(123), userID).Return(nil)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
+
+	r := httptest.NewRequest(http.MethodPost, "/invites/123/decline", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleDeclineInvite(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 }

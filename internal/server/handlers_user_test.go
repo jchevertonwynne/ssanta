@@ -21,11 +21,15 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().CreateUser(gomock.Any(), "Alice").Return(int64(42), nil)
+	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(int64(42), nil)
 	sessions.EXPECT().Set(gomock.Any(), int64(42))
 	svc.EXPECT().GetContentView(gomock.Any(), int64(42)).Return(stubContentView("Alice"), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/users", url.Values{"username": {"Alice"}})
+	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+		"username":         {"Alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
 	w := serve(t, handleCreateUser(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
@@ -36,6 +40,30 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	}
 }
 
+func TestHandleCreateUser_PasswordMismatch_RendersError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
+
+	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+		"username":         {"alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"different"},
+	})
+	w := serve(t, handleCreateUser(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "passwords do not match") {
+		t.Fatalf("expected password mismatch error")
+	}
+}
+
 func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -43,10 +71,14 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().CreateUser(gomock.Any(), "bad name").Return(int64(0), store.ErrUsernameInvalid)
+	svc.EXPECT().CreateUser(gomock.Any(), "bad name", "secret123").Return(int64(0), store.ErrUsernameInvalid)
 	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
 
-	r := newFormRequest(t, http.MethodPost, "/users", url.Values{"username": {"bad name"}})
+	r := newFormRequest(t, http.MethodPost, "/users", url.Values{
+		"username":         {"bad name"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
 	w := serve(t, handleCreateUser(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
@@ -114,21 +146,27 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	}
 }
 
-func TestHandleLogin_UserNotFound_Returns404(t *testing.T) {
+func TestHandleLogin_InvalidCredentials_RendersError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().UserExists(gomock.Any(), int64(99)).Return(false, nil)
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "wrongpass").Return(int64(0), store.ErrInvalidCredentials)
+	svc.EXPECT().GetContentView(gomock.Any(), int64(0)).Return(stubContentView(""), nil)
 
-	r := httptest.NewRequest(http.MethodPost, "/login/99", nil)
-	r.SetPathValue("id", "99")
+	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
+		"username": {"alice"},
+		"password": {"wrongpass"},
+	})
 	w := serve(t, handleLogin(svc, sessions), r)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected status 404, got %d", w.Code)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), store.ErrInvalidCredentials.Error()) {
+		t.Fatalf("expected invalid credentials error in response")
 	}
 }
 
@@ -139,12 +177,14 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	svc.EXPECT().UserExists(gomock.Any(), int64(5)).Return(true, nil)
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "correctpass").Return(int64(5), nil)
 	sessions.EXPECT().Set(gomock.Any(), int64(5))
-	svc.EXPECT().GetContentView(gomock.Any(), int64(5)).Return(stubContentView(""), nil)
+	svc.EXPECT().GetContentView(gomock.Any(), int64(5)).Return(stubContentView("alice"), nil)
 
-	r := httptest.NewRequest(http.MethodPost, "/login/5", nil)
-	r.SetPathValue("id", "5")
+	r := newFormRequest(t, http.MethodPost, "/login", url.Values{
+		"username": {"alice"},
+		"password": {"correctpass"},
+	})
 	w := serve(t, handleLogin(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
@@ -185,22 +225,6 @@ func TestHandleDeleteUser_InvalidPathID_Returns400(t *testing.T) {
 	r := httptest.NewRequest(http.MethodDelete, "/users/abc", nil)
 	r.SetPathValue("id", "abc")
 	w := serve(t, handleDeleteUser(svc, sessions), r)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d", w.Code)
-	}
-}
-
-func TestHandleLogin_InvalidPathID_Returns400(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-
-	r := httptest.NewRequest(http.MethodPost, "/login/bad", nil)
-	r.SetPathValue("id", "bad")
-	w := serve(t, handleLogin(svc, sessions), r)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected status 400, got %d", w.Code)

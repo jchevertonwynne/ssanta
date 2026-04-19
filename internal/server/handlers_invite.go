@@ -149,20 +149,7 @@ func handleCancelInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			return
 		}
 
-		// Get room ID and invitee ID before cancelling
-		roomID, err := svc.RoomIDForInvite(r.Context(), inviteID)
-		if err != nil && !errors.Is(err, store.ErrInviteNotFound) {
-			slog.Error("lookup invite room", "err", err)
-			http.Error(w, "failed to cancel invite", http.StatusInternalServerError)
-			return
-		}
-
-		inviteeID, err := svc.InviteeIDForInvite(r.Context(), inviteID)
-		if err != nil && !errors.Is(err, store.ErrInviteNotFound) {
-			slog.Error("lookup invitee", "err", err)
-		}
-
-		err = svc.CancelInvite(r.Context(), inviteID, currentID)
+		roomID, inviteeID, err := svc.CancelInvite(r.Context(), inviteID, currentID)
 		switch {
 		case errors.Is(err, store.ErrInviteNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -176,7 +163,6 @@ func handleCancelInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			return
 		}
 
-		// Notify the invitee if we have their ID
 		if inviteeID > 0 {
 			hub.NotifyUser(inviteeID, "invite_cancelled", "")
 		}

@@ -6,7 +6,13 @@
         {{$isCreator := $.IsCreator}}
         {{range .Members}}
             <li>
-                {{.Username}}
+                {{.Username}}                
+                {{if and $isCreator (ne .ID $currentID)}}
+                    <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
+                            hx-target="#room-dynamic"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove {{.Username}} from the room?">Remove User</button>
+                {{end}}
                 {{if .PGPPublicKey}}
                     <div style="margin-top: 0.25rem; font-size: 0.9em;">
                         <strong>PGP:</strong>
@@ -36,12 +42,7 @@
                         <strong>PGP:</strong> none
                     </div>
                 {{end}}
-                {{if and $isCreator (ne .ID $currentID)}}
-                    <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
-                            hx-target="#room-dynamic"
-                            hx-swap="outerHTML"
-                            hx-confirm="Remove {{.Username}} from the room?">Remove</button>
-                {{end}}
+
             </li>
         {{end}}
         </ul>

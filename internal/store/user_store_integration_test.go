@@ -13,7 +13,7 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	id, err := st.Users.CreateUser(ctx, "alice")
+	id, err := st.Users.CreateUser(ctx, "alice", "testhash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
@@ -61,10 +61,10 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 	ctx, cancel := testCtx(t)
 	defer cancel()
 
-	if _, err := st.Users.CreateUser(ctx, "alice"); err != nil {
+	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	if _, err := st.Users.CreateUser(ctx, "alice"); err != ErrUsernameTaken {
+	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); err != ErrUsernameTaken {
 		t.Fatalf("expected ErrUsernameTaken, got %v", err)
 	}
 }
@@ -84,7 +84,7 @@ func TestUserStore_UserExists(t *testing.T) {
 		t.Fatalf("expected exists=false")
 	}
 
-	id, err := st.Users.CreateUser(ctx, "alice")
+	id, err := st.Users.CreateUser(ctx, "alice", "testhash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}

@@ -16,15 +16,15 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	memberID, err := st.Users.CreateUser(ctx, "member")
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	nonMemberID, err := st.Users.CreateUser(ctx, "nonmember")
+	nonMemberID, err := st.Users.CreateUser(ctx, "nonmember", "testhash")
 	if err != nil {
 		t.Fatalf("create nonmember: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	id, err := st.Users.CreateUser(ctx, "alice")
+	id, err := st.Users.CreateUser(ctx, "alice", "testhash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}

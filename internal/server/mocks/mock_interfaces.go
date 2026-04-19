@@ -358,18 +358,18 @@ func (m *MockCreateUserService) EXPECT() *MockCreateUserServiceMockRecorder {
 }
 
 // CreateUser mocks base method.
-func (m *MockCreateUserService) CreateUser(ctx context.Context, username string) (int64, error) {
+func (m *MockCreateUserService) CreateUser(ctx context.Context, username, password string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, username)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateUser indicates an expected call of CreateUser.
-func (mr *MockCreateUserServiceMockRecorder) CreateUser(ctx, username any) *MockCreateUserServiceCreateUserCall {
+func (mr *MockCreateUserServiceMockRecorder) CreateUser(ctx, username, password any) *MockCreateUserServiceCreateUserCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockCreateUserService)(nil).CreateUser), ctx, username)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockCreateUserService)(nil).CreateUser), ctx, username, password)
 	return &MockCreateUserServiceCreateUserCall{Call: call}
 }
 
@@ -385,13 +385,76 @@ func (c *MockCreateUserServiceCreateUserCall) Return(arg0 int64, arg1 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCreateUserServiceCreateUserCall) Do(f func(context.Context, string) (int64, error)) *MockCreateUserServiceCreateUserCall {
+func (c *MockCreateUserServiceCreateUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockCreateUserServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCreateUserServiceCreateUserCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockCreateUserServiceCreateUserCall {
+func (c *MockCreateUserServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockCreateUserServiceCreateUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockLoginUserService is a mock of LoginUserService interface.
+type MockLoginUserService struct {
+	ctrl     *gomock.Controller
+	recorder *MockLoginUserServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockLoginUserServiceMockRecorder is the mock recorder for MockLoginUserService.
+type MockLoginUserServiceMockRecorder struct {
+	mock *MockLoginUserService
+}
+
+// NewMockLoginUserService creates a new mock instance.
+func NewMockLoginUserService(ctrl *gomock.Controller) *MockLoginUserService {
+	mock := &MockLoginUserService{ctrl: ctrl}
+	mock.recorder = &MockLoginUserServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockLoginUserService) EXPECT() *MockLoginUserServiceMockRecorder {
+	return m.recorder
+}
+
+// LoginUser mocks base method.
+func (m *MockLoginUserService) LoginUser(ctx context.Context, username, password string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoginUser indicates an expected call of LoginUser.
+func (mr *MockLoginUserServiceMockRecorder) LoginUser(ctx, username, password any) *MockLoginUserServiceLoginUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoginUser", reflect.TypeOf((*MockLoginUserService)(nil).LoginUser), ctx, username, password)
+	return &MockLoginUserServiceLoginUserCall{Call: call}
+}
+
+// MockLoginUserServiceLoginUserCall wrap *gomock.Call
+type MockLoginUserServiceLoginUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockLoginUserServiceLoginUserCall) Return(arg0 int64, arg1 error) *MockLoginUserServiceLoginUserCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockLoginUserServiceLoginUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockLoginUserServiceLoginUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockLoginUserServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockLoginUserServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1020,6 +1083,70 @@ func (c *MockIsRoomMemberServiceIsRoomMemberCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// MockRoomAccessService is a mock of RoomAccessService interface.
+type MockRoomAccessService struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomAccessServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockRoomAccessServiceMockRecorder is the mock recorder for MockRoomAccessService.
+type MockRoomAccessServiceMockRecorder struct {
+	mock *MockRoomAccessService
+}
+
+// NewMockRoomAccessService creates a new mock instance.
+func NewMockRoomAccessService(ctrl *gomock.Controller) *MockRoomAccessService {
+	mock := &MockRoomAccessService{ctrl: ctrl}
+	mock.recorder = &MockRoomAccessServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomAccessService) EXPECT() *MockRoomAccessServiceMockRecorder {
+	return m.recorder
+}
+
+// GetRoomAccess mocks base method.
+func (m *MockRoomAccessService) GetRoomAccess(ctx context.Context, roomID, userID int64) (bool, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetRoomAccess indicates an expected call of GetRoomAccess.
+func (mr *MockRoomAccessServiceMockRecorder) GetRoomAccess(ctx, roomID, userID any) *MockRoomAccessServiceGetRoomAccessCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomAccess", reflect.TypeOf((*MockRoomAccessService)(nil).GetRoomAccess), ctx, roomID, userID)
+	return &MockRoomAccessServiceGetRoomAccessCall{Call: call}
+}
+
+// MockRoomAccessServiceGetRoomAccessCall wrap *gomock.Call
+type MockRoomAccessServiceGetRoomAccessCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomAccessServiceGetRoomAccessCall) Return(isCreator, isMember bool, err error) *MockRoomAccessServiceGetRoomAccessCall {
+	c.Call = c.Call.Return(isCreator, isMember, err)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomAccessServiceGetRoomAccessCall) Do(f func(context.Context, int64, int64) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomAccessServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, int64, int64) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockSetRoomMembersCanInviteService is a mock of SetRoomMembersCanInviteService interface.
 type MockSetRoomMembersCanInviteService struct {
 	ctrl     *gomock.Controller
@@ -1283,11 +1410,13 @@ func (c *MockInviteOpsServiceAcceptInviteCall) DoAndReturn(f func(context.Contex
 }
 
 // CancelInvite mocks base method.
-func (m *MockInviteOpsService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) error {
+func (m *MockInviteOpsService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CancelInvite indicates an expected call of CancelInvite.
@@ -1303,19 +1432,19 @@ type MockInviteOpsServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteOpsServiceCancelInviteCall) Return(arg0 error) *MockInviteOpsServiceCancelInviteCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockInviteOpsServiceCancelInviteCall) Return(arg0, arg1 int64, arg2 error) *MockInviteOpsServiceCancelInviteCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceCancelInviteCall) Do(f func(context.Context, int64, int64) error) *MockInviteOpsServiceCancelInviteCall {
+func (c *MockInviteOpsServiceCancelInviteCall) Do(f func(context.Context, int64, int64) (int64, int64, error)) *MockInviteOpsServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockInviteOpsServiceCancelInviteCall {
+func (c *MockInviteOpsServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) (int64, int64, error)) *MockInviteOpsServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1392,45 +1521,6 @@ func (c *MockInviteOpsServiceDeclineInviteCall) Do(f func(context.Context, int64
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInviteOpsServiceDeclineInviteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockInviteOpsServiceDeclineInviteCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// InviteeIDForInvite mocks base method.
-func (m *MockInviteOpsService) InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InviteeIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// InviteeIDForInvite indicates an expected call of InviteeIDForInvite.
-func (mr *MockInviteOpsServiceMockRecorder) InviteeIDForInvite(ctx, inviteID any) *MockInviteOpsServiceInviteeIDForInviteCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InviteeIDForInvite", reflect.TypeOf((*MockInviteOpsService)(nil).InviteeIDForInvite), ctx, inviteID)
-	return &MockInviteOpsServiceInviteeIDForInviteCall{Call: call}
-}
-
-// MockInviteOpsServiceInviteeIDForInviteCall wrap *gomock.Call
-type MockInviteOpsServiceInviteeIDForInviteCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockInviteOpsServiceInviteeIDForInviteCall) Return(arg0 int64, arg1 error) *MockInviteOpsServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceInviteeIDForInviteCall) Do(f func(context.Context, int64) (int64, error)) *MockInviteOpsServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceInviteeIDForInviteCall) DoAndReturn(f func(context.Context, int64) (int64, error)) *MockInviteOpsServiceInviteeIDForInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1601,18 +1691,18 @@ func (m *MockUserHandlersService) EXPECT() *MockUserHandlersServiceMockRecorder 
 }
 
 // CreateUser mocks base method.
-func (m *MockUserHandlersService) CreateUser(ctx context.Context, username string) (int64, error) {
+func (m *MockUserHandlersService) CreateUser(ctx context.Context, username, password string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, username)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateUser indicates an expected call of CreateUser.
-func (mr *MockUserHandlersServiceMockRecorder) CreateUser(ctx, username any) *MockUserHandlersServiceCreateUserCall {
+func (mr *MockUserHandlersServiceMockRecorder) CreateUser(ctx, username, password any) *MockUserHandlersServiceCreateUserCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserHandlersService)(nil).CreateUser), ctx, username)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserHandlersService)(nil).CreateUser), ctx, username, password)
 	return &MockUserHandlersServiceCreateUserCall{Call: call}
 }
 
@@ -1628,13 +1718,13 @@ func (c *MockUserHandlersServiceCreateUserCall) Return(arg0 int64, arg1 error) *
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceCreateUserCall) Do(f func(context.Context, string) (int64, error)) *MockUserHandlersServiceCreateUserCall {
+func (c *MockUserHandlersServiceCreateUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockUserHandlersServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceCreateUserCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockUserHandlersServiceCreateUserCall {
+func (c *MockUserHandlersServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockUserHandlersServiceCreateUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1712,6 +1802,45 @@ func (c *MockUserHandlersServiceGetContentViewCall) Do(f func(context.Context, i
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockUserHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, int64) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// LoginUser mocks base method.
+func (m *MockUserHandlersService) LoginUser(ctx context.Context, username, password string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoginUser indicates an expected call of LoginUser.
+func (mr *MockUserHandlersServiceMockRecorder) LoginUser(ctx, username, password any) *MockUserHandlersServiceLoginUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoginUser", reflect.TypeOf((*MockUserHandlersService)(nil).LoginUser), ctx, username, password)
+	return &MockUserHandlersServiceLoginUserCall{Call: call}
+}
+
+// MockUserHandlersServiceLoginUserCall wrap *gomock.Call
+type MockUserHandlersServiceLoginUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserHandlersServiceLoginUserCall) Return(arg0 int64, arg1 error) *MockUserHandlersServiceLoginUserCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserHandlersServiceLoginUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockUserHandlersServiceLoginUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserHandlersServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockUserHandlersServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1894,6 +2023,46 @@ func (c *MockRoomHandlersServiceGetContentViewCall) DoAndReturn(f func(context.C
 	return c
 }
 
+// GetRoomAccess mocks base method.
+func (m *MockRoomHandlersService) GetRoomAccess(ctx context.Context, roomID, userID int64) (bool, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetRoomAccess indicates an expected call of GetRoomAccess.
+func (mr *MockRoomHandlersServiceMockRecorder) GetRoomAccess(ctx, roomID, userID any) *MockRoomHandlersServiceGetRoomAccessCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomAccess", reflect.TypeOf((*MockRoomHandlersService)(nil).GetRoomAccess), ctx, roomID, userID)
+	return &MockRoomHandlersServiceGetRoomAccessCall{Call: call}
+}
+
+// MockRoomHandlersServiceGetRoomAccessCall wrap *gomock.Call
+type MockRoomHandlersServiceGetRoomAccessCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomHandlersServiceGetRoomAccessCall) Return(isCreator, isMember bool, err error) *MockRoomHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.Return(isCreator, isMember, err)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomHandlersServiceGetRoomAccessCall) Do(f func(context.Context, int64, int64) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, int64, int64) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetRoomDetailView mocks base method.
 func (m *MockRoomHandlersService) GetRoomDetailView(ctx context.Context, roomID, userID int64) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
@@ -1968,45 +2137,6 @@ func (c *MockRoomHandlersServiceGetUsernameCall) Do(f func(context.Context, int6
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRoomHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, int64) (string, error)) *MockRoomHandlersServiceGetUsernameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// IsRoomCreator mocks base method.
-func (m *MockRoomHandlersService) IsRoomCreator(ctx context.Context, roomID, userID int64) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsRoomCreator", ctx, roomID, userID)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsRoomCreator indicates an expected call of IsRoomCreator.
-func (mr *MockRoomHandlersServiceMockRecorder) IsRoomCreator(ctx, roomID, userID any) *MockRoomHandlersServiceIsRoomCreatorCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRoomCreator", reflect.TypeOf((*MockRoomHandlersService)(nil).IsRoomCreator), ctx, roomID, userID)
-	return &MockRoomHandlersServiceIsRoomCreatorCall{Call: call}
-}
-
-// MockRoomHandlersServiceIsRoomCreatorCall wrap *gomock.Call
-type MockRoomHandlersServiceIsRoomCreatorCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockRoomHandlersServiceIsRoomCreatorCall) Return(arg0 bool, arg1 error) *MockRoomHandlersServiceIsRoomCreatorCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceIsRoomCreatorCall) Do(f func(context.Context, int64, int64) (bool, error)) *MockRoomHandlersServiceIsRoomCreatorCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceIsRoomCreatorCall) DoAndReturn(f func(context.Context, int64, int64) (bool, error)) *MockRoomHandlersServiceIsRoomCreatorCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2379,11 +2509,13 @@ func (c *MockInviteHandlersServiceAcceptInviteCall) DoAndReturn(f func(context.C
 }
 
 // CancelInvite mocks base method.
-func (m *MockInviteHandlersService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) error {
+func (m *MockInviteHandlersService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CancelInvite indicates an expected call of CancelInvite.
@@ -2399,19 +2531,19 @@ type MockInviteHandlersServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceCancelInviteCall) Return(arg0 error) *MockInviteHandlersServiceCancelInviteCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockInviteHandlersServiceCancelInviteCall) Return(arg0, arg1 int64, arg2 error) *MockInviteHandlersServiceCancelInviteCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceCancelInviteCall) Do(f func(context.Context, int64, int64) error) *MockInviteHandlersServiceCancelInviteCall {
+func (c *MockInviteHandlersServiceCancelInviteCall) Do(f func(context.Context, int64, int64) (int64, int64, error)) *MockInviteHandlersServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockInviteHandlersServiceCancelInviteCall {
+func (c *MockInviteHandlersServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) (int64, int64, error)) *MockInviteHandlersServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2644,45 +2776,6 @@ func (c *MockInviteHandlersServiceGetUsernameCall) Do(f func(context.Context, in
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockInviteHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, int64) (string, error)) *MockInviteHandlersServiceGetUsernameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// InviteeIDForInvite mocks base method.
-func (m *MockInviteHandlersService) InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InviteeIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// InviteeIDForInvite indicates an expected call of InviteeIDForInvite.
-func (mr *MockInviteHandlersServiceMockRecorder) InviteeIDForInvite(ctx, inviteID any) *MockInviteHandlersServiceInviteeIDForInviteCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InviteeIDForInvite", reflect.TypeOf((*MockInviteHandlersService)(nil).InviteeIDForInvite), ctx, inviteID)
-	return &MockInviteHandlersServiceInviteeIDForInviteCall{Call: call}
-}
-
-// MockInviteHandlersServiceInviteeIDForInviteCall wrap *gomock.Call
-type MockInviteHandlersServiceInviteeIDForInviteCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceInviteeIDForInviteCall) Return(arg0 int64, arg1 error) *MockInviteHandlersServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceInviteeIDForInviteCall) Do(f func(context.Context, int64) (int64, error)) *MockInviteHandlersServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceInviteeIDForInviteCall) DoAndReturn(f func(context.Context, int64) (int64, error)) *MockInviteHandlersServiceInviteeIDForInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3008,11 +3101,13 @@ func (c *MockServerServiceAcceptInviteCall) DoAndReturn(f func(context.Context, 
 }
 
 // CancelInvite mocks base method.
-func (m *MockServerService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) error {
+func (m *MockServerService) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // CancelInvite indicates an expected call of CancelInvite.
@@ -3028,19 +3123,19 @@ type MockServerServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCancelInviteCall) Return(arg0 error) *MockServerServiceCancelInviteCall {
-	c.Call = c.Call.Return(arg0)
+func (c *MockServerServiceCancelInviteCall) Return(arg0, arg1 int64, arg2 error) *MockServerServiceCancelInviteCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCancelInviteCall) Do(f func(context.Context, int64, int64) error) *MockServerServiceCancelInviteCall {
+func (c *MockServerServiceCancelInviteCall) Do(f func(context.Context, int64, int64) (int64, int64, error)) *MockServerServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) error) *MockServerServiceCancelInviteCall {
+func (c *MockServerServiceCancelInviteCall) DoAndReturn(f func(context.Context, int64, int64) (int64, int64, error)) *MockServerServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3122,18 +3217,18 @@ func (c *MockServerServiceCreateRoomCall) DoAndReturn(f func(context.Context, st
 }
 
 // CreateUser mocks base method.
-func (m *MockServerService) CreateUser(ctx context.Context, username string) (int64, error) {
+func (m *MockServerService) CreateUser(ctx context.Context, username, password string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, username)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateUser indicates an expected call of CreateUser.
-func (mr *MockServerServiceMockRecorder) CreateUser(ctx, username any) *MockServerServiceCreateUserCall {
+func (mr *MockServerServiceMockRecorder) CreateUser(ctx, username, password any) *MockServerServiceCreateUserCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockServerService)(nil).CreateUser), ctx, username)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockServerService)(nil).CreateUser), ctx, username, password)
 	return &MockServerServiceCreateUserCall{Call: call}
 }
 
@@ -3149,13 +3244,13 @@ func (c *MockServerServiceCreateUserCall) Return(arg0 int64, arg1 error) *MockSe
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateUserCall) Do(f func(context.Context, string) (int64, error)) *MockServerServiceCreateUserCall {
+func (c *MockServerServiceCreateUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockServerServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateUserCall) DoAndReturn(f func(context.Context, string) (int64, error)) *MockServerServiceCreateUserCall {
+func (c *MockServerServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockServerServiceCreateUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3313,6 +3408,46 @@ func (c *MockServerServiceGetContentViewCall) DoAndReturn(f func(context.Context
 	return c
 }
 
+// GetRoomAccess mocks base method.
+func (m *MockServerService) GetRoomAccess(ctx context.Context, roomID, userID int64) (bool, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetRoomAccess indicates an expected call of GetRoomAccess.
+func (mr *MockServerServiceMockRecorder) GetRoomAccess(ctx, roomID, userID any) *MockServerServiceGetRoomAccessCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomAccess", reflect.TypeOf((*MockServerService)(nil).GetRoomAccess), ctx, roomID, userID)
+	return &MockServerServiceGetRoomAccessCall{Call: call}
+}
+
+// MockServerServiceGetRoomAccessCall wrap *gomock.Call
+type MockServerServiceGetRoomAccessCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetRoomAccessCall) Return(isCreator, isMember bool, err error) *MockServerServiceGetRoomAccessCall {
+	c.Call = c.Call.Return(isCreator, isMember, err)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetRoomAccessCall) Do(f func(context.Context, int64, int64) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, int64, int64) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetRoomDetailView mocks base method.
 func (m *MockServerService) GetRoomDetailView(ctx context.Context, roomID, userID int64) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
@@ -3426,84 +3561,6 @@ func (c *MockServerServiceGetUsernameCall) Do(f func(context.Context, int64) (st
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceGetUsernameCall) DoAndReturn(f func(context.Context, int64) (string, error)) *MockServerServiceGetUsernameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// InviteeIDForInvite mocks base method.
-func (m *MockServerService) InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InviteeIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// InviteeIDForInvite indicates an expected call of InviteeIDForInvite.
-func (mr *MockServerServiceMockRecorder) InviteeIDForInvite(ctx, inviteID any) *MockServerServiceInviteeIDForInviteCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InviteeIDForInvite", reflect.TypeOf((*MockServerService)(nil).InviteeIDForInvite), ctx, inviteID)
-	return &MockServerServiceInviteeIDForInviteCall{Call: call}
-}
-
-// MockServerServiceInviteeIDForInviteCall wrap *gomock.Call
-type MockServerServiceInviteeIDForInviteCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockServerServiceInviteeIDForInviteCall) Return(arg0 int64, arg1 error) *MockServerServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockServerServiceInviteeIDForInviteCall) Do(f func(context.Context, int64) (int64, error)) *MockServerServiceInviteeIDForInviteCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceInviteeIDForInviteCall) DoAndReturn(f func(context.Context, int64) (int64, error)) *MockServerServiceInviteeIDForInviteCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// IsRoomCreator mocks base method.
-func (m *MockServerService) IsRoomCreator(ctx context.Context, roomID, userID int64) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsRoomCreator", ctx, roomID, userID)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsRoomCreator indicates an expected call of IsRoomCreator.
-func (mr *MockServerServiceMockRecorder) IsRoomCreator(ctx, roomID, userID any) *MockServerServiceIsRoomCreatorCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRoomCreator", reflect.TypeOf((*MockServerService)(nil).IsRoomCreator), ctx, roomID, userID)
-	return &MockServerServiceIsRoomCreatorCall{Call: call}
-}
-
-// MockServerServiceIsRoomCreatorCall wrap *gomock.Call
-type MockServerServiceIsRoomCreatorCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockServerServiceIsRoomCreatorCall) Return(arg0 bool, arg1 error) *MockServerServiceIsRoomCreatorCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockServerServiceIsRoomCreatorCall) Do(f func(context.Context, int64, int64) (bool, error)) *MockServerServiceIsRoomCreatorCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceIsRoomCreatorCall) DoAndReturn(f func(context.Context, int64, int64) (bool, error)) *MockServerServiceIsRoomCreatorCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3658,6 +3715,45 @@ func (c *MockServerServiceListRoomMembersWithPGPCall) Do(f func(context.Context,
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, int64) ([]store.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// LoginUser mocks base method.
+func (m *MockServerService) LoginUser(ctx context.Context, username, password string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LoginUser indicates an expected call of LoginUser.
+func (mr *MockServerServiceMockRecorder) LoginUser(ctx, username, password any) *MockServerServiceLoginUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoginUser", reflect.TypeOf((*MockServerService)(nil).LoginUser), ctx, username, password)
+	return &MockServerServiceLoginUserCall{Call: call}
+}
+
+// MockServerServiceLoginUserCall wrap *gomock.Call
+type MockServerServiceLoginUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceLoginUserCall) Return(arg0 int64, arg1 error) *MockServerServiceLoginUserCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceLoginUserCall) Do(f func(context.Context, string, string) (int64, error)) *MockServerServiceLoginUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (int64, error)) *MockServerServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

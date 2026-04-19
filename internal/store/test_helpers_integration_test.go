@@ -18,7 +18,7 @@ func createUser(t *testing.T, pool *pgxpool.Pool, username string) int64 {
 	st := New(pool)
 	ctx, cancel := testCtx(t)
 	defer cancel()
-	id, err := st.Users.CreateUser(ctx, username)
+	id, err := st.Users.CreateUser(ctx, username, "testhash")
 	if err != nil {
 		t.Fatalf("create user %q: %v", username, err)
 	}

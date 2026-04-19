@@ -16,12 +16,21 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager) http.Han
 			return
 		}
 		attempted := r.FormValue("username")
-		id, err := svc.CreateUser(r.Context(), attempted)
+		password := r.FormValue("password")
+		confirm := r.FormValue("password_confirm")
+		if password != confirm {
+			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, "passwords do not match")
+			return
+		}
+		id, err := svc.CreateUser(r.Context(), attempted, password)
 		switch {
 		case errors.Is(err, store.ErrUsernameInvalid):
 			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
 			return
 		case errors.Is(err, store.ErrUsernameTaken):
+			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
+			return
+		case errors.Is(err, store.ErrPasswordTooShort):
 			renderContentWithUserFormError(w, r.Context(), svc, 0, attempted, err.Error())
 			return
 		case err != nil:
@@ -62,19 +71,20 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager) http.Han
 
 func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-		if err != nil {
-			http.Error(w, "invalid user id", http.StatusBadRequest)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		exists, err := svc.UserExists(r.Context(), id)
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		id, err := svc.LoginUser(r.Context(), username, password)
+		if errors.Is(err, store.ErrInvalidCredentials) {
+			renderContentWithLoginFormError(w, r.Context(), svc, username, err.Error())
+			return
+		}
 		if err != nil {
-			slog.Error("check user exists", "err", err)
+			slog.Error("login user", "err", err)
 			http.Error(w, "failed to log in", http.StatusInternalServerError)
-			return
-		}
-		if !exists {
-			http.Error(w, "user not found", http.StatusNotFound)
 			return
 		}
 		sessions.Set(w, id)

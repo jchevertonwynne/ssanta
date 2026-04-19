@@ -33,7 +33,11 @@ type UserExistsService interface {
 }
 
 type CreateUserService interface {
-	CreateUser(ctx context.Context, username string) (int64, error)
+	CreateUser(ctx context.Context, username, password string) (int64, error)
+}
+
+type LoginUserService interface {
+	LoginUser(ctx context.Context, username, password string) (int64, error)
 }
 
 type DeleteUserService interface {
@@ -76,6 +80,10 @@ type IsRoomMemberService interface {
 	IsRoomMember(ctx context.Context, roomID, userID int64) (bool, error)
 }
 
+type RoomAccessService interface {
+	GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error)
+}
+
 type SetRoomMembersCanInviteService interface {
 	SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error
 }
@@ -90,9 +98,8 @@ type InviteOpsService interface {
 	CreateInvite(ctx context.Context, roomID, inviterID int64, inviteeUsername string) error
 	AcceptInvite(ctx context.Context, inviteID, userID int64) error
 	DeclineInvite(ctx context.Context, inviteID, userID int64) error
-	CancelInvite(ctx context.Context, inviteID, actingUserID int64) error
+	CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error)
 	RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error)
-	InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error)
 }
 
 // Handler-facing composite interfaces (stable surfaces for mocks).
@@ -106,6 +113,7 @@ type UserHandlersService interface {
 	UserExistsService
 	ContentViewService
 	CreateUserService
+	LoginUserService
 	DeleteUserService
 }
 
@@ -119,7 +127,7 @@ type RoomHandlersService interface {
 	JoinRoomService
 	LeaveRoomService
 	RemoveMemberService
-	IsRoomCreatorService
+	RoomAccessService
 	SetRoomMembersCanInviteService
 	RoomPGPService
 }

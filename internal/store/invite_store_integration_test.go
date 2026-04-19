@@ -15,11 +15,11 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -99,15 +99,15 @@ func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *tes
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	memberID, err := st.Users.CreateUser(ctx, "member")
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -138,15 +138,15 @@ func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *te
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	memberID, err := st.Users.CreateUser(ctx, "member")
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -180,11 +180,11 @@ func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -214,16 +214,16 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
 	_ = inviteeID
-	otherID, err := st.Users.CreateUser(ctx, "other")
+	otherID, err := st.Users.CreateUser(ctx, "other", "testhash")
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}

@@ -19,7 +19,7 @@ docker compose up --build
 ```
 
 Then open:
-- http://localhost:8090/
+- http://localhost:8080/
 
 ## Run locally (without Docker)
 

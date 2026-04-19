@@ -100,6 +100,16 @@ func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID, userID int64) (bo
 	return exists, err
 }
 
+func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error) {
+	err = s.pool.QueryRow(ctx,
+		`SELECT
+			EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2),
+			EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
+		roomID, userID,
+	).Scan(&isCreator, &isMember)
+	return isCreator, isMember, err
+}
+
 func (s *RoomStore) JoinRoom(ctx context.Context, roomID, userID int64) error {
 	_, err := s.pool.Exec(ctx,
 		`INSERT INTO room_users (room_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,

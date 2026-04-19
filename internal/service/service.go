@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"log/slog"
 	"regexp"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/jchevertonwynne/ssanta/internal/store"
@@ -14,7 +15,7 @@ import (
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
 
 type Service struct {
-	store *store.Store
+	store        *store.Store
 	inviteMaxAge time.Duration
 }
 
@@ -59,7 +60,6 @@ func (s *Service) GetContentView(ctx context.Context, userID int64) (*ContentVie
 
 	users, err := s.store.Users.ListUsers(ctx)
 	if err != nil {
-		slog.Error("list users", "err", err)
 		return nil, err
 	}
 	view.Users = users
@@ -67,26 +67,22 @@ func (s *Service) GetContentView(ctx context.Context, userID int64) (*ContentVie
 	if userID != 0 {
 		user, err := s.store.Users.GetUserByID(ctx, userID)
 		if err != nil {
-			slog.Error("get user", "err", err)
 			return nil, err
 		}
 		view.CurrentUsername = user.Username
 
 		view.CreatedRooms, err = s.store.Rooms.ListRoomsByCreator(ctx, userID)
 		if err != nil {
-			slog.Error("list created rooms", "err", err)
 			return nil, err
 		}
 
 		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(ctx, userID)
 		if err != nil {
-			slog.Error("list member rooms", "err", err)
 			return nil, err
 		}
 
 		view.Invites, err = s.store.Invites.ListInvitesForUser(ctx, userID)
 		if err != nil {
-			slog.Error("list invites", "err", err)
 			return nil, err
 		}
 	}
@@ -94,64 +90,67 @@ func (s *Service) GetContentView(ctx context.Context, userID int64) (*ContentVie
 	return view, nil
 }
 
-// GetRoomDetailView loads all data needed for a room detail page
+// GetRoomDetailView loads all data needed for a room detail page.
+// Phase 1 fetches user info, room detail, and membership concurrently.
+// Phase 2 fetches members and invites concurrently, but only after the auth guard passes.
 func (s *Service) GetRoomDetailView(ctx context.Context, roomID, userID int64) (*RoomDetailView, error) {
-	view := &RoomDetailView{}
+	var (
+		user     store.User
+		room     store.RoomDetail
+		isMember bool
+	)
 
-	// Get current username
-	user, err := s.store.Users.GetUserByID(ctx, userID)
-	if err != nil {
-		slog.Error("get user", "err", err)
+	g1, gCtx1 := errgroup.WithContext(ctx)
+	g1.Go(func() error {
+		var err error
+		user, err = s.store.Users.GetUserByID(gCtx1, userID)
+		return err
+	})
+	g1.Go(func() error {
+		var err error
+		room, err = s.store.Rooms.GetRoomDetail(gCtx1, roomID)
+		return err
+	})
+	g1.Go(func() error {
+		var err error
+		isMember, err = s.store.Rooms.IsRoomMember(gCtx1, roomID, userID)
+		return err
+	})
+	if err := g1.Wait(); err != nil {
 		return nil, err
 	}
-	view.CurrentUsername = user.Username
 
-	// Get room detail
-	view.Room, err = s.store.Rooms.GetRoomDetail(ctx, roomID)
-	if err != nil {
-		slog.Error("get room detail", "err", err)
-		return nil, err
-	}
-
-	// Check if user is creator
-	isCreator, err := s.store.Rooms.IsRoomCreator(ctx, roomID, userID)
-	if err != nil {
-		slog.Error("check room creator", "err", err)
-		return nil, err
-	}
-	view.IsCreator = isCreator
-
-	// Check membership
-	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
-	if err != nil {
-		slog.Error("check room membership", "err", err)
-		return nil, err
-	}
-	view.IsMember = isMember
-
-	// User must be creator or member to view room
+	isCreator := room.CreatorID == userID
 	if !isCreator && !isMember {
 		return nil, store.ErrNotRoomMember
 	}
 
-	// Creators can always invite, or members can invite if allowed
-	view.CanInvite = isCreator || (isMember && view.Room.MembersCanInvite)
-
-	// Get members (including per-room PGP fields)
-	view.Members, err = s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
-	if err != nil {
-		slog.Error("list room members", "err", err)
+	var members []store.RoomMember
+	var invites []store.InviteForRoom
+	g2, gCtx2 := errgroup.WithContext(ctx)
+	g2.Go(func() error {
+		var err error
+		members, err = s.store.Rooms.ListRoomMembersWithPGP(gCtx2, roomID)
+		return err
+	})
+	g2.Go(func() error {
+		var err error
+		invites, err = s.store.Invites.ListInvitesForRoom(gCtx2, roomID)
+		return err
+	})
+	if err := g2.Wait(); err != nil {
 		return nil, err
 	}
 
-	// Get pending invites
-	view.PendingInvites, err = s.store.Invites.ListInvitesForRoom(ctx, roomID)
-	if err != nil {
-		slog.Error("list room invites", "err", err)
-		return nil, err
-	}
-
-	return view, nil
+	return &RoomDetailView{
+		CurrentUsername: user.Username,
+		Room:            room,
+		IsCreator:       isCreator,
+		IsMember:        isMember,
+		CanInvite:       isCreator || (isMember && room.MembersCanInvite),
+		Members:         members,
+		PendingInvites:  invites,
+	}, nil
 }
 
 func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID int64) ([]store.RoomMember, error) {
@@ -218,12 +217,31 @@ func (s *Service) UserExists(ctx context.Context, id int64) (bool, error) {
 	return s.store.Users.UserExists(ctx, id)
 }
 
-func (s *Service) CreateUser(ctx context.Context, username string) (int64, error) {
+func (s *Service) CreateUser(ctx context.Context, username, password string) (int64, error) {
 	name := strings.TrimSpace(username)
 	if !usernameRE.MatchString(name) {
 		return 0, store.ErrUsernameInvalid
 	}
-	return s.store.Users.CreateUser(ctx, name)
+	if len(password) < 8 {
+		return 0, store.ErrPasswordTooShort
+	}
+	hash, err := hashPassword(password)
+	if err != nil {
+		return 0, err
+	}
+	return s.store.Users.CreateUser(ctx, name, hash)
+}
+
+func (s *Service) LoginUser(ctx context.Context, username, password string) (int64, error) {
+	user, err := s.store.Users.GetUserWithPassword(ctx, username)
+	if err != nil {
+		return 0, store.ErrInvalidCredentials
+	}
+	ok, err := verifyPassword(password, user.PasswordHash)
+	if err != nil || !ok {
+		return 0, store.ErrInvalidCredentials
+	}
+	return user.ID, nil
 }
 
 func (s *Service) DeleteUser(ctx context.Context, id int64) error {
@@ -259,6 +277,10 @@ func (s *Service) IsRoomCreator(ctx context.Context, roomID, userID int64) (bool
 	return s.store.Rooms.IsRoomCreator(ctx, roomID, userID)
 }
 
+func (s *Service) GetRoomAccess(ctx context.Context, roomID, userID int64) (isCreator bool, isMember bool, err error) {
+	return s.store.Rooms.GetRoomAccess(ctx, roomID, userID)
+}
+
 func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID, creatorID int64, value bool) error {
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
@@ -282,16 +304,12 @@ func (s *Service) DeclineInvite(ctx context.Context, inviteID, userID int64) err
 	return s.store.Invites.DeclineInvite(ctx, inviteID, userID)
 }
 
-func (s *Service) CancelInvite(ctx context.Context, inviteID, actingUserID int64) error {
+func (s *Service) CancelInvite(ctx context.Context, inviteID, actingUserID int64) (int64, int64, error) {
 	return s.store.Invites.CancelInvite(ctx, inviteID, actingUserID)
 }
 
 func (s *Service) RoomIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
 	return s.store.Invites.RoomIDForInvite(ctx, inviteID)
-}
-
-func (s *Service) InviteeIDForInvite(ctx context.Context, inviteID int64) (int64, error) {
-	return s.store.Invites.InviteeIDForInvite(ctx, inviteID)
 }
 
 // Helper operations

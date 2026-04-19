@@ -47,7 +47,7 @@ func run() error {
 		return err
 	}
 
-	sessions := session.NewManager(cfg.SessionSecret)
+	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies)
 	st := store.New(pool)
 	svc := service.New(st)
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)

@@ -13,10 +13,11 @@ const cookieName = "session"
 
 type Manager struct {
 	secret []byte
+	secure bool
 }
 
-func NewManager(secret string) *Manager {
-	return &Manager{secret: []byte(secret)}
+func NewManager(secret string, secure bool) *Manager {
+	return &Manager{secret: []byte(secret), secure: secure}
 }
 
 func (m *Manager) Set(w http.ResponseWriter, userID int64) {
@@ -26,6 +27,7 @@ func (m *Manager) Set(w http.ResponseWriter, userID int64) {
 		Value:    payload + "." + m.sign(payload),
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   m.secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -37,6 +39,7 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   m.secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
-	m := NewManager("secret")
+	m := NewManager("secret", false)
 
 	rr := httptest.NewRecorder()
 	m.Set(rr, 123)
@@ -33,7 +33,7 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 }
 
 func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
-	m := NewManager("secret")
+	m := NewManager("secret", false)
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123.bad"})
 
@@ -44,7 +44,7 @@ func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
 }
 
 func TestManager_UserID_MalformedRejected(t *testing.T) {
-	m := NewManager("secret")
+	m := NewManager("secret", false)
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123"})
 
@@ -55,7 +55,7 @@ func TestManager_UserID_MalformedRejected(t *testing.T) {
 }
 
 func TestManager_Clear_DeletesCookie(t *testing.T) {
-	m := NewManager("secret")
+	m := NewManager("secret", false)
 
 	rr := httptest.NewRecorder()
 	m.Clear(rr)

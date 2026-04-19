@@ -16,6 +16,8 @@ type Config struct {
 	MigrationsDir string `env:"MIGRATIONS_DIR,migrations"`
 	SessionSecret string `env:"SESSION_SECRET"`
 
+	SecureCookies bool `env:"SECURE_COOKIES,true"`
+
 	InviteMaxAge    time.Duration `env:"INVITE_MAX_AGE,24h"`
 	JanitorInterval time.Duration `env:"JANITOR_INTERVAL,1m"`
 }

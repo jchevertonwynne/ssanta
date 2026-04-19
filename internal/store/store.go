@@ -18,6 +18,8 @@ var (
 
 	ErrUsernameTaken = errors.New("username already taken")
 	ErrUsernameInvalid = errors.New("username must be 3-32 letters or digits")
+	ErrPasswordTooShort = errors.New("password must be at least 8 characters")
+	ErrInvalidCredentials = errors.New("invalid username or password")
 
 	ErrUserNotFound = errors.New("user not found")
 
@@ -57,9 +59,10 @@ func (s *Store) Ping(ctx context.Context) error {
 }
 
 type User struct {
-	ID        int64
-	Username  string
-	CreatedAt time.Time
+	ID           int64
+	Username     string
+	CreatedAt    time.Time
+	PasswordHash string
 }
 
 type RoomMember struct {

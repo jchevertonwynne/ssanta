@@ -50,13 +50,14 @@ type ChatRoom struct {
 }
 
 type ChatClient struct {
-	hub      *ChatHub
-	conn     *websocket.Conn
-	send     chan []byte
-	roomID   int64
-	userID   int64
-	username string
-	svc      WebSocketHandlersService
+	hub       *ChatHub
+	conn      *websocket.Conn
+	send      chan []byte
+	closeOnce sync.Once
+	roomID    int64
+	userID    int64
+	username  string
+	svc       WebSocketHandlersService
 }
 
 type ChatMessagePayload struct {
@@ -113,7 +114,7 @@ func (h *ChatHub) Run() {
 			for _, room := range h.rooms {
 				room.mu.Lock()
 				for client := range room.clients {
-					close(client.send)
+					client.closeOnce.Do(func() { close(client.send) })
 				}
 				room.mu.Unlock()
 			}
@@ -151,7 +152,7 @@ func (h *ChatHub) Run() {
 			if connections, ok := h.userConnections[client.userID]; ok {
 				if _, exists := connections[client]; exists {
 					delete(connections, client)
-					close(client.send)
+					client.closeOnce.Do(func() { close(client.send) })
 				}
 				if len(connections) == 0 {
 					delete(h.userConnections, client.userID)
@@ -202,7 +203,7 @@ func (h *ChatHub) BroadcastToRoom(roomID int64, message []byte) {
 		select {
 		case client.send <- message:
 		default:
-			close(client.send)
+			client.closeOnce.Do(func() { close(client.send) })
 			delete(room.clients, client)
 		}
 	}
@@ -227,7 +228,7 @@ func (h *ChatHub) SendToRoomUsers(roomID int64, perUserMessage map[int64][]byte)
 		select {
 		case client.send <- msg:
 		default:
-			close(client.send)
+			client.closeOnce.Do(func() { close(client.send) })
 			delete(room.clients, client)
 		}
 	}

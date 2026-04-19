@@ -13,15 +13,15 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	memberID, err := st.Users.CreateUser(ctx, "member")
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -78,11 +78,11 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
 	if err != nil {
 		t.Fatalf("create invitee: %v", err)
 	}
@@ -126,11 +126,11 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	memberID, err := st.Users.CreateUser(ctx, "member")
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
@@ -172,11 +172,11 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	otherID, err := st.Users.CreateUser(ctx, "other")
+	otherID, err := st.Users.CreateUser(ctx, "other", "testhash")
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}

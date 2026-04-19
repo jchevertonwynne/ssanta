@@ -19,16 +19,18 @@ var templatesFS embed.FS
 var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 type contentData struct {
-	CurrentUserID     int64
-	CurrentUsername   string
-	Users             []store.User
-	CreatedRooms      []store.Room
-	MemberRooms       []store.Room
-	Invites           []store.InviteForUser
-	RoomFormError     string
-	RoomFormAttempted string
-	UserFormError     string
-	UserFormAttempted string
+	CurrentUserID      int64
+	CurrentUsername    string
+	Users              []store.User
+	CreatedRooms       []store.Room
+	MemberRooms        []store.Room
+	Invites            []store.InviteForUser
+	RoomFormError      string
+	RoomFormAttempted  string
+	UserFormError      string
+	UserFormAttempted  string
+	LoginFormError     string
+	LoginFormAttempted string
 }
 
 type roomDetailData struct {
@@ -49,6 +51,17 @@ type roomDetailData struct {
 	PGPRemoveFormError  string
 }
 
+type roomRenderOpts struct {
+	template           string
+	inviteAttempted    string
+	inviteErr          string
+	pgpKeyAttempted    string
+	pgpKeyErr          string
+	pgpVerifyAttempted string
+	pgpVerifyErr       string
+	pgpRemoveErr       string
+}
+
 func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
@@ -61,7 +74,7 @@ func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
 	mux.HandleFunc("POST /users", handleCreateUser(svc, sessions))
 	mux.HandleFunc("DELETE /users/{id}", handleDeleteUser(svc, sessions))
-	mux.HandleFunc("POST /login/{id}", handleLogin(svc, sessions))
+	mux.HandleFunc("POST /login", handleLogin(svc, sessions))
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
 	mux.HandleFunc("POST /rooms", handleCreateRoom(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
@@ -170,67 +183,28 @@ func renderContentWithUserFormError(w http.ResponseWriter, ctx context.Context, 
 	})
 }
 
-func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
-	renderRoomDetailData(w, ctx, svc, roomDetailData{
-		CurrentUserID: currentID,
-		Room:          store.RoomDetail{Room: store.Room{ID: roomID}},
+func renderContentWithLoginFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, attempted, formErr string) {
+	renderContentData(w, ctx, svc, contentData{
+		LoginFormAttempted: attempted,
+		LoginFormError:     formErr,
 	})
 }
 
-func renderRoomDetailWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
-	renderRoomDetailData(w, ctx, svc, roomDetailData{
-		CurrentUserID:       currentID,
-		Room:                store.RoomDetail{Room: store.Room{ID: roomID}},
-		InviteFormAttempted: attempted,
-		InviteFormError:     formErr,
-	})
-}
-
-func renderRoomDetailData(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, data roomDetailData) {
-	view, err := svc.GetRoomDetailView(ctx, data.Room.ID, data.CurrentUserID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	// Transfer view data to template data
-	data.CurrentUsername = view.CurrentUsername
-	data.Room = view.Room
-	data.IsCreator = view.IsCreator
-	data.IsMember = view.IsMember
-	data.CanInvite = view.CanInvite
-	data.Members = view.Members
-	data.PendingInvites = view.PendingInvites
-
-	render(w, "room_detail.html", data)
-}
-
-func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, opts roomRenderOpts) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
+	switch {
+	case errors.Is(err, store.ErrRoomNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	case errors.Is(err, store.ErrNotRoomMember):
+		http.Error(w, "not a member of this room", http.StatusForbidden)
+		return
+	case err != nil:
 		slog.Error("get room detail view", "err", err)
 		http.Error(w, "failed to load room", http.StatusInternalServerError)
 		return
 	}
-
-	data := roomDetailData{
+	render(w, opts.template, roomDetailData{
 		CurrentUserID:       currentID,
 		CurrentUsername:     view.CurrentUsername,
 		Room:                view.Room,
@@ -239,79 +213,63 @@ func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context
 		CanInvite:           view.CanInvite,
 		Members:             view.Members,
 		PendingInvites:      view.PendingInvites,
-		PGPKeyFormAttempted: attempted,
-		PGPKeyFormError:     formErr,
-	}
+		InviteFormAttempted: opts.inviteAttempted,
+		InviteFormError:     opts.inviteErr,
+		PGPKeyFormAttempted: opts.pgpKeyAttempted,
+		PGPKeyFormError:     opts.pgpKeyErr,
+		PGPVerifyAttempted:  opts.pgpVerifyAttempted,
+		PGPVerifyFormError:  opts.pgpVerifyErr,
+		PGPRemoveFormError:  opts.pgpRemoveErr,
+	})
+}
 
-	render(w, "room_dynamic.html", data)
+func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail.html"})
+}
+
+func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail_page.html"})
+}
+
+func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})
+}
+
+func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:        "room_dynamic.html",
+		pgpKeyAttempted: attempted,
+		pgpKeyErr:       formErr,
+	})
 }
 
 func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:      currentID,
-		CurrentUsername:    view.CurrentUsername,
-		Room:               view.Room,
-		IsCreator:          view.IsCreator,
-		IsMember:           view.IsMember,
-		CanInvite:          view.CanInvite,
-		Members:            view.Members,
-		PendingInvites:     view.PendingInvites,
-		PGPVerifyAttempted: attempted,
-		PGPVerifyFormError: formErr,
-	}
-
-	render(w, "room_dynamic.html", data)
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:           "room_dynamic.html",
+		pgpVerifyAttempted: attempted,
+		pgpVerifyErr:       formErr,
+	})
 }
 
 func renderRoomDynamicWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, formErr string) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:      currentID,
-		CurrentUsername:    view.CurrentUsername,
-		Room:               view.Room,
-		IsCreator:          view.IsCreator,
-		IsMember:           view.IsMember,
-		CanInvite:          view.CanInvite,
-		Members:            view.Members,
-		PendingInvites:     view.PendingInvites,
-		PGPRemoveFormError: formErr,
-	}
-
-	render(w, "room_dynamic.html", data)
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:     "room_dynamic.html",
+		pgpRemoveErr: formErr,
+	})
 }
 
-// renderContentData takes a partially-populated contentData (caller supplies
-// CurrentUserID and any form error state), fills in the user/room lists plus
-// CurrentUsername, and renders the content fragment.
+func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_sidebar.html"})
+}
+
+func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:        "room_sidebar.html",
+		inviteAttempted: attempted,
+		inviteErr:       formErr,
+	})
+}
+
 func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentViewService, data contentData) {
 	view, err := svc.GetContentView(ctx, data.CurrentUserID)
 	if err != nil {
@@ -320,7 +278,6 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 		return
 	}
 
-	// Transfer view data to template data, preserving form error fields
 	data.CurrentUsername = view.CurrentUsername
 	data.Users = view.Users
 	data.CreatedRooms = view.CreatedRooms
@@ -328,128 +285,6 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.Invites = view.Invites
 
 	render(w, "content.html", data)
-}
-
-func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:   currentID,
-		CurrentUsername: view.CurrentUsername,
-		Room:            view.Room,
-		IsCreator:       view.IsCreator,
-		IsMember:        view.IsMember,
-		CanInvite:       view.CanInvite,
-		Members:         view.Members,
-		PendingInvites:  view.PendingInvites,
-	}
-
-	render(w, "room_detail_page.html", data)
-}
-
-func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:   currentID,
-		CurrentUsername: view.CurrentUsername,
-		Room:            view.Room,
-		IsCreator:       view.IsCreator,
-		IsMember:        view.IsMember,
-		CanInvite:       view.CanInvite,
-		Members:         view.Members,
-		PendingInvites:  view.PendingInvites,
-	}
-
-	render(w, "room_dynamic.html", data)
-}
-
-func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:   currentID,
-		CurrentUsername: view.CurrentUsername,
-		Room:            view.Room,
-		IsCreator:       view.IsCreator,
-		IsMember:        view.IsMember,
-		CanInvite:       view.CanInvite,
-		Members:         view.Members,
-		PendingInvites:  view.PendingInvites,
-	}
-
-	render(w, "room_sidebar.html", data)
-}
-
-func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, attempted, formErr string) {
-	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
-	if err != nil {
-		if errors.Is(err, store.ErrRoomNotFound) {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, store.ErrNotRoomMember) {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-		slog.Error("get room detail view", "err", err)
-		http.Error(w, "failed to load room", http.StatusInternalServerError)
-		return
-	}
-
-	data := roomDetailData{
-		CurrentUserID:       currentID,
-		CurrentUsername:     view.CurrentUsername,
-		Room:                view.Room,
-		IsCreator:           view.IsCreator,
-		IsMember:            view.IsMember,
-		CanInvite:           view.CanInvite,
-		Members:             view.Members,
-		PendingInvites:      view.PendingInvites,
-		InviteFormAttempted: attempted,
-		InviteFormError:     formErr,
-	}
-
-	render(w, "room_sidebar.html", data)
 }
 
 func render(w http.ResponseWriter, name string, data any) {
