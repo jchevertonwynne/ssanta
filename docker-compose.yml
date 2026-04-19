@@ -15,6 +15,16 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    command: ["/app/migrate"]
+
   server-prod:
     profiles: ["prod"]
     build: .
@@ -30,16 +40,6 @@ services:
       SECURE_COOKIES: "true"
     ports:
       - "8080:8080"
-
-  migrate:
-    build: .
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
-      MIGRATIONS_DIR: /app/migrations
-    command: ["/app/migrate"]
 
   server:
     build: .

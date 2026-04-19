@@ -37,6 +37,9 @@ __debug_bin
 !.env.example
 !.env.sample
 
+# Local secrets (created by scripts)
+.secrets/
+
 # macOS
 .DS_Store
 .AppleDouble
