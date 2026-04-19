@@ -83,6 +83,7 @@ type SetRoomMembersCanInviteService interface {
 type RoomPGPService interface {
 	SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error
 	VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, decryptedChallenge string) error
+	RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error
 }
 
 type InviteOpsService interface {

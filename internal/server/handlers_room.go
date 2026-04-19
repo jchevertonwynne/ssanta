@@ -263,7 +263,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "failed to update room", http.StatusInternalServerError)
 			return
 		}
-		renderRoomDetail(w, r.Context(), svc, currentID, roomID)
+		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 	}
 }
 

@@ -47,9 +47,9 @@
         </div>
 
         {{if .IsCreator}}
-        <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
-              hx-target="#content" 
-              hx-swap="innerHTML"
+          <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
+              hx-target="#room-sidebar" 
+              hx-swap="outerHTML"
               hx-trigger="change">
             <label>
                 <input type="checkbox" 
@@ -169,6 +169,22 @@
             pre.style.whiteSpace = 'pre-wrap';
             pre.style.fontFamily = 'monospace';
             pre.textContent = data.message;
+
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '0.5rem';
+            actions.style.alignItems = 'center';
+            actions.style.marginTop = '0.25rem';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.type = 'button';
+            copyBtn.textContent = 'Copy';
+            copyBtn.onclick = function() {
+                copyText(pre.textContent || '');
+            };
+            actions.appendChild(copyBtn);
+
+            msgDiv.appendChild(actions);
             msgDiv.appendChild(pre);
             
             chatMessages.appendChild(msgDiv);
@@ -204,6 +220,28 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(fallbackCopy);
+            return;
+        }
+        fallbackCopy();
+
+        function fallbackCopy() {
+            const t = document.createElement('textarea');
+            t.value = text;
+            t.setAttribute('readonly', '');
+            t.style.position = 'fixed';
+            t.style.left = '-9999px';
+            t.style.top = '0';
+            document.body.appendChild(t);
+            t.focus();
+            t.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(t);
+        }
     }
 })();
 </script>

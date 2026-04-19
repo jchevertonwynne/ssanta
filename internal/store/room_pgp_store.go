@@ -80,3 +80,24 @@ func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID, user
 
 	return tx.Commit(ctx)
 }
+
+func (s *RoomStore) ClearRoomUserPGPKey(ctx context.Context, roomID, userID int64) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE room_users
+		 SET pgp_public_key = NULL,
+		     pgp_fingerprint = NULL,
+		     pgp_verified_at = NULL,
+		     pgp_challenge_ciphertext = NULL,
+		     pgp_challenge_hash = NULL,
+		     pgp_challenge_expires_at = NULL
+		 WHERE room_id = $1 AND user_id = $2`,
+		roomID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotRoomMember
+	}
+	return nil
+}

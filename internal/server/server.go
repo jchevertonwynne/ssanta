@@ -46,6 +46,7 @@ type roomDetailData struct {
 	PGPKeyFormAttempted string
 	PGPVerifyFormError  string
 	PGPVerifyAttempted  string
+	PGPRemoveFormError  string
 }
 
 func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
@@ -72,6 +73,8 @@ func New(svc ServerService, sessions SessionManager) (http.Handler, func()) {
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/pgp-key", handleSetRoomPGPKey(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /rooms/{id}/pgp-key/verify", handleVerifyRoomPGPKey(svc, sessions, hubAPI))
+	mux.HandleFunc("DELETE /rooms/{id}/pgp-key", handleRemoveRoomPGPKey(svc, sessions, hubAPI))
+	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}/pgp-key", handleRemoveMemberPGPKey(svc, sessions, hubAPI))
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/invites", handleCreateInvite(svc, sessions, hubAPI))
@@ -270,6 +273,37 @@ func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Cont
 		PendingInvites:     view.PendingInvites,
 		PGPVerifyAttempted: attempted,
 		PGPVerifyFormError: formErr,
+	}
+
+	render(w, "room_dynamic.html", data)
+}
+
+func renderRoomDynamicWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID, roomID int64, formErr string) {
+	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
+	if err != nil {
+		if errors.Is(err, store.ErrRoomNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, store.ErrNotRoomMember) {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return
+		}
+		slog.Error("get room detail view", "err", err)
+		http.Error(w, "failed to load room", http.StatusInternalServerError)
+		return
+	}
+
+	data := roomDetailData{
+		CurrentUserID:      currentID,
+		CurrentUsername:    view.CurrentUsername,
+		Room:               view.Room,
+		IsCreator:          view.IsCreator,
+		IsMember:           view.IsMember,
+		CanInvite:          view.CanInvite,
+		Members:            view.Members,
+		PendingInvites:     view.PendingInvites,
+		PGPRemoveFormError: formErr,
 	}
 
 	render(w, "room_dynamic.html", data)

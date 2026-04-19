@@ -11,10 +11,24 @@
                     <div style="margin-top: 0.25rem; font-size: 0.9em;">
                         <strong>PGP:</strong>
                         {{if .PGPVerifiedAt}}verified{{else}}unverified{{end}}
-                        {{if .PGPFingerprint}}<span> · {{.PGPFingerprint}}</span>{{end}}
+                        {{if .PGPFingerprint}}
+                            <span> · <span id="pgp-fingerprint-{{.ID}}">{{.PGPFingerprint}}</span></span>
+                            <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-{{.ID}}'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
+                        {{end}}
+                        {{if and $isCreator (ne .ID $currentID)}}
+                            <div style="margin-top: 0.25rem;">
+                                <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}/pgp-key"
+                                        hx-target="#room-dynamic"
+                                        hx-swap="outerHTML"
+                                        hx-confirm="Remove {{.Username}}'s PGP key for this room?">Remove PGP key</button>
+                            </div>
+                        {{end}}
                         <details style="margin-top: 0.25rem;">
                             <summary>Show public key</summary>
-                            <textarea readonly rows="6" style="width: 100%; font-family: monospace;">{{.PGPPublicKey}}</textarea>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; margin: 0.25rem 0;">
+                                <button type="button" onclick="(function(){var t=document.getElementById('pgp-public-key-{{.ID}}'); if(!t) return; var v=t.value||t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){t.focus();t.select();document.execCommand('copy');});} else {t.focus();t.select();document.execCommand('copy');}})()">Copy</button>
+                            </div>
+                            <textarea id="pgp-public-key-{{.ID}}" readonly rows="6" style="width: 100%; font-family: monospace;">{{.PGPPublicKey}}</textarea>
                         </details>
                     </div>
                 {{else}}
@@ -38,6 +52,10 @@
     {{if .IsMember}}
     <h3>Your PGP key</h3>
 
+    {{if .PGPRemoveFormError}}
+        <p class="error">{{.PGPRemoveFormError}}</p>
+    {{end}}
+
     <form hx-post="/rooms/{{.Room.ID}}/pgp-key" hx-target="#room-dynamic" hx-swap="outerHTML">
         <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{.PGPKeyFormAttempted}}</textarea>
         <button type="submit">Upload public key &amp; get challenge</button>
@@ -48,6 +66,14 @@
 
     {{range .Members}}
         {{if eq .ID $.CurrentUserID}}
+            {{if .PGPPublicKey}}
+                <div style="margin-top: 0.5rem;">
+                    <button hx-delete="/rooms/{{$.Room.ID}}/pgp-key"
+                            hx-target="#room-dynamic"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove your PGP key for this room?">Remove PGP key</button>
+                </div>
+            {{end}}
             {{if .PGPChallengeCiphertext}}
                 <p style="margin-top: 1rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>
                 <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">

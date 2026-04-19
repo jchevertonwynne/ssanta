@@ -1106,6 +1106,44 @@ func (m *MockRoomPGPService) EXPECT() *MockRoomPGPServiceMockRecorder {
 	return m.recorder
 }
 
+// RemoveRoomUserPGPKey mocks base method.
+func (m *MockRoomPGPService) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveRoomUserPGPKey indicates an expected call of RemoveRoomUserPGPKey.
+func (mr *MockRoomPGPServiceMockRecorder) RemoveRoomUserPGPKey(ctx, roomID, targetUserID, actingUserID any) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRoomUserPGPKey", reflect.TypeOf((*MockRoomPGPService)(nil).RemoveRoomUserPGPKey), ctx, roomID, targetUserID, actingUserID)
+	return &MockRoomPGPServiceRemoveRoomUserPGPKeyCall{Call: call}
+}
+
+// MockRoomPGPServiceRemoveRoomUserPGPKeyCall wrap *gomock.Call
+type MockRoomPGPServiceRemoveRoomUserPGPKeyCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, int64, int64, int64) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // SetRoomPGPKey mocks base method.
 func (m *MockRoomPGPService) SetRoomPGPKey(ctx context.Context, roomID, userID int64, armoredPublicKey string) error {
 	m.ctrl.T.Helper()
@@ -2083,6 +2121,44 @@ func (c *MockRoomHandlersServiceRemoveMemberCall) Do(f func(context.Context, int
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRoomHandlersServiceRemoveMemberCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockRoomHandlersServiceRemoveMemberCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// RemoveRoomUserPGPKey mocks base method.
+func (m *MockRoomHandlersService) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveRoomUserPGPKey indicates an expected call of RemoveRoomUserPGPKey.
+func (mr *MockRoomHandlersServiceMockRecorder) RemoveRoomUserPGPKey(ctx, roomID, targetUserID, actingUserID any) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRoomUserPGPKey", reflect.TypeOf((*MockRoomHandlersService)(nil).RemoveRoomUserPGPKey), ctx, roomID, targetUserID, actingUserID)
+	return &MockRoomHandlersServiceRemoveRoomUserPGPKeyCall{Call: call}
+}
+
+// MockRoomHandlersServiceRemoveRoomUserPGPKeyCall wrap *gomock.Call
+type MockRoomHandlersServiceRemoveRoomUserPGPKeyCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, int64, int64, int64) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3658,6 +3734,44 @@ func (c *MockServerServiceRemoveMemberCall) Do(f func(context.Context, int64, in
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceRemoveMemberCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockServerServiceRemoveMemberCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// RemoveRoomUserPGPKey mocks base method.
+func (m *MockServerService) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveRoomUserPGPKey indicates an expected call of RemoveRoomUserPGPKey.
+func (mr *MockServerServiceMockRecorder) RemoveRoomUserPGPKey(ctx, roomID, targetUserID, actingUserID any) *MockServerServiceRemoveRoomUserPGPKeyCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveRoomUserPGPKey", reflect.TypeOf((*MockServerService)(nil).RemoveRoomUserPGPKey), ctx, roomID, targetUserID, actingUserID)
+	return &MockServerServiceRemoveRoomUserPGPKeyCall{Call: call}
+}
+
+// MockServerServiceRemoveRoomUserPGPKeyCall wrap *gomock.Call
+type MockServerServiceRemoveRoomUserPGPKeyCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *MockServerServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, int64, int64, int64) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, int64, int64, int64) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

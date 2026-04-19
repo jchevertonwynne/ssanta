@@ -198,6 +198,20 @@ func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID, userID int64, de
 	return s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now())
 }
 
+func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID, targetUserID, actingUserID int64) error {
+	if targetUserID != actingUserID {
+		isCreator, err := s.store.Rooms.IsRoomCreator(ctx, roomID, actingUserID)
+		if err != nil {
+			return err
+		}
+		if !isCreator {
+			return store.ErrNotRoomCreator
+		}
+	}
+
+	return s.store.Rooms.ClearRoomUserPGPKey(ctx, roomID, targetUserID)
+}
+
 // User operations
 
 func (s *Service) UserExists(ctx context.Context, id int64) (bool, error) {

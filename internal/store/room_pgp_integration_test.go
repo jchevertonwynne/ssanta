@@ -69,6 +69,49 @@ func TestRoomPGPChallengeLifecycle(t *testing.T) {
 	require.Equal(t, challenge, plaintext)
 }
 
+func TestRoomPGPClearKey(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	userID := createUser(t, pool, "alice")
+	roomID := createRoom(t, pool, "room1", userID)
+
+	ctx, cancel := testCtx(t)
+	defer cancel()
+	require.NoError(t, st.Rooms.JoinRoom(ctx, roomID, userID))
+
+	armoredPub, _ := mustGenerateTestKeyPair(t)
+	normalized, fingerprint, err := pgp.NormalizePublicKey(armoredPub, time.Now())
+	require.NoError(t, err)
+
+	challenge := "test-challenge-plaintext"
+	ciphertext, err := pgp.EncryptToPublicKey(normalized, []byte(challenge))
+	require.NoError(t, err)
+
+	now := time.Now()
+	expiresAt := now.Add(10 * time.Minute)
+	hash := pgp.HashChallenge(challenge)
+
+	require.NoError(t, st.Rooms.UpsertRoomUserPGPKeyWithChallenge(ctx, roomID, userID, normalized, fingerprint, ciphertext, hash, expiresAt))
+	require.NoError(t, st.Rooms.ClearRoomUserPGPKey(ctx, roomID, userID))
+
+	members, err := st.Rooms.ListRoomMembersWithPGP(ctx, roomID)
+	require.NoError(t, err)
+	var found *RoomMember
+	for i := range members {
+		if members[i].ID == userID {
+			found = &members[i]
+			break
+		}
+	}
+	require.NotNil(t, found)
+	require.Empty(t, found.PGPPublicKey)
+	require.Empty(t, found.PGPFingerprint)
+	require.Nil(t, found.PGPVerifiedAt)
+	require.Empty(t, found.PGPChallengeCiphertext)
+	require.Nil(t, found.PGPChallengeExpiresAt)
+}
+
 func mustGenerateTestKeyPair(t *testing.T) (armoredPublicKey string, privateKey *crypto.Key) {
 	t.Helper()
 

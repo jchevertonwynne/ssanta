@@ -40,9 +40,9 @@
     </div>
 
     {{if .IsCreator}}
-    <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
-          hx-target="#content" 
-          hx-swap="innerHTML"
+        <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
+            hx-target="#room-sidebar" 
+            hx-swap="outerHTML"
           hx-trigger="change">
         <label>
             <input type="checkbox" 

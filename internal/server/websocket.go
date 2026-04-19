@@ -359,14 +359,51 @@ func (c *ChatClient) readPump() {
 				continue
 			}
 
+			senderVerified := false
+			for _, m := range members {
+				if m.ID != c.userID {
+					continue
+				}
+				if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
+					senderVerified = true
+				}
+				break
+			}
+			if !senderVerified {
+				sys := ChatMessagePayload{
+					Type:      "system",
+					Message:   "You must upload and verify a PGP key to send messages in this room.",
+					CreatedAt: time.Now(),
+				}
+				if b, err := json.Marshal(sys); err == nil {
+					select {
+					case c.send <- b:
+					default:
+					}
+				}
+				continue
+			}
+
 			plaintext := payload.Message
 			createdAt := time.Now()
 
 			perUser := make(map[int64][]byte, len(members))
 			for _, m := range members {
 				if m.PGPPublicKey == "" {
+					out := ChatMessagePayload{
+						Type:      "message",
+						Username:  c.username,
+						Message:   "<encrypted message>",
+						CreatedAt: createdAt,
+					}
+					b, err := json.Marshal(out)
+					if err != nil {
+						continue
+					}
+					perUser[m.ID] = b
 					continue
 				}
+
 				ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
 				if err != nil {
 					slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
