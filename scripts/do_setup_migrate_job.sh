@@ -111,7 +111,7 @@ else
 fi
 
 log "current db firewall rules:"
-doctl databases firewalls list "$DB_CLUSTER_ID" --format Type,Value --no-header 2>/dev/null | sed 's/^/[do-setup]   /' >&2 || true
+doctl databases firewalls list "$DB_CLUSTER_ID" 2>/dev/null | sed 's/^/[do-setup]   /' >&2 || true
 
 # Create/rotate the runtime user's password.
 RUNTIME_DB_PASS="$(openssl rand -hex 24)"
@@ -121,7 +121,25 @@ log "creating/rotating runtime db role and grants (user=$RUNTIME_DB_USER db=$DB_
 # Create/rotate the runtime role and grant least-privilege rights.
 # NOTE: DigitalOcean's doctl database users are *admin* on the cluster.
 # We therefore create a Postgres role ourselves and lock it down.
-if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
+#
+# If TCP connectivity is blocked and fallback mode is enabled, skip psql entirely.
+if command -v nc >/dev/null 2>&1 && [[ "$FALLBACK_TO_DOCTL_USER" == "1" ]]; then
+  if ! nc -z -w 2 "$DB_HOST" "$DB_PORT" >/dev/null 2>&1; then
+    log "tcp connectivity appears blocked; skipping psql grants and using fallback DO-managed user"
+    log "FALLBACK_TO_DOCTL_USER=1 enabled; creating/resetting DO-managed DB user instead of custom least-privilege role"
+
+    if ! doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null 2>&1; then
+      doctl databases user create "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
+    else
+      doctl databases user reset "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
+    fi
+
+    RUNTIME_DB_PASS="$(doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" --format Password --no-header)"
+  fi
+fi
+
+if [[ -z "${RUNTIME_DB_PASS:-}" ]]; then
+  if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
   -v app_user="$RUNTIME_DB_USER" \
   -v app_pass="$RUNTIME_DB_PASS" \
   -v db_name="$DB_NAME" \
@@ -178,7 +196,6 @@ fi
 
 # Runtime URL used by the public service (least privilege).
 RUNTIME_URI="postgresql://${RUNTIME_DB_USER}:${RUNTIME_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
-ingress:
 
 # If SESSION_SECRET is missing on the service, generate one.
 SESSION_SECRET_FALLBACK="$(openssl rand -hex 32)"
