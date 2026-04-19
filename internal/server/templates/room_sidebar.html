@@ -55,6 +55,22 @@
     </form>
     {{end}}
 
+    {{if .IsCreator}}
+        <form hx-post="/rooms/{{.Room.ID}}/pgp-required" 
+            hx-target="#room-sidebar" 
+            hx-swap="outerHTML"
+          hx-trigger="change">
+        <label>
+            <input type="checkbox" 
+                   name="value" 
+                   value="true"
+                   {{if .Room.PGPRequired}}checked{{end}}
+                   onchange="this.value = this.checked ? 'true' : 'false'">
+            Require PGP encryption
+        </label>
+    </form>
+    {{end}}
+
     {{template "room_dynamic.html" .}}
 
     {{if .CanInvite}}

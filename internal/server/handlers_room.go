@@ -286,6 +286,36 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 	}
 }
 
+func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
+		if !ok {
+			http.Error(w, "login required", http.StatusUnauthorized)
+			return
+		}
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		value := r.FormValue("value") == "true"
+		err := svc.SetRoomPGPRequired(r.Context(), roomID, currentID, value)
+		switch {
+		case errors.Is(err, store.ErrNotRoomCreator):
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		case err != nil:
+			loggerFromContext(r.Context()).Error("set pgp_required", "err", err)
+			http.Error(w, "failed to update room", http.StatusInternalServerError)
+			return
+		}
+		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
+	}
+}
+
 func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)

@@ -529,6 +529,53 @@ func (c *ChatClient) readPump() {
 				continue
 			}
 
+			// Fetch room details to check if PGP is required
+			ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+			roomDetail, err := c.svc.GetRoomDetailView(ctx, c.roomID, c.userID)
+			cancel()
+			if err != nil {
+				slog.ErrorContext(ctx, "get room detail for pgp check", "err", err, "room_id", c.roomID)
+				span.End()
+				continue
+			}
+
+			plaintext := payload.Message
+			createdAt := time.Now()
+
+			// If PGP is optional, send plaintext to all members
+			if !roomDetail.Room.PGPRequired {
+				perUser := make(map[store.UserID][]byte, len(members))
+				out := ChatMessagePayload{
+					Type:      "message",
+					Username:  c.username,
+					Message:   plaintext,
+					CreatedAt: createdAt,
+				}
+				outBytes, err := json.Marshal(out)
+				if err != nil {
+					slog.Error("marshal chat message", "err", err)
+					span.End()
+					continue
+				}
+				for _, m := range members {
+					perUser[m.ID] = outBytes
+				}
+				c.hub.SendToRoomUsers(c.roomID, perUser)
+
+				// Record messages sent metric (one per recipient)
+				if metrics := observability.GetMetrics(); metrics != nil {
+					attrs := attribute.NewSet(
+						attribute.Int64("room_id", c.roomID.Int64()),
+						attribute.Int64("user_id", c.userID.Int64()),
+					)
+					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
+				}
+				slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
+				span.End()
+				continue
+			}
+
+			// PGP is required - validate sender has verified key
 			senderVerified := false
 			for _, m := range members {
 				if m.ID != c.userID {
@@ -551,11 +598,9 @@ func (c *ChatClient) readPump() {
 					default:
 					}
 				}
+				span.End()
 				continue
 			}
-
-			plaintext := payload.Message
-			createdAt := time.Now()
 
 			// Parallelize per-recipient encryption using errgroup
 			perUser := make(map[store.UserID][]byte, len(members))

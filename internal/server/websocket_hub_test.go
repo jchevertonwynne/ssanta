@@ -13,6 +13,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
+	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -122,6 +123,14 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	svc.EXPECT().IsRoomMember(gomock.Any(), roomID, userID).Return(true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil).AnyTimes()
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{{ID: userID, Username: "alice", PGPPublicKey: armoredPub, PGPVerifiedAt: &verifiedAt}}, nil).AnyTimes()
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(&service.RoomDetailView{
+		Room: store.RoomDetail{
+			Room: store.Room{
+				ID: roomID,
+			},
+			PGPRequired: true,
+		},
+	}, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -214,6 +223,14 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 		{ID: userB, Username: "bob", PGPPublicKey: ""},
 		// Extra keyed user not connected should not matter.
 		{ID: 999, Username: "ghost", PGPPublicKey: pubB},
+	}, nil).AnyTimes()
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, gomock.Any()).Return(&service.RoomDetailView{
+		Room: store.RoomDetail{
+			Room: store.Room{
+				ID: roomID,
+			},
+			PGPRequired: true,
+		},
 	}, nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -326,6 +343,14 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
 		{ID: userA, Username: "alice", PGPPublicKey: pubA, PGPVerifiedAt: nil},
 		{ID: userB, Username: "bob", PGPPublicKey: ""},
+	}, nil).AnyTimes()
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, gomock.Any()).Return(&service.RoomDetailView{
+		Room: store.RoomDetail{
+			Room: store.Room{
+				ID: roomID,
+			},
+			PGPRequired: true,
+		},
 	}, nil).AnyTimes()
 
 	hub := NewChatHub()

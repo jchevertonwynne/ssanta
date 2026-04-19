@@ -175,3 +175,69 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 		t.Fatalf("expected ErrNotRoomCreator, got %v", err)
 	}
 }
+
+func TestRoomStore_SetPGPRequired_Success(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+
+	// Initially pgp_required should be false
+	rd, err := st.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
+		t.Fatalf("get room detail: %v", err)
+	}
+	if rd.PGPRequired {
+		t.Fatalf("expected PGPRequired to be false initially, got true")
+	}
+
+	// Set pgp_required to true
+	if err := st.Rooms.SetRoomPGPRequired(ctx, roomID, creatorID, true); err != nil {
+		t.Fatalf("set pgp_required: %v", err)
+	}
+
+	// Verify it was updated
+	rd, err = st.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
+		t.Fatalf("get room detail: %v", err)
+	}
+	if !rd.PGPRequired {
+		t.Fatalf("expected PGPRequired to be true after update, got false")
+	}
+}
+
+func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	otherID, err := st.Users.CreateUser(ctx, "other", "testhash")
+	if err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+
+	if err := st.Rooms.SetRoomPGPRequired(ctx, roomID, otherID, true); !errors.Is(err, ErrNotRoomCreator) {
+		t.Fatalf("expected ErrNotRoomCreator, got %v", err)
+	}
+}
+

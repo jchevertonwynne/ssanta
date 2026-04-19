@@ -1,0 +1,2 @@
+ALTER TABLE rooms
+    ADD COLUMN pgp_required BOOLEAN NOT NULL DEFAULT false;

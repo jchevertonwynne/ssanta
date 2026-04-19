@@ -1272,6 +1272,68 @@ func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) DoAndRet
 	return c
 }
 
+// MockSetRoomPGPRequiredService is a mock of SetRoomPGPRequiredService interface.
+type MockSetRoomPGPRequiredService struct {
+	ctrl     *gomock.Controller
+	recorder *MockSetRoomPGPRequiredServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockSetRoomPGPRequiredServiceMockRecorder is the mock recorder for MockSetRoomPGPRequiredService.
+type MockSetRoomPGPRequiredServiceMockRecorder struct {
+	mock *MockSetRoomPGPRequiredService
+}
+
+// NewMockSetRoomPGPRequiredService creates a new mock instance.
+func NewMockSetRoomPGPRequiredService(ctrl *gomock.Controller) *MockSetRoomPGPRequiredService {
+	mock := &MockSetRoomPGPRequiredService{ctrl: ctrl}
+	mock.recorder = &MockSetRoomPGPRequiredServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSetRoomPGPRequiredService) EXPECT() *MockSetRoomPGPRequiredServiceMockRecorder {
+	return m.recorder
+}
+
+// SetRoomPGPRequired mocks base method.
+func (m *MockSetRoomPGPRequiredService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRoomPGPRequired indicates an expected call of SetRoomPGPRequired.
+func (mr *MockSetRoomPGPRequiredServiceMockRecorder) SetRoomPGPRequired(ctx, roomID, creatorID, value any) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRoomPGPRequired", reflect.TypeOf((*MockSetRoomPGPRequiredService)(nil).SetRoomPGPRequired), ctx, roomID, creatorID, value)
+	return &MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall{Call: call}
+}
+
+// MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall wrap *gomock.Call
+type MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) Return(arg0 error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockRoomPGPService is a mock of RoomPGPService interface.
 type MockRoomPGPService struct {
 	ctrl     *gomock.Controller
@@ -2472,6 +2534,44 @@ func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Co
 	return c
 }
 
+// SetRoomPGPRequired mocks base method.
+func (m *MockRoomHandlersService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRoomPGPRequired indicates an expected call of SetRoomPGPRequired.
+func (mr *MockRoomHandlersServiceMockRecorder) SetRoomPGPRequired(ctx, roomID, creatorID, value any) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRoomPGPRequired", reflect.TypeOf((*MockRoomHandlersService)(nil).SetRoomPGPRequired), ctx, roomID, creatorID, value)
+	return &MockRoomHandlersServiceSetRoomPGPRequiredCall{Call: call}
+}
+
+// MockRoomHandlersServiceSetRoomPGPRequiredCall wrap *gomock.Call
+type MockRoomHandlersServiceSetRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) Return(arg0 error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UserExists mocks base method.
 func (m *MockRoomHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -2984,6 +3084,45 @@ func NewMockWebSocketHandlersService(ctrl *gomock.Controller) *MockWebSocketHand
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockWebSocketHandlersService) EXPECT() *MockWebSocketHandlersServiceMockRecorder {
 	return m.recorder
+}
+
+// GetRoomDetailView mocks base method.
+func (m *MockWebSocketHandlersService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
+	ret0, _ := ret[0].(*service.RoomDetailView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomDetailView indicates an expected call of GetRoomDetailView.
+func (mr *MockWebSocketHandlersServiceMockRecorder) GetRoomDetailView(ctx, roomID, userID any) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomDetailView", reflect.TypeOf((*MockWebSocketHandlersService)(nil).GetRoomDetailView), ctx, roomID, userID)
+	return &MockWebSocketHandlersServiceGetRoomDetailViewCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceGetRoomDetailViewCall wrap *gomock.Call
+type MockWebSocketHandlersServiceGetRoomDetailViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) Return(arg0 *service.RoomDetailView, arg1 error) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // GetUsername mocks base method.
@@ -4205,6 +4344,44 @@ func (c *MockServerServiceSetRoomPGPKeyCall) Do(f func(context.Context, store.Ro
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceSetRoomPGPKeyCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetRoomPGPRequired mocks base method.
+func (m *MockServerService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRoomPGPRequired indicates an expected call of SetRoomPGPRequired.
+func (mr *MockServerServiceMockRecorder) SetRoomPGPRequired(ctx, roomID, creatorID, value any) *MockServerServiceSetRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRoomPGPRequired", reflect.TypeOf((*MockServerService)(nil).SetRoomPGPRequired), ctx, roomID, creatorID, value)
+	return &MockServerServiceSetRoomPGPRequiredCall{Call: call}
+}
+
+// MockServerServiceSetRoomPGPRequiredCall wrap *gomock.Call
+type MockServerServiceSetRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceSetRoomPGPRequiredCall) Return(arg0 error) *MockServerServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

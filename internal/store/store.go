@@ -141,6 +141,7 @@ type Room struct {
 	ID          RoomID
 	DisplayName string
 	CreatedAt   time.Time
+	PGPRequired bool
 }
 
 type RoomDetail struct {
@@ -148,6 +149,7 @@ type RoomDetail struct {
 	CreatorID        UserID
 	CreatorUsername  string
 	MembersCanInvite bool
+	PGPRequired      bool
 }
 
 type InviteForUser struct {

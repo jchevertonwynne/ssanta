@@ -49,7 +49,7 @@ func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID Use
 
 func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at FROM rooms WHERE creator_id = $1 ORDER BY id DESC`,
+		`SELECT id, display_name, created_at, pgp_required FROM rooms WHERE creator_id = $1 ORDER BY id DESC`,
 		userID,
 	)
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Ro
 
 func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT r.id, r.display_name, r.created_at
+		`SELECT r.id, r.display_name, r.created_at, r.pgp_required
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
 		 WHERE ru.user_id = $1
@@ -76,12 +76,12 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetail, error) {
 	var d RoomDetail
 	err := s.db.QueryRow(ctx,
-		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, u.username
+		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, u.username
 		 FROM rooms r
 		 JOIN users u ON u.id = r.creator_id
 		 WHERE r.id = $1`,
 		roomID,
-	).Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.CreatorUsername)
+	).Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.PGPRequired, &d.CreatorUsername)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RoomDetail{}, ErrRoomNotFound
 	}
@@ -175,6 +175,20 @@ func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) (
 func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
 	tag, err := s.db.Exec(ctx,
 		`UPDATE rooms SET members_can_invite = $3 WHERE id = $1 AND creator_id = $2`,
+		roomID, creatorID, value,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotRoomCreator
+	}
+	return nil
+}
+
+func (s *RoomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID, value,
 	)
 	if err != nil {
@@ -391,7 +405,7 @@ func scanRooms(rows pgx.Rows) ([]Room, error) {
 	var rooms []Room
 	for rows.Next() {
 		var r Room
-		if err := rows.Scan(&r.ID, &r.DisplayName, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.DisplayName, &r.CreatedAt, &r.PGPRequired); err != nil {
 			return nil, err
 		}
 		rooms = append(rooms, r)

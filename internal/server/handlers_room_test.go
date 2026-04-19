@@ -203,6 +203,49 @@ func TestHandleSetMembersCanInvite_NonCreator_Returns403(t *testing.T) {
 	}
 }
 
+func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().SetRoomPGPRequired(gomock.Any(), roomID, userID, true).Return(store.ErrNotRoomCreator)
+
+	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetPGPRequired(svc, sessions), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, creatorID)
+	svc.EXPECT().SetRoomPGPRequired(gomock.Any(), roomID, creatorID, true).Return(nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView(roomID, "creator"), nil)
+
+	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetPGPRequired(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
 func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

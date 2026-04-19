@@ -92,6 +92,10 @@ type SetRoomMembersCanInviteService interface {
 	SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error
 }
 
+type SetRoomPGPRequiredService interface {
+	SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error
+}
+
 type RoomPGPService interface {
 	SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error
 	VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error
@@ -134,6 +138,7 @@ type RoomHandlersService interface {
 	RemoveMemberService
 	RoomAccessService
 	SetRoomMembersCanInviteService
+	SetRoomPGPRequiredService
 	RoomPGPService
 }
 
@@ -151,6 +156,7 @@ type WebSocketHandlersService interface {
 	UsernameService
 	IsRoomMemberService
 	RoomMembersWithPGPService
+	RoomDetailViewService
 }
 
 // ServerService is the full surface required to wire all routes.

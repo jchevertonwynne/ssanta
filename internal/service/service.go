@@ -390,6 +390,10 @@ func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.Room
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
+func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, creatorID, value)
+}
+
 func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
 	return s.store.Rooms.RemoveMember(ctx, roomID, memberID, creatorID)
 }
