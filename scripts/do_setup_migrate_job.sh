@@ -201,20 +201,47 @@ RUNTIME_URI="postgresql://${RUNTIME_DB_USER}:${RUNTIME_DB_PASS}@${DB_HOST}:${DB_
 SESSION_SECRET_FALLBACK="$(openssl rand -hex 32)"
 
 SPEC_FILE="$(mktemp -t ssanta-appspec.XXXXXX.json)"
+APP_GET_JSON_FILE="$(mktemp -t ssanta-appget.XXXXXX.json)"
+APP_GET_ERR_FILE="$(mktemp -t ssanta-appget.XXXXXX.err)"
 cleanup() {
   rm -f "$SPEC_FILE" 2>/dev/null || true
+  rm -f "$APP_GET_JSON_FILE" "$APP_GET_ERR_FILE" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 # Patch the existing app spec in JSON so we preserve any extra settings.
 log "patching app spec (service=$SERVICE_NAME job=$JOB_NAME)"
-doctl apps get "$APP_ID" --output json | \
-  RUNTIME_URI="$RUNTIME_URI" \
-  ADMIN_URI="$ADMIN_URI" \
-  SERVICE_NAME="$SERVICE_NAME" \
-  JOB_NAME="$JOB_NAME" \
-  SESSION_SECRET_FALLBACK="$SESSION_SECRET_FALLBACK" \
-  python3 - <<'PY' >"$SPEC_FILE"
+
+# Fetch the app spec JSON with a couple retries to avoid transient API issues.
+attempt=1
+while true; do
+  : >"$APP_GET_ERR_FILE"
+  if doctl apps get "$APP_ID" --output json >"$APP_GET_JSON_FILE" 2>"$APP_GET_ERR_FILE"; then
+    break
+  fi
+  if [[ $attempt -ge 3 ]]; then
+    log "doctl apps get failed after $attempt attempts"
+    sed 's/^/[do-setup]   /' "$APP_GET_ERR_FILE" >&2 || true
+    exit 2
+  fi
+  log "doctl apps get failed (attempt $attempt); retrying..."
+  sed 's/^/[do-setup]   /' "$APP_GET_ERR_FILE" >&2 || true
+  attempt=$((attempt+1))
+  sleep 2
+done
+
+if [[ ! -s "$APP_GET_JSON_FILE" ]]; then
+  log "doctl apps get returned empty JSON"
+  sed 's/^/[do-setup]   /' "$APP_GET_ERR_FILE" >&2 || true
+  exit 2
+fi
+
+RUNTIME_URI="$RUNTIME_URI" \
+ADMIN_URI="$ADMIN_URI" \
+SERVICE_NAME="$SERVICE_NAME" \
+JOB_NAME="$JOB_NAME" \
+SESSION_SECRET_FALLBACK="$SESSION_SECRET_FALLBACK" \
+python3 - "$APP_GET_JSON_FILE" <<'PY' >"$SPEC_FILE"
 import json
 import os
 import sys
@@ -225,7 +252,8 @@ service_name = os.environ["SERVICE_NAME"]
 job_name = os.environ["JOB_NAME"]
 session_secret_fallback = os.environ["SESSION_SECRET_FALLBACK"]
 
-apps = json.load(sys.stdin)
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+  apps = json.load(f)
 spec = apps[0].get("spec")
 if not isinstance(spec, dict):
     raise SystemExit("Unable to read app spec")
