@@ -1,0 +1,16 @@
+<div id="content-invites">
+    <h3>Invites</h3>
+    {{if .Invites}}
+        <ul>
+        {{range .Invites}}
+            <li>
+                {{.RoomName}} <em>(from {{.InviterName}})</em>
+                <button hx-post="/invites/{{.InviteID}}/accept" hx-target="#content" hx-swap="innerHTML">Accept</button>
+                <button hx-post="/invites/{{.InviteID}}/decline" hx-target="#content" hx-swap="innerHTML">Refuse</button>
+            </li>
+        {{end}}
+        </ul>
+    {{else}}
+        <p>None yet.</p>
+    {{end}}
+</div>

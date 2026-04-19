@@ -1,0 +1,201 @@
+<div class="bar">
+    <span>Logged in as {{.CurrentUsername}}</span>
+    <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
+    <button hx-get="/content" hx-target="#content" hx-swap="innerHTML" hx-push-url="/">← Back</button>
+</div>
+
+<div class="cols">
+    <div id="room-sidebar">
+        <h2>{{.Room.DisplayName}}</h2>
+        <p>
+            <strong>Creator:</strong> {{.Room.CreatorUsername}}<br>
+            <strong>Created:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}
+        </p>
+
+        <div style="margin-bottom: 1rem;">
+            {{if .IsMember}}
+            {{if .IsCreator}}
+            <button hx-post="/rooms/{{.Room.ID}}/leave"
+                    hx-target="#room-sidebar"
+                    hx-swap="outerHTML"
+                    hx-confirm="Leave this room? You will remain the creator but won't be a member.">Leave room</button>
+            {{else}}
+            <button hx-post="/rooms/{{.Room.ID}}/leave"
+                    hx-target="#content"
+                    hx-swap="innerHTML"
+                    hx-push-url="/"
+                    hx-confirm="Leave this room?">Leave room</button>
+            {{end}}
+            {{else}}
+            {{if .IsCreator}}
+            <button hx-post="/rooms/{{.Room.ID}}/join"
+                    hx-target="#room-sidebar"
+                    hx-swap="outerHTML">Join room</button>
+            {{else}}
+            <button hx-post="/rooms/{{.Room.ID}}/join"
+                    hx-target="#content"
+                    hx-swap="innerHTML">Join room</button>
+            {{end}}
+            {{end}}
+            {{if .IsCreator}}
+            <button hx-delete="/rooms/{{.Room.ID}}"
+                    hx-target="#content"
+                    hx-swap="innerHTML"
+                    hx-push-url="/"
+                    hx-confirm="Delete room {{.Room.DisplayName}}? This cannot be undone.">Delete room</button>
+            {{end}}
+        </div>
+
+        {{if .IsCreator}}
+        <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
+              hx-target="#content" 
+              hx-swap="innerHTML"
+              hx-trigger="change">
+            <label>
+                <input type="checkbox" 
+                       name="value" 
+                       value="true"
+                       {{if .Room.MembersCanInvite}}checked{{end}}
+                       onchange="this.value = this.checked ? 'true' : 'false'">
+                Members can invite
+            </label>
+        </form>
+        {{end}}
+
+        {{template "room_dynamic.html" .}}
+
+        {{if .CanInvite}}
+        <section style="margin-top: 2rem;">
+            <h3>Invite a user</h3>
+            <form hx-post="/rooms/{{.Room.ID}}/invites" hx-target="#room-sidebar" hx-swap="outerHTML">
+                <input name="invitee_username" placeholder="Username" required
+                       pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
+                       value="{{.InviteFormAttempted}}">
+                <button type="submit">Send invite</button>
+            </form>
+            {{if .InviteFormError}}
+                <p class="error">{{.InviteFormError}}</p>
+            {{end}}
+        </section>
+        {{end}}
+    </div>
+
+    <section>
+        <h3>Chat</h3>
+        <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
+        <form id="chat-form" style="display: flex; gap: 0.5rem;">
+            <input id="chat-input" type="text"
+                   placeholder="{{if .IsMember}}Type a message...{{else}}Join the room to chat{{end}}"
+                   style="flex: 1;" maxlength="500"
+                   {{if not .IsMember}}disabled{{end}}>
+            <button type="submit" {{if not .IsMember}}disabled{{end}}>Send</button>
+        </form>
+    </section>
+</div>
+
+<script>
+(function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    
+    const isMember = {{if .IsMember}}true{{else}}false{{end}};
+    if (!isMember) {
+        return;
+    }
+    
+    const roomId = {{.Room.ID}};
+    
+    // Connect to WebSocket
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
+    
+    ws.onopen = function() {
+        console.log('Connected to chat');
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'kicked') {
+            ws.close();
+            window.location.href = '/';
+            return;
+        }
+
+        if (data.type === 'membership_lost') {
+            chatInput.disabled = true;
+            chatInput.placeholder = 'Join the room to chat';
+            document.querySelector('#chat-form button[type=submit]').disabled = true;
+            return;
+        }
+
+        if (data.type === 'membership_gained') {
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Type a message...';
+            document.querySelector('#chat-form button[type=submit]').disabled = false;
+            return;
+        }
+        
+        if (data.type === 'refresh') {
+            htmx.ajax('GET', '/rooms/' + roomId + '/dynamic', {target: '#room-dynamic', swap: 'outerHTML'});
+            return;
+        }
+        
+        if (data.type === 'system') {
+            const msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '0.5rem';
+            msgDiv.style.color = '#666';
+            msgDiv.style.fontStyle = 'italic';
+            
+            const time = new Date(data.created_at).toLocaleTimeString();
+            msgDiv.innerHTML = '<small>(' + time + ')</small> ' + escapeHtml(data.message);
+            
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return;
+        }
+        
+        if (data.type === 'message') {
+            const msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '0.5rem';
+            
+            const time = new Date(data.created_at).toLocaleTimeString();
+            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small><br>' + escapeHtml(data.message);
+            
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    };
+    
+    ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = function() {
+        console.log('Disconnected from chat');
+        const msgDiv = document.createElement('div');
+        msgDiv.style.color = '#b00020';
+        msgDiv.textContent = 'Disconnected from chat. Reload the page to reconnect.';
+        chatMessages.appendChild(msgDiv);
+    };
+    
+    chatForm.onsubmit = function(e) {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        if (message && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'message',
+                message: message
+            }));
+            chatInput.value = '';
+        }
+    };
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+})();
+</script>

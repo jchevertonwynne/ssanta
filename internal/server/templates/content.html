@@ -1,0 +1,133 @@
+<div class="bar">
+    {{if .CurrentUserID}}
+        <span>Logged in as {{.CurrentUsername}}</span>
+        <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
+        <button hx-delete="/users/{{.CurrentUserID}}"
+                hx-target="#content"
+                hx-swap="innerHTML"
+                hx-confirm="Delete your account? Rooms you created will also be removed.">Delete account</button>
+    {{else}}
+        <form hx-post="/users" hx-target="#content" hx-swap="innerHTML">
+            <input name="username" placeholder="Username" required
+                   pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
+                   value="{{.UserFormAttempted}}">
+            <button type="submit">Create user</button>
+        </form>
+    {{end}}
+</div>
+{{if .UserFormError}}<p class="error">{{.UserFormError}}</p>{{end}}
+
+<div class="cols">
+    <section>
+        <h2>Users</h2>
+        {{if .Users}}
+        <table>
+            <thead><tr><th>Username</th><th>Created</th><th></th></tr></thead>
+            <tbody>
+            {{$current := .CurrentUserID}}
+            {{range .Users}}
+                <tr>
+                    <td>{{.Username}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                    <td>
+                        {{if eq .ID $current}}
+                            <em>current</em>
+                        {{else}}
+                            <button hx-post="/login/{{.ID}}" hx-target="#content" hx-swap="innerHTML">Log in</button>
+                        {{end}}
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p>No users yet.</p>
+        {{end}}
+    </section>
+
+    {{if .CurrentUserID}}
+    <section>
+        <h2>Rooms</h2>
+
+        <form hx-post="/rooms" hx-target="#content" hx-swap="innerHTML">
+            <input name="display_name" placeholder="Room name" required maxlength="64"
+                   value="{{.RoomFormAttempted}}" autofocus>
+            <button type="submit">Create room</button>
+        </form>
+        {{if .RoomFormError}}
+            <p class="error">{{.RoomFormError}}</p>
+        {{end}}
+
+        <h3>Rooms I created</h3>
+        {{if .CreatedRooms}}
+            <ul>
+            {{range .CreatedRooms}}
+                <li>
+                    {{.DisplayName}}
+                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Enter</button>
+                    <button hx-delete="/rooms/{{.ID}}"
+                            hx-target="#content"
+                            hx-swap="innerHTML"
+                            hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
+                </li>
+            {{end}}
+            </ul>
+        {{else}}
+            <p>None yet.</p>
+        {{end}}
+
+        <h3>Rooms I'm a member of</h3>
+        {{if .MemberRooms}}
+            <ul>
+            {{range .MemberRooms}}
+                <li>
+                    {{.DisplayName}}
+                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Enter</button>
+                    <button hx-post="/rooms/{{.ID}}/leave"
+                            hx-target="#content"
+                            hx-swap="innerHTML"
+                            hx-push-url="/"
+                            hx-confirm="Leave {{.DisplayName}}?">Leave</button>
+                </li>
+            {{end}}
+            </ul>
+        {{else}}
+            <p>None yet.</p>
+        {{end}}
+
+        {{template "content_invites.html" .}}
+    </section>
+    {{end}}
+</div>
+
+{{if .CurrentUserID}}
+<script>
+(function() {
+    const currentUserID = {{.CurrentUserID}};
+    
+    // Connect to WebSocket for notifications
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(protocol + '//' + window.location.host + '/content/ws');
+    
+    ws.onopen = function() {
+        console.log('Connected to notification service');
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'invite_received' || data.type === 'invite_cancelled') {
+            htmx.ajax('GET', '/content/invites', {target: '#content-invites', swap: 'outerHTML'});
+        }
+    };
+    
+    ws.onerror = function(error) {
+        console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = function() {
+        console.log('Disconnected from notification service');
+    };
+})();
+</script>
+{{end}}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ssanta - {{.Room.DisplayName}}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
+        input { padding: 0.5rem; }
+        form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .cols { display: flex; gap: 2rem; align-items: flex-start; }
+        .cols > section { flex: 1; }
+        ul { padding-left: 1.25rem; }
+        .error { color: #b00020; margin: 0.25rem 0 0.75rem; }
+    </style>
+</head>
+<body>
+    <h1>ssanta</h1>
+    <div id="content">
+        {{template "room_detail.html" .}}
+    </div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Binaries / build output
+/server
+/out
+/bin/
+/dist/
+/build/
+
+# Coverage / profiling
+*.coverprofile
+coverage/
+cover.out
+
+# Logs
+*.log
+
+# Temporary files
+/tmp/
+*.tmp
+*.swp
+
+# Debugger artifacts
+__debug_bin
+
+# Environment files
+.env
+.env.local
+.env.*
+!.env.example
+!.env.sample
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.idea/
+.vscode/
+
+# Note: `vendor/` is NOT ignored because this repo includes it.
+# If you don't want to commit vendored deps, uncomment the next line.
+/vendor/

@@ -1,0 +1,74 @@
+<div id="room-sidebar">
+    <h2>{{.Room.DisplayName}}</h2>
+    <p>
+        <strong>Creator:</strong> {{.Room.CreatorUsername}}<br>
+        <strong>Created:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}
+    </p>
+
+    <div style="margin-bottom: 1rem;">
+        {{if .IsMember}}
+        {{if .IsCreator}}
+        <button hx-post="/rooms/{{.Room.ID}}/leave"
+                hx-target="#room-sidebar"
+                hx-swap="outerHTML"
+                hx-confirm="Leave this room? You will remain the creator but won't be a member.">Leave room</button>
+        {{else}}
+        <button hx-post="/rooms/{{.Room.ID}}/leave"
+                hx-target="#content"
+                hx-swap="innerHTML"
+                hx-push-url="/"
+                hx-confirm="Leave this room?">Leave room</button>
+        {{end}}
+        {{else}}
+        {{if .IsCreator}}
+        <button hx-post="/rooms/{{.Room.ID}}/join"
+                hx-target="#room-sidebar"
+                hx-swap="outerHTML">Join room</button>
+        {{else}}
+        <button hx-post="/rooms/{{.Room.ID}}/join"
+                hx-target="#content"
+                hx-swap="innerHTML">Join room</button>
+        {{end}}
+        {{end}}
+        {{if .IsCreator}}
+        <button hx-delete="/rooms/{{.Room.ID}}"
+                hx-target="#content"
+                hx-swap="innerHTML"
+                hx-push-url="/"
+                hx-confirm="Delete room {{.Room.DisplayName}}? This cannot be undone.">Delete room</button>
+        {{end}}
+    </div>
+
+    {{if .IsCreator}}
+    <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
+          hx-target="#content" 
+          hx-swap="innerHTML"
+          hx-trigger="change">
+        <label>
+            <input type="checkbox" 
+                   name="value" 
+                   value="true"
+                   {{if .Room.MembersCanInvite}}checked{{end}}
+                   onchange="this.value = this.checked ? 'true' : 'false'">
+            Members can invite
+        </label>
+    </form>
+    {{end}}
+
+    {{template "room_dynamic.html" .}}
+
+    {{if .CanInvite}}
+    <section style="margin-top: 2rem;">
+        <h3>Invite a user</h3>
+        <form hx-post="/rooms/{{.Room.ID}}/invites" hx-target="#room-sidebar" hx-swap="outerHTML">
+            <input name="invitee_username" placeholder="Username" required
+                   pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
+                   value="{{.InviteFormAttempted}}">
+            <button type="submit">Send invite</button>
+        </form>
+        {{if .InviteFormError}}
+            <p class="error">{{.InviteFormError}}</p>
+        {{end}}
+    </section>
+    {{end}}
+</div>

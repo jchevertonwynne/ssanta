@@ -1,0 +1,43 @@
+<div id="room-dynamic">
+    <h3>Members</h3>
+    {{if .Members}}
+        <ul>
+        {{$currentID := $.CurrentUserID}}
+        {{$isCreator := $.IsCreator}}
+        {{range .Members}}
+            <li>
+                {{.Username}}
+                {{if and $isCreator (ne .ID $currentID)}}
+                    <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
+                            hx-target="#room-dynamic"
+                            hx-swap="outerHTML"
+                            hx-confirm="Remove {{.Username}} from the room?">Remove</button>
+                {{end}}
+            </li>
+        {{end}}
+        </ul>
+    {{else}}
+        <p>No members yet.</p>
+    {{end}}
+
+    <h3>Pending invites</h3>
+    {{if .PendingInvites}}
+        <ul>
+        {{$currentID := $.CurrentUserID}}
+        {{$isCreator := $.IsCreator}}
+        {{range .PendingInvites}}
+            <li>
+                {{.InviteeName}} <em>(from {{.InviterName}})</em>
+                {{if or $isCreator (eq .InviterID $currentID)}}
+                    <button hx-post="/invites/{{.InviteID}}/cancel"
+                            hx-target="#room-dynamic"
+                            hx-swap="outerHTML"
+                            hx-confirm="Cancel invite for {{.InviteeName}}?">Cancel</button>
+                {{end}}
+            </li>
+        {{end}}
+        </ul>
+    {{else}}
+        <p>None yet.</p>
+    {{end}}
+</div>
