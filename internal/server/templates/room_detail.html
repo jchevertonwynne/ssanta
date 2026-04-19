@@ -100,13 +100,9 @@
     const chatInput = document.getElementById('chat-input');
     
     const isMember = {{if .IsMember}}true{{else}}false{{end}};
-    if (!isMember) {
-        return;
-    }
-    
     const roomId = {{.Room.ID}};
     
-    // Connect to WebSocket
+    // Connect to WebSocket (even if not a member yet - membership_gained will enable chat input)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
     

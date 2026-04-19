@@ -240,4 +240,3 @@ func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
 		t.Fatalf("expected ErrNotRoomCreator, got %v", err)
 	}
 }
-
