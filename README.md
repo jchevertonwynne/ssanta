@@ -31,6 +31,7 @@ You’ll need a Postgres database and these required environment variables:
 Optional:
 - `HTTP_ADDR` (default `:8080`)
 - `MIGRATIONS_DIR` (default `migrations`)
+- `DATABASE_SCHEMA` (default empty; when set, server will `CREATE SCHEMA IF NOT EXISTS` and set `search_path` so all tables + `schema_migrations` live in that schema)
 - `INVITE_MAX_AGE` (default `24h`)
 - `JANITOR_INTERVAL` (default `1m`)
 
@@ -41,6 +42,14 @@ Run:
 ```bash
 go run ./cmd/server
 ```
+
+## DigitalOcean App Platform / Managed Postgres note
+
+Some managed Postgres setups restrict writes to the `public` schema. If you see an error like:
+
+`pq: permission denied for schema public ... CREATE TABLE ... schema_migrations`
+
+Set `DATABASE_SCHEMA` to a schema name your DB user can own/write (for example `ssanta`). The server will create the schema (if needed) and run migrations with `search_path` set to it.
 
 ## Architecture
 

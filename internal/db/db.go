@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -13,10 +15,59 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+func WithSearchPath(databaseURL, schema string) (string, error) {
+	schema = strings.TrimSpace(schema)
+	if schema == "" {
+		return databaseURL, nil
+	}
+
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		return "", fmt.Errorf("parse db url: %w", err)
+	}
+
+	q := u.Query()
+	q.Set("search_path", schema)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+func CreateSchema(ctx context.Context, databaseURL, schema string) error {
+	schema = strings.TrimSpace(schema)
+	if schema == "" {
+		return nil
+	}
+
+	pool, err := Connect(ctx, databaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	query := "CREATE SCHEMA IF NOT EXISTS " + quoteIdent(schema)
+	if _, err := pool.Exec(ctx, query); err != nil {
+		return fmt.Errorf("create schema %q: %w", schema, err)
+	}
+	return nil
+}
+
+func quoteIdent(ident string) string {
+	return `"` + strings.ReplaceAll(ident, `"`, `""`) + `"`
+}
+
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("parse db url: %w", err)
+	}
+
+	// pgxpool.ParseConfig doesn't always propagate runtime params like search_path
+	// from URL query parameters, so explicitly apply it when present.
+	if sp, ok := searchPathFromURL(url); ok {
+		if cfg.ConnConfig.RuntimeParams == nil {
+			cfg.ConnConfig.RuntimeParams = map[string]string{}
+		}
+		cfg.ConnConfig.RuntimeParams["search_path"] = sp
 	}
 	cfg.MaxConnLifetime = 30 * time.Minute
 
@@ -33,6 +84,18 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	}
 
 	return pool, nil
+}
+
+func searchPathFromURL(databaseURL string) (string, bool) {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		return "", false
+	}
+	sp := strings.TrimSpace(u.Query().Get("search_path"))
+	if sp == "" {
+		return "", false
+	}
+	return sp, true
 }
 
 func Migrate(url, dir string) error {

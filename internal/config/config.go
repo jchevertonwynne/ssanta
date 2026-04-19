@@ -13,6 +13,7 @@ import (
 type Config struct {
 	HTTPAddr      string `env:"HTTP_ADDR,:8080"`
 	DatabaseURL   string `env:"DATABASE_URL"`
+	DatabaseSchema string `env:"DATABASE_SCHEMA,"`
 	MigrationsDir string `env:"MIGRATIONS_DIR,migrations"`
 	SessionSecret string `env:"SESSION_SECRET"`
 
