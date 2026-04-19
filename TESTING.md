@@ -12,6 +12,12 @@ Integration tests are skipped unless you opt in:
 
 - `SSANTA_INTEGRATION=1 go test ./internal/store -count=1`
 
+Store layer:
+- `SSANTA_INTEGRATION=1 go test ./internal/store -count=1`
+
+Service layer:
+- `SSANTA_INTEGRATION=1 go test ./internal/service -count=1`
+
 Notes:
 - Requires a working Docker daemon.
 - Tests start a temporary Postgres container, run migrations from `migrations/`, then truncate tables between tests.

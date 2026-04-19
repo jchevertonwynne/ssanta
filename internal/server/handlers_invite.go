@@ -75,6 +75,10 @@ func handleAcceptInvite(svc InviteHandlersService, sessions SessionManager, hub 
 		// Get room ID and username before accepting
 		roomID, err := svc.RoomIDForInvite(r.Context(), inviteID)
 		if err != nil {
+			if errors.Is(err, store.ErrInviteNotFound) {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
 			slog.Error("lookup invite room", "err", err)
 			http.Error(w, "failed to accept invite", http.StatusInternalServerError)
 			return

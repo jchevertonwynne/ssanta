@@ -287,7 +287,11 @@ func (h *ChatHub) NotifyUser(userID int64, msgType, message string) {
 
 func (c *ChatClient) readPump() {
 	defer func() {
-		c.hub.unregister <- c
+		select {
+		case c.hub.unregister <- c:
+		case <-c.hub.done:
+			// Hub is stopping; avoid blocking if Run has exited.
+		}
 		c.conn.Close()
 		c.hub.wg.Done()
 	}()

@@ -91,3 +91,167 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 		t.Fatalf("expected invite to be deleted (ErrInviteNotFound), got %v", err)
 	}
 }
+
+func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	memberID, err := st.Users.CreateUser(ctx, "member")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+	_ = inviteeID
+
+	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms: %v", err)
+	}
+	roomID := rooms[0].ID
+
+	if err := st.Rooms.JoinRoom(ctx, roomID, memberID); err != nil {
+		t.Fatalf("join room: %v", err)
+	}
+
+	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee"); err != ErrNotAllowedToInvite {
+		t.Fatalf("expected ErrNotAllowedToInvite, got %v", err)
+	}
+}
+
+func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	memberID, err := st.Users.CreateUser(ctx, "member")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+	_ = inviteeID
+
+	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms: %v", err)
+	}
+	roomID := rooms[0].ID
+
+	if err := st.Rooms.JoinRoom(ctx, roomID, memberID); err != nil {
+		t.Fatalf("join room: %v", err)
+	}
+	if err := st.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, true); err != nil {
+		t.Fatalf("enable members_can_invite: %v", err)
+	}
+
+	if err := st.Invites.CreateInvite(ctx, roomID, memberID, "invitee"); err != nil {
+		t.Fatalf("expected invite creation success, got %v", err)
+	}
+}
+
+func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+	_ = inviteeID
+
+	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms: %v", err)
+	}
+	roomID := rooms[0].ID
+
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != ErrAlreadyInvited {
+		t.Fatalf("expected ErrAlreadyInvited, got %v", err)
+	}
+}
+
+func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee")
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+	_ = inviteeID
+	otherID, err := st.Users.CreateUser(ctx, "other")
+	if err != nil {
+		t.Fatalf("create other: %v", err)
+	}
+
+	if err := st.Rooms.CreateRoom(ctx, "room", creatorID); err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms: %v", err)
+	}
+	roomID := rooms[0].ID
+
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee"); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)
+	if err != nil {
+		t.Fatalf("list invites: %v", err)
+	}
+	inviteID := invites[0].InviteID
+
+	if err := st.Invites.AcceptInvite(ctx, inviteID, otherID); err != ErrInviteNotFound {
+		t.Fatalf("expected ErrInviteNotFound, got %v", err)
+	}
+
+	// Invite still exists for the real invitee.
+	if _, err := st.Invites.RoomIDForInvite(ctx, inviteID); err != nil {
+		t.Fatalf("expected invite to still exist, got %v", err)
+	}
+}
