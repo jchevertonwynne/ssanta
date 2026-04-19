@@ -138,32 +138,22 @@ if command -v nc >/dev/null 2>&1 && [[ "$FALLBACK_TO_DOCTL_USER" == "1" ]]; then
   fi
 fi
 
-if [[ -z "${RUNTIME_DB_PASS:-}" ]]; then
-  if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
-  -v app_user="$RUNTIME_DB_USER" \
-  -v app_pass="$RUNTIME_DB_PASS" \
-  -v db_name="$DB_NAME" \
-  <<'SQL' >/dev/null
-DO $$
+if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
+  <<SQL >/dev/null
+DO \$\$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user') THEN
-    EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_pass');
-  ELSE
-    EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', :'app_user', :'app_pass');
-  END IF;
-END$$;
+  CREATE ROLE "${RUNTIME_DB_USER}" LOGIN PASSWORD '${RUNTIME_DB_PASS}';
+EXCEPTION WHEN duplicate_object THEN
+  ALTER ROLE "${RUNTIME_DB_USER}" WITH PASSWORD '${RUNTIME_DB_PASS}';
+END\$\$;
 
-SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'db_name', :'app_user') \gexec
-SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'app_user') \gexec
-SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I', :'app_user') \gexec
-SELECT format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I', :'app_user') \gexec
-
--- Ensure future tables/sequences created by doadmin are usable by the app role.
-SELECT format('ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', :'app_user') \gexec
-SELECT format('ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', :'app_user') \gexec
-
--- Explicitly deny DDL.
-SELECT format('REVOKE CREATE ON SCHEMA public FROM %I', :'app_user') \gexec
+GRANT CONNECT ON DATABASE "${DB_NAME}" TO "${RUNTIME_DB_USER}";
+GRANT USAGE ON SCHEMA public TO "${RUNTIME_DB_USER}";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${RUNTIME_DB_USER}";
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${RUNTIME_DB_USER}";
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${RUNTIME_DB_USER}";
+ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${RUNTIME_DB_USER}";
+REVOKE CREATE ON SCHEMA public FROM "${RUNTIME_DB_USER}";
 SQL
 then
   log "psql failed to connect (timeout or network block)."
@@ -192,13 +182,24 @@ then
   # Fetch password without echoing other fields.
   RUNTIME_DB_PASS="$(doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" --format Password --no-header)"
 fi
-fi
 
 # Runtime URL used by the public service (least privilege).
 RUNTIME_URI="postgresql://${RUNTIME_DB_USER}:${RUNTIME_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
 
-# If SESSION_SECRET is missing on the service, generate one.
-SESSION_SECRET_FALLBACK="$(openssl rand -hex 32)"
+# Load or generate SESSION_SECRET. Stored in .secrets/ so it survives redeploys
+# (rotating it would invalidate all active sessions).
+mkdir -p .secrets
+chmod 700 .secrets
+SESSION_SECRET_FILE=".secrets/ssanta_session_secret"
+if [[ -s "$SESSION_SECRET_FILE" ]]; then
+  SESSION_SECRET_VAL="$(cat "$SESSION_SECRET_FILE")"
+  log "loaded SESSION_SECRET from $SESSION_SECRET_FILE"
+else
+  SESSION_SECRET_VAL="$(openssl rand -hex 32)"
+  printf "%s" "$SESSION_SECRET_VAL" > "$SESSION_SECRET_FILE"
+  chmod 600 "$SESSION_SECRET_FILE"
+  log "generated new SESSION_SECRET, saved to $SESSION_SECRET_FILE"
+fi
 
 SPEC_FILE="$(mktemp -t ssanta-appspec.XXXXXX.json)"
 APP_GET_JSON_FILE="$(mktemp -t ssanta-appget.XXXXXX.json)"
@@ -240,7 +241,7 @@ RUNTIME_URI="$RUNTIME_URI" \
 ADMIN_URI="$ADMIN_URI" \
 SERVICE_NAME="$SERVICE_NAME" \
 JOB_NAME="$JOB_NAME" \
-SESSION_SECRET_FALLBACK="$SESSION_SECRET_FALLBACK" \
+SESSION_SECRET_VAL="$SESSION_SECRET_VAL" \
 python3 - "$APP_GET_JSON_FILE" <<'PY' >"$SPEC_FILE"
 import json
 import os
@@ -250,7 +251,7 @@ runtime_uri = os.environ["RUNTIME_URI"]
 admin_uri = os.environ["ADMIN_URI"]
 service_name = os.environ["SERVICE_NAME"]
 job_name = os.environ["JOB_NAME"]
-session_secret_fallback = os.environ["SESSION_SECRET_FALLBACK"]
+session_secret_val = os.environ["SESSION_SECRET_VAL"]
 
 with open(sys.argv[1], "r", encoding="utf-8") as f:
   apps = json.load(f)
@@ -289,16 +290,20 @@ def remove_env(env_list, key):
 upsert_env(envs, "DATABASE_URL", runtime_uri, env_type="SECRET")
 remove_env(envs, "MIGRATE_DATABASE_URL")
 
-# Web service: preserve existing SESSION_SECRET if present, otherwise generate.
-existing = None
+# Web service: always set SESSION_SECRET from the locally-persisted value so we
+# submit a plaintext value (DO rejects re-submitting its own EV[…] ciphertext,
+# and omitting the value clears the secret).
+upsert_env(envs, "SESSION_SECRET", session_secret_val, env_type="SECRET")
+
+# Strip EV[…]-encrypted values from any other SECRET envs we haven't explicitly
+# set — DO rejects re-submitting its own ciphertext. Omitting value for
+# non-managed secrets is the least-bad option.
+explicitly_set = {"DATABASE_URL", "SESSION_SECRET"}
 for e in envs:
-    if e.get("key") == "SESSION_SECRET":
-        existing = e.get("value")
-        break
-if not existing:
-    upsert_env(envs, "SESSION_SECRET", session_secret_fallback, env_type="SECRET")
-else:
-    upsert_env(envs, "SESSION_SECRET", existing, env_type="SECRET")
+    if e.get("type") == "SECRET" and e.get("key") not in explicitly_set:
+        v = e.get("value", "")
+        if v.startswith("EV["):
+            del e["value"]
 
 service["envs"] = envs
 
