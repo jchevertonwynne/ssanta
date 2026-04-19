@@ -57,6 +57,15 @@ If your app’s DB user cannot create schemas (error like `permission denied for
 - Pre-create the schema once using an admin role, or
 - Set `MIGRATE_DATABASE_URL` to a more privileged connection string (admin role) so the app can create the schema + run migrations at startup.
 
+### DigitalOcean Dev Database
+
+Dev Databases don’t support creating additional databases/schemas. For this setup:
+
+- Leave `DATABASE_SCHEMA` unset (or set it to `public`).
+- Don’t set `MIGRATE_DATABASE_URL`.
+
+If you still see `permission denied for schema public`, the Dev Database role likely doesn’t have sufficient privileges to run migrations; in that case you’ll need to switch to a managed Postgres cluster where you can grant privileges or use an admin role for migrations.
+
 ## Architecture
 
 High-level request flow:

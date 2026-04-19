@@ -12,8 +12,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func WithSearchPath(databaseURL, schema string) (string, error) {
@@ -36,6 +36,9 @@ func WithSearchPath(databaseURL, schema string) (string, error) {
 func CreateSchema(ctx context.Context, databaseURL, schema string) error {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {
+		return nil
+	}
+	if schema == "public" {
 		return nil
 	}
 
