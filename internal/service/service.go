@@ -85,10 +85,11 @@ type RoomDetailView struct {
 	Room            store.RoomDetail
 	IsCreator       bool
 	IsMember        bool
+	IsDMRoom        bool
 	CanInvite       bool
 	Members         []store.RoomMember
 	PendingInvites  []store.InviteForRoom
-	DMPartnerName   string // non-empty only when Room.IsDM is true
+	DMPartnerName   string // non-empty only when IsDMRoom is true
 }
 
 // GetContentView loads all data needed for the main content page
@@ -186,8 +187,10 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 		return nil, err
 	}
 
+	isDMRoom := room.IsDM || strings.HasPrefix(room.DisplayName, "dm:")
+
 	var dmPartnerName string
-	if room.IsDM {
+	if isDMRoom {
 		for _, m := range members {
 			if m.ID != userID {
 				dmPartnerName = m.Username
@@ -201,7 +204,8 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 		Room:            room,
 		IsCreator:       isCreator,
 		IsMember:        isMember,
-		CanInvite:       isCreator || (isMember && room.MembersCanInvite),
+		IsDMRoom:        isDMRoom,
+		CanInvite:       !isDMRoom && (isCreator || (isMember && room.MembersCanInvite)),
 		Members:         members,
 		PendingInvites:  invites,
 		DMPartnerName:   dmPartnerName,
@@ -422,11 +426,15 @@ func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.Room
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
-func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
-	if err := s.assertNotDM(ctx, roomID); err != nil {
+func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, actingUserID store.UserID, value bool) error {
+	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
 		return err
 	}
-	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, creatorID, value)
+	if detail.IsDM {
+		return s.store.Rooms.SetDMRoomPGPRequired(ctx, roomID, actingUserID, value)
+	}
+	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, actingUserID, value)
 }
 
 func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {

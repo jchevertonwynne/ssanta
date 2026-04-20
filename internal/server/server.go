@@ -44,6 +44,7 @@ type roomDetailData struct {
 	Room                store.RoomDetail
 	IsCreator           bool
 	IsMember            bool
+	IsDMRoom            bool
 	CanInvite           bool
 	Members             []store.RoomMember
 	PendingInvites      []store.InviteForRoom
@@ -277,6 +278,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		Room:                view.Room,
 		IsCreator:           view.IsCreator,
 		IsMember:            view.IsMember,
+		IsDMRoom:            view.IsDMRoom,
 		CanInvite:           view.CanInvite,
 		Members:             view.Members,
 		PendingInvites:      view.PendingInvites,

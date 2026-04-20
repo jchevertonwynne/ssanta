@@ -412,6 +412,20 @@ func (s *RoomStore) SearchPublicRooms(ctx context.Context, query string, limit i
 	return scanRooms(rows)
 }
 
+func (s *RoomStore) SetDMRoomPGPRequired(ctx context.Context, roomID RoomID, memberID UserID, value bool) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND is_dm = TRUE AND EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
+		roomID, memberID, value,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotRoomMember
+	}
+	return nil
+}
+
 func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, isPublic bool) error {
 	tag, err := s.db.Exec(ctx,
 		`UPDATE rooms SET is_public = $3 WHERE id = $1 AND creator_id = $2`,

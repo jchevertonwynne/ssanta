@@ -1,5 +1,5 @@
 <div id="room-sidebar">
-    {{if .Room.IsDM}}
+    {{if .IsDMRoom}}
     <h2>{{.DMPartnerName}}</h2>
     <p><strong>Started:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}</p>
     {{else}}
@@ -11,14 +11,7 @@
     {{end}}
 
     <div style="margin-bottom: 1rem;">
-        {{if .Room.IsDM}}
-        {{if .IsMember}}
-        <button hx-post="/rooms/{{.Room.ID}}/leave"
-                hx-target="#content"
-                hx-swap="innerHTML"
-                hx-push-url="/"
-                hx-confirm="Leave this conversation?">Leave conversation</button>
-        {{end}}
+        {{if .IsDMRoom}}
         {{else}}
         {{if .IsMember}}
         {{if .IsCreator}}
@@ -54,7 +47,7 @@
         {{end}}
     </div>
 
-    {{if and .IsCreator (not .Room.IsDM)}}
+    {{if and .IsCreator (not .IsDMRoom)}}
     <section style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
         <h4 style="margin-top: 0;">Room Settings</h4>
 
@@ -71,6 +64,26 @@
             Members can invite
         </label>
         </form>
+
+        <form hx-post="/rooms/{{.Room.ID}}/pgp-required"
+            hx-target="#room-sidebar"
+            hx-swap="outerHTML"
+            hx-trigger="change">
+        <label>
+            <input type="checkbox"
+                   name="value"
+                   value="true"
+                   {{if .Room.PGPRequired}}checked{{end}}
+                   onchange="this.value = this.checked ? 'true' : 'false'">
+            Require PGP encryption
+        </label>
+        </form>
+    </section>
+    {{end}}
+
+    {{if and .IsDMRoom .IsMember}}
+    <section style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+        <h4 style="margin-top: 0;">Conversation Settings</h4>
 
         <form hx-post="/rooms/{{.Room.ID}}/pgp-required"
             hx-target="#room-sidebar"

@@ -7,7 +7,7 @@
         {{range .Members}}
             <li>
                 {{.Username}}                
-                {{if and $isCreator (ne .ID $currentID)}}
+                {{if and $isCreator (ne .ID $currentID) (not $.IsDMRoom)}}
                     <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
                             hx-target="#room-dynamic"
                             hx-swap="outerHTML"
