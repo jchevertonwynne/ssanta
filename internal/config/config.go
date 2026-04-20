@@ -29,10 +29,6 @@ type Config struct {
 	Argon2Iterations  uint32 `env:"ARGON2_ITERATIONS,1"`
 	Argon2Parallelism uint8  `env:"ARGON2_PARALLELISM,4"`
 
-	LoginRateLimitPerMin int  `env:"LOGIN_RATE_LIMIT_PER_MIN,10"`
-	LoginIPBurst         int  `env:"LOGIN_IP_BURST,30"`
-	TrustForwardedFor    bool `env:"TRUST_FORWARDED_FOR,false"`
-
 	OTLPEndpoint string `env:"OTLP_ENDPOINT,"`
 	OTLPInsecure bool   `env:"OTLP_INSECURE,true"`
 	ServiceName  string `env:"OTEL_SERVICE_NAME,ssanta"`

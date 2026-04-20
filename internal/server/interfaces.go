@@ -84,6 +84,10 @@ type IsRoomMemberService interface {
 	IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error)
 }
 
+type IsRoomPGPRequiredService interface {
+	IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error)
+}
+
 type RoomAccessService interface {
 	GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error)
 }
@@ -156,7 +160,7 @@ type WebSocketHandlersService interface {
 	UsernameService
 	IsRoomMemberService
 	RoomMembersWithPGPService
-	RoomDetailViewService
+	IsRoomPGPRequiredService
 	RoomAccessService
 }
 
@@ -182,7 +186,6 @@ type DMHandlersService interface {
 	UserExistsService
 	ContentViewService
 	GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error)
-	GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error)
 }
 
 type Hub interface {

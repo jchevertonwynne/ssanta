@@ -299,3 +299,81 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 		t.Fatalf("expected room dynamic fragment")
 	}
 }
+
+func TestHandleRoomMembersList_Unauthorized_Returns401(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+
+	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleRoomMembersList(svc, sessions), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d", w.Code)
+	}
+}
+
+func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: 1, Username: "alice"},
+		{ID: 3, Username: "charlie"},
+	}, nil)
+
+	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleRoomMembersList(svc, sessions), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleRoomMembersList_Success_ExcludesCurrentUser(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: 1, Username: "alice"},
+		{ID: 2, Username: "bob"},
+		{ID: 3, Username: "charlie"},
+	}, nil)
+
+	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleRoomMembersList(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if ct != "application/json" {
+		t.Fatalf("expected Content-Type application/json, got %s", ct)
+	}
+	body := w.Body.String()
+	if strings.Contains(body, `"bob"`) {
+		t.Fatalf("expected current user (bob, id=2) to be excluded from response")
+	}
+	if !strings.Contains(body, `"alice"`) || !strings.Contains(body, `"charlie"`) {
+		t.Fatalf("expected alice and charlie in response, got %s", body)
+	}
+}

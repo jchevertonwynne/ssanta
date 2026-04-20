@@ -35,6 +35,7 @@
     const chatMessages = document.getElementById('chat-messages');
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
+    const chatTarget = document.getElementById('chat-target');
     
     const isMember = {{if .IsMember}}true{{else}}false{{end}};
     const isCreator = {{if .IsCreator}}true{{else}}false{{end}};
@@ -61,6 +62,7 @@
             chatInput.disabled = true;
             chatInput.placeholder = 'Join the room to chat';
             document.querySelector('#chat-form button[type=submit]').disabled = true;
+            if (chatTarget) chatTarget.disabled = true;
             return;
         }
 
@@ -68,6 +70,7 @@
             chatInput.disabled = false;
             chatInput.placeholder = 'Type a message...';
             document.querySelector('#chat-form button[type=submit]').disabled = false;
+            if (chatTarget) chatTarget.disabled = false;
             return;
         }
         
@@ -166,8 +169,6 @@
         chatMessages.appendChild(msgDiv);
     };
     
-    const chatTarget = document.getElementById('chat-target');
-
     chatForm.onsubmit = function(e) {
         e.preventDefault();
         const message = chatInput.value.trim();

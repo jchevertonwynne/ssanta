@@ -106,14 +106,6 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 			return
 		}
 
-		// Get username before joining
-		username, err := svc.GetUsername(r.Context(), currentID)
-		if err != nil {
-			loggerFromContext(r.Context()).Error("get username", "err", err)
-			http.Error(w, "failed to get user info", http.StatusInternalServerError)
-			return
-		}
-
 		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
 			loggerFromContext(r.Context()).Error("check room access", "err", err)
@@ -123,6 +115,13 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 
 		if !isCreator && !isMember {
 			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return
+		}
+
+		username, err := svc.GetUsername(r.Context(), currentID)
+		if err != nil {
+			loggerFromContext(r.Context()).Error("get username", "err", err)
+			http.Error(w, "failed to get user info", http.StatusInternalServerError)
 			return
 		}
 
@@ -159,18 +158,17 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 		}
 
 		// Get username before leaving
-		username, err := svc.GetUsername(r.Context(), currentID)
-		if err != nil {
-			loggerFromContext(r.Context()).Error("get username", "err", err)
-			http.Error(w, "failed to get user info", http.StatusInternalServerError)
-			return
-		}
-
-		// Check if user is the creator before leaving
 		isCreator, _, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
 			loggerFromContext(r.Context()).Error("check room access", "err", err)
 			http.Error(w, "failed to check room status", http.StatusInternalServerError)
+			return
+		}
+
+		username, err := svc.GetUsername(r.Context(), currentID)
+		if err != nil {
+			loggerFromContext(r.Context()).Error("get username", "err", err)
+			http.Error(w, "failed to get user info", http.StatusInternalServerError)
 			return
 		}
 
@@ -385,7 +383,6 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 
 type MembersListService interface {
 	UserExistsService
-	IsRoomMemberService
 	RoomMembersWithPGPService
 }
 
@@ -401,32 +398,31 @@ func handleRoomMembersList(svc MembersListService, sessions SessionManager) http
 			return
 		}
 
-		isMember, err := svc.IsRoomMember(r.Context(), roomID, currentID)
-		if err != nil {
-			http.Error(w, "failed to check membership", http.StatusInternalServerError)
-			return
-		}
-		if !isMember {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
-		}
-
 		members, err := svc.ListRoomMembersWithPGP(r.Context(), roomID)
 		if err != nil {
 			http.Error(w, "failed to list members", http.StatusInternalServerError)
 			return
 		}
 
+		// Check membership from the results instead of a separate query
+		isMember := false
 		type memberEntry struct {
 			ID       store.UserID `json:"id"`
 			Username string       `json:"username"`
 		}
 		out := make([]memberEntry, 0, len(members))
 		for _, m := range members {
-			if m.ID != currentID {
-				out = append(out, memberEntry{ID: m.ID, Username: m.Username})
+			if m.ID == currentID {
+				isMember = true
+				continue
 			}
+			out = append(out, memberEntry{ID: m.ID, Username: m.Username})
 		}
+		if !isMember {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return
+		}
+
 		writeJSON(w, http.StatusOK, out)
 	}
 }

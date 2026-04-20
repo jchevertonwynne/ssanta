@@ -27,12 +27,24 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
+	// Single query to gather all validation data
 	var creatorID UserID
 	var membersCanInvite bool
+	var inviterIsMember bool
+	var inviteeID *UserID // nullable if user not found
+	var inviteeIsMember bool
 	err = tx.QueryRow(ctx,
-		`SELECT creator_id, members_can_invite FROM rooms WHERE id = $1`,
-		roomID,
-	).Scan(&creatorID, &membersCanInvite)
+		`SELECT
+			r.creator_id,
+			r.members_can_invite,
+			EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2) AS inviter_is_member,
+			u.id,
+			EXISTS(SELECT 1 FROM room_users ru2 WHERE ru2.room_id = $1 AND ru2.user_id = u.id) AS invitee_is_member
+		 FROM rooms r
+		 LEFT JOIN users u ON u.username = $3
+		 WHERE r.id = $1`,
+		roomID, inviterID, inviteeName,
+	).Scan(&creatorID, &membersCanInvite, &inviterIsMember, &inviteeID, &inviteeIsMember)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrRoomNotFound
 	}
@@ -40,58 +52,27 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 		return err
 	}
 
+	// Validate inviter permissions
 	if inviterID != creatorID {
-		if !membersCanInvite {
-			return ErrNotAllowedToInvite
-		}
-		var isMember bool
-		err = tx.QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
-			roomID, inviterID,
-		).Scan(&isMember)
-		if err != nil {
-			return err
-		}
-		if !isMember {
+		if !membersCanInvite || !inviterIsMember {
 			return ErrNotAllowedToInvite
 		}
 	}
 
-	var inviteeID UserID
-	err = tx.QueryRow(ctx,
-		`SELECT id FROM users WHERE username = $1`,
-		inviteeName,
-	).Scan(&inviteeID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	// Validate invitee
+	if inviteeID == nil {
 		return ErrInviteeNotFound
 	}
-	if err != nil {
-		return err
-	}
-
-	if inviteeID == inviterID {
+	if *inviteeID == inviterID {
 		return ErrCannotInviteSelf
 	}
-
-	if inviteeID == creatorID {
-		return ErrAlreadyMember
-	}
-
-	var alreadyMember bool
-	err = tx.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
-		roomID, inviteeID,
-	).Scan(&alreadyMember)
-	if err != nil {
-		return err
-	}
-	if alreadyMember {
+	if *inviteeID == creatorID || inviteeIsMember {
 		return ErrAlreadyMember
 	}
 
 	_, err = tx.Exec(ctx,
 		`INSERT INTO room_invites (room_id, inviter_id, invitee_id, expires_at) VALUES ($1, $2, $3, $4)`,
-		roomID, inviterID, inviteeID, expiresAt,
+		roomID, inviterID, *inviteeID, expiresAt,
 	)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -105,7 +86,7 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 		return err
 	}
 
-	slog.InfoContext(ctx, "invite created in db", "room_id", roomID, "inviter_id", inviterID, "invitee_id", inviteeID)
+	slog.InfoContext(ctx, "invite created in db", "room_id", roomID, "inviter_id", inviterID, "invitee_id", *inviteeID)
 	return nil
 }
 

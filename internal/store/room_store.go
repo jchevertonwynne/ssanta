@@ -123,6 +123,18 @@ func (s *RoomStore) IsRoomMember(ctx context.Context, roomID RoomID, userID User
 	return exists, err
 }
 
+func (s *RoomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool, error) {
+	var required bool
+	err := s.db.QueryRow(ctx,
+		`SELECT pgp_required FROM rooms WHERE id = $1`,
+		roomID,
+	).Scan(&required)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrRoomNotFound
+	}
+	return required, err
+}
+
 func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	var exists bool
 	err := s.db.QueryRow(ctx,
@@ -380,38 +392,6 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	return tx.Commit(ctx)
 }
 
-// Room Discovery Support
-
-func (s *RoomStore) ListPublicRooms(ctx context.Context, limit int, offset int) ([]Room, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at, pgp_required, is_dm
-		 FROM rooms
-		 WHERE is_public = TRUE AND is_dm = FALSE
-		 ORDER BY id DESC
-		 LIMIT $1 OFFSET $2`,
-		limit, offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return scanRooms(rows)
-}
-
-func (s *RoomStore) SearchPublicRooms(ctx context.Context, query string, limit int) ([]Room, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at, pgp_required, is_dm
-		 FROM rooms
-		 WHERE is_public = TRUE AND is_dm = FALSE AND display_name ILIKE $1
-		 ORDER BY id DESC
-		 LIMIT $2`,
-		"%"+query+"%", limit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return scanRooms(rows)
-}
-
 func (s *RoomStore) SetDMRoomPGPRequired(ctx context.Context, roomID RoomID, memberID UserID, value bool) error {
 	tag, err := s.db.Exec(ctx,
 		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND is_dm = TRUE AND EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
@@ -422,20 +402,6 @@ func (s *RoomStore) SetDMRoomPGPRequired(ctx context.Context, roomID RoomID, mem
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrNotRoomMember
-	}
-	return nil
-}
-
-func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, isPublic bool) error {
-	tag, err := s.db.Exec(ctx,
-		`UPDATE rooms SET is_public = $3 WHERE id = $1 AND creator_id = $2`,
-		roomID, creatorID, isPublic,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotRoomCreator
 	}
 	return nil
 }

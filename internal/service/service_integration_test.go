@@ -214,9 +214,6 @@ func TestService_DMOperationsBlocked(t *testing.T) {
 	if err := svc.SetRoomPGPRequired(ctx, dmID, userA, true); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
 		t.Fatalf("SetRoomPGPRequired on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
 	}
-	if err := svc.SetRoomPublic(ctx, dmID, userA, true); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
-		t.Fatalf("SetRoomPublic on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
-	}
 	if err := svc.DeleteRoom(ctx, dmID, userA); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
 		t.Fatalf("DeleteRoom on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
 	}

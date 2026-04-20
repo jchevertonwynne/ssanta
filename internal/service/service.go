@@ -43,18 +43,6 @@ func (s *Service) SetInviteMaxAge(d time.Duration) {
 	}
 }
 
-func (s *Service) SetRoomPGPChallengeTTL(d time.Duration) {
-	if d > 0 {
-		s.roomPGPChallengeTTL = d
-	}
-}
-
-func (s *Service) SetArgon2Params(p Argon2Params) {
-	if p.Memory > 0 && p.Iterations > 0 && p.Parallelism > 0 {
-		s.argon2 = p
-	}
-}
-
 // Ping checks the database connection health
 func (s *Service) Ping(ctx context.Context) error {
 	return s.store.Ping(ctx)
@@ -96,95 +84,114 @@ type RoomDetailView struct {
 func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*ContentView, error) {
 	view := &ContentView{}
 
-	users, err := s.store.Users.ListUsers(ctx)
+	if userID == 0 {
+		users, err := s.store.Users.ListUsers(ctx)
+		if err != nil {
+			return nil, err
+		}
+		view.Users = users
+		return view, nil
+	}
+
+	var users []store.User
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		users, err = s.store.Users.ListUsers(gCtx)
+		return err
+	})
+
+	g.Go(func() error {
+		user, err := s.store.Users.GetUserByID(gCtx, userID)
+		if err != nil {
+			return err
+		}
+		view.CurrentUsername = user.Username
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		view.CreatedRooms, err = s.store.Rooms.ListRoomsByCreator(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.Invites, err = s.store.Invites.ListInvitesForUser(gCtx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	view.Users = users
+
+	// getDMRoomsForUser depends on the users list, so run after the errgroup
+	dmRooms, err := s.getDMRoomsForUser(ctx, userID, users)
 	if err != nil {
 		return nil, err
 	}
-	view.Users = users
-
-	if userID != 0 {
-		user, err := s.store.Users.GetUserByID(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-		view.CurrentUsername = user.Username
-
-		view.CreatedRooms, err = s.store.Rooms.ListRoomsByCreator(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-
-		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-
-		view.Invites, err = s.store.Invites.ListInvitesForUser(ctx, userID)
-		if err != nil {
-			return nil, err
-		}
-
-		// Load DM rooms
-		dmRooms, err := s.getDMRoomsForUser(ctx, userID, users)
-		if err != nil {
-			return nil, err
-		}
-		view.DMRooms = dmRooms
-	}
+	view.DMRooms = dmRooms
 
 	return view, nil
 }
 
 // GetRoomDetailView loads all data needed for a room detail page.
-// Phase 1 fetches user info, room detail, and membership concurrently.
-// Phase 2 fetches members and invites concurrently, but only after the auth guard passes.
+// Fetches user info, room detail, members, and invites concurrently.
+// Auth guard checks creator or membership from the fetched members list.
 func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*RoomDetailView, error) {
 	var (
-		user     store.User
-		room     store.RoomDetail
-		isMember bool
+		user    store.User
+		room    store.RoomDetail
+		members []store.RoomMember
+		invites []store.InviteForRoom
 	)
 
-	g1, gCtx1 := errgroup.WithContext(ctx)
-	g1.Go(func() error {
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
 		var err error
-		user, err = s.store.Users.GetUserByID(gCtx1, userID)
+		user, err = s.store.Users.GetUserByID(gCtx, userID)
 		return err
 	})
-	g1.Go(func() error {
+	g.Go(func() error {
 		var err error
-		room, err = s.store.Rooms.GetRoomDetail(gCtx1, roomID)
+		room, err = s.store.Rooms.GetRoomDetail(gCtx, roomID)
 		return err
 	})
-	g1.Go(func() error {
+	g.Go(func() error {
 		var err error
-		isMember, err = s.store.Rooms.IsRoomMember(gCtx1, roomID, userID)
+		members, err = s.store.Rooms.ListRoomMembersWithPGP(gCtx, roomID)
 		return err
 	})
-	if err := g1.Wait(); err != nil {
+	g.Go(func() error {
+		var err error
+		invites, err = s.store.Invites.ListInvitesForRoom(gCtx, roomID)
+		return err
+	})
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
+	// Check membership from the fetched members list
 	isCreator := room.CreatorID == userID
+	isMember := false
+	for _, m := range members {
+		if m.ID == userID {
+			isMember = true
+			break
+		}
+	}
 	if !isCreator && !isMember {
 		return nil, store.ErrNotRoomMember
-	}
-
-	var members []store.RoomMember
-	var invites []store.InviteForRoom
-	g2, gCtx2 := errgroup.WithContext(ctx)
-	g2.Go(func() error {
-		var err error
-		members, err = s.store.Rooms.ListRoomMembersWithPGP(gCtx2, roomID)
-		return err
-	})
-	g2.Go(func() error {
-		var err error
-		invites, err = s.store.Invites.ListInvitesForRoom(gCtx2, roomID)
-		return err
-	})
-	if err := g2.Wait(); err != nil {
-		return nil, err
 	}
 
 	isDMRoom := room.IsDM || strings.HasPrefix(room.DisplayName, "dm:")
@@ -500,6 +507,10 @@ func (s *Service) IsRoomMember(ctx context.Context, roomID store.RoomID, userID 
 	return s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 }
 
+func (s *Service) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+	return s.store.Rooms.IsRoomPGPRequired(ctx, roomID)
+}
+
 func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	user, err := s.store.Users.GetUserByID(ctx, userID)
 	if err != nil {
@@ -510,39 +521,6 @@ func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string,
 
 func (s *Service) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
 	return s.store.Users.GetUserByUsername(ctx, username)
-}
-
-// Room Discovery
-
-func (s *Service) ListPublicRooms(ctx context.Context, limit int, offset int) ([]store.Room, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	return s.store.Rooms.ListPublicRooms(ctx, limit, offset)
-}
-
-func (s *Service) SearchPublicRooms(ctx context.Context, query string, limit int) ([]store.Room, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return []store.Room{}, nil
-	}
-	if len(query) > 100 {
-		query = query[:100]
-	}
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	return s.store.Rooms.SearchPublicRooms(ctx, query, limit)
-}
-
-func (s *Service) SetRoomPublic(ctx context.Context, roomID store.RoomID, creatorID store.UserID, isPublic bool) error {
-	if err := s.assertNotDM(ctx, roomID); err != nil {
-		return err
-	}
-	return s.store.Rooms.SetRoomPublic(ctx, roomID, creatorID, isPublic)
 }
 
 // Direct Messages
@@ -596,22 +574,6 @@ func (s *Service) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.
 	}
 
 	return roomID, nil
-}
-
-// GetDMPartnerUsername gets the partner's username from a DM room
-func (s *Service) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
-	members, err := s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
-	if err != nil {
-		return "", err
-	}
-
-	for _, member := range members {
-		if member.ID != currentUserID {
-			return member.Username, nil
-		}
-	}
-
-	return "", errors.New("partner not found in DM room")
 }
 
 // getDMRoomsForUser returns a list of DM rooms for a user with partner info

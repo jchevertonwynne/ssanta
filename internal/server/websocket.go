@@ -531,12 +531,12 @@ func (c *ChatClient) readPump() {
 				continue
 			}
 
-			// Fetch room details to check if PGP is required
+			// Fetch room PGP requirement
 			ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
-			roomDetail, err := c.svc.GetRoomDetailView(ctx, c.roomID, c.userID)
+			pgpRequired, err := c.svc.IsRoomPGPRequired(ctx, c.roomID)
 			cancel()
 			if err != nil {
-				slog.ErrorContext(ctx, "get room detail for pgp check", "err", err, "room_id", c.roomID)
+				slog.ErrorContext(ctx, "get room pgp status", "err", err, "room_id", c.roomID)
 				span.End()
 				continue
 			}
@@ -573,7 +573,7 @@ func (c *ChatClient) readPump() {
 			}
 
 			// If PGP is optional, send plaintext to all members
-			if !roomDetail.Room.PGPRequired {
+			if !pgpRequired {
 				perUser := make(map[store.UserID][]byte, len(members))
 				out := ChatMessagePayload{
 					Type:      "message",

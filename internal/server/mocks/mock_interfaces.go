@@ -1146,6 +1146,69 @@ func (c *MockIsRoomMemberServiceIsRoomMemberCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// MockIsRoomPGPRequiredService is a mock of IsRoomPGPRequiredService interface.
+type MockIsRoomPGPRequiredService struct {
+	ctrl     *gomock.Controller
+	recorder *MockIsRoomPGPRequiredServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockIsRoomPGPRequiredServiceMockRecorder is the mock recorder for MockIsRoomPGPRequiredService.
+type MockIsRoomPGPRequiredServiceMockRecorder struct {
+	mock *MockIsRoomPGPRequiredService
+}
+
+// NewMockIsRoomPGPRequiredService creates a new mock instance.
+func NewMockIsRoomPGPRequiredService(ctrl *gomock.Controller) *MockIsRoomPGPRequiredService {
+	mock := &MockIsRoomPGPRequiredService{ctrl: ctrl}
+	mock.recorder = &MockIsRoomPGPRequiredServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIsRoomPGPRequiredService) EXPECT() *MockIsRoomPGPRequiredServiceMockRecorder {
+	return m.recorder
+}
+
+// IsRoomPGPRequired mocks base method.
+func (m *MockIsRoomPGPRequiredService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsRoomPGPRequired indicates an expected call of IsRoomPGPRequired.
+func (mr *MockIsRoomPGPRequiredServiceMockRecorder) IsRoomPGPRequired(ctx, roomID any) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRoomPGPRequired", reflect.TypeOf((*MockIsRoomPGPRequiredService)(nil).IsRoomPGPRequired), ctx, roomID)
+	return &MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall{Call: call}
+}
+
+// MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall wrap *gomock.Call
+type MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) Return(arg0 bool, arg1 error) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockRoomAccessService is a mock of RoomAccessService interface.
 type MockRoomAccessService struct {
 	ctrl     *gomock.Controller
@@ -3126,45 +3189,6 @@ func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(conte
 	return c
 }
 
-// GetRoomDetailView mocks base method.
-func (m *MockWebSocketHandlersService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
-	ret0, _ := ret[0].(*service.RoomDetailView)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRoomDetailView indicates an expected call of GetRoomDetailView.
-func (mr *MockWebSocketHandlersServiceMockRecorder) GetRoomDetailView(ctx, roomID, userID any) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomDetailView", reflect.TypeOf((*MockWebSocketHandlersService)(nil).GetRoomDetailView), ctx, roomID, userID)
-	return &MockWebSocketHandlersServiceGetRoomDetailViewCall{Call: call}
-}
-
-// MockWebSocketHandlersServiceGetRoomDetailViewCall wrap *gomock.Call
-type MockWebSocketHandlersServiceGetRoomDetailViewCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) Return(arg0 *service.RoomDetailView, arg1 error) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockWebSocketHandlersServiceGetRoomDetailViewCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetUsername mocks base method.
 func (m *MockWebSocketHandlersService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	m.ctrl.T.Helper()
@@ -3239,6 +3263,45 @@ func (c *MockWebSocketHandlersServiceIsRoomMemberCall) Do(f func(context.Context
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockWebSocketHandlersServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockWebSocketHandlersServiceIsRoomMemberCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// IsRoomPGPRequired mocks base method.
+func (m *MockWebSocketHandlersService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsRoomPGPRequired indicates an expected call of IsRoomPGPRequired.
+func (mr *MockWebSocketHandlersServiceMockRecorder) IsRoomPGPRequired(ctx, roomID any) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRoomPGPRequired", reflect.TypeOf((*MockWebSocketHandlersService)(nil).IsRoomPGPRequired), ctx, roomID)
+	return &MockWebSocketHandlersServiceIsRoomPGPRequiredCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceIsRoomPGPRequiredCall wrap *gomock.Call
+type MockWebSocketHandlersServiceIsRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) Return(arg0 bool, arg1 error) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3731,45 +3794,6 @@ func (c *MockServerServiceGetContentViewCall) DoAndReturn(f func(context.Context
 	return c
 }
 
-// GetDMPartnerUsername mocks base method.
-func (m *MockServerService) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDMPartnerUsername", ctx, roomID, currentUserID)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetDMPartnerUsername indicates an expected call of GetDMPartnerUsername.
-func (mr *MockServerServiceMockRecorder) GetDMPartnerUsername(ctx, roomID, currentUserID any) *MockServerServiceGetDMPartnerUsernameCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDMPartnerUsername", reflect.TypeOf((*MockServerService)(nil).GetDMPartnerUsername), ctx, roomID, currentUserID)
-	return &MockServerServiceGetDMPartnerUsernameCall{Call: call}
-}
-
-// MockServerServiceGetDMPartnerUsernameCall wrap *gomock.Call
-type MockServerServiceGetDMPartnerUsernameCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockServerServiceGetDMPartnerUsernameCall) Return(arg0 string, arg1 error) *MockServerServiceGetDMPartnerUsernameCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetDMPartnerUsernameCall) Do(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockServerServiceGetDMPartnerUsernameCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetDMPartnerUsernameCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockServerServiceGetDMPartnerUsernameCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetOrCreateDMRoom mocks base method.
 func (m *MockServerService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
 	m.ctrl.T.Helper()
@@ -4001,6 +4025,45 @@ func (c *MockServerServiceIsRoomMemberCall) Do(f func(context.Context, store.Roo
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockServerServiceIsRoomMemberCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// IsRoomPGPRequired mocks base method.
+func (m *MockServerService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsRoomPGPRequired indicates an expected call of IsRoomPGPRequired.
+func (mr *MockServerServiceMockRecorder) IsRoomPGPRequired(ctx, roomID any) *MockServerServiceIsRoomPGPRequiredCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsRoomPGPRequired", reflect.TypeOf((*MockServerService)(nil).IsRoomPGPRequired), ctx, roomID)
+	return &MockServerServiceIsRoomPGPRequiredCall{Call: call}
+}
+
+// MockServerServiceIsRoomPGPRequiredCall wrap *gomock.Call
+type MockServerServiceIsRoomPGPRequiredCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceIsRoomPGPRequiredCall) Return(arg0 bool, arg1 error) *MockServerServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4697,45 +4760,6 @@ func (c *MockDMHandlersServiceGetContentViewCall) Do(f func(context.Context, sto
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockDMHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// GetDMPartnerUsername mocks base method.
-func (m *MockDMHandlersService) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID, currentUserID store.UserID) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDMPartnerUsername", ctx, roomID, currentUserID)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetDMPartnerUsername indicates an expected call of GetDMPartnerUsername.
-func (mr *MockDMHandlersServiceMockRecorder) GetDMPartnerUsername(ctx, roomID, currentUserID any) *MockDMHandlersServiceGetDMPartnerUsernameCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDMPartnerUsername", reflect.TypeOf((*MockDMHandlersService)(nil).GetDMPartnerUsername), ctx, roomID, currentUserID)
-	return &MockDMHandlersServiceGetDMPartnerUsernameCall{Call: call}
-}
-
-// MockDMHandlersServiceGetDMPartnerUsernameCall wrap *gomock.Call
-type MockDMHandlersServiceGetDMPartnerUsernameCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) Return(arg0 string, arg1 error) *MockDMHandlersServiceGetDMPartnerUsernameCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) Do(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockDMHandlersServiceGetDMPartnerUsernameCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDMHandlersServiceGetDMPartnerUsernameCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (string, error)) *MockDMHandlersServiceGetDMPartnerUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

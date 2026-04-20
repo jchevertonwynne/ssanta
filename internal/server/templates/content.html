@@ -37,9 +37,11 @@
 </div>
 
 <div class="cols">
+    {{if .CurrentUserID}}
     <section>
         {{template "content_users.html" .}}
     </section>
+    {{end}}
 
     {{if .CurrentUserID}}
     <section>

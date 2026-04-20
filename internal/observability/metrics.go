@@ -36,10 +36,7 @@ type Metrics struct {
 
 	// Business Metrics - PGP
 	PGPKeysUploaded metric.Int64Counter
-	PGPKeysDeleted  metric.Int64Counter
-
-	// Rate Limiting Metrics
-	RateLimitHits metric.Int64Counter
+	PGPKeysDeleted metric.Int64Counter
 }
 
 // InitMetrics initializes all metric instruments
@@ -200,16 +197,6 @@ func InitMetrics(ctx context.Context, serviceName string) (*Metrics, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create pgp keys deleted: %w", err)
-	}
-
-	// Rate Limiting Metrics
-	m.RateLimitHits, err = meter.Int64Counter(
-		"ratelimit.hits",
-		metric.WithDescription("Total number of rate limit hits"),
-		metric.WithUnit("{hit}"),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create rate limit hits: %w", err)
 	}
 
 	return m, nil

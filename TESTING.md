@@ -8,19 +8,15 @@ Runs fast and does not require Docker:
 
 ## Integration tests (Postgres via Testcontainers)
 
-Integration tests are skipped unless you opt in:
+Integration tests are skipped unless you opt in. Requires a working Docker daemon. Tests start a temporary Postgres container, run migrations from `migrations/`, then truncate tables between tests.
+
+Store layer (room leave/join behaviour, invite cleanup):
 
 - `SSANTA_INTEGRATION=1 go test ./internal/store -count=1`
 
-Store layer:
-- `SSANTA_INTEGRATION=1 go test ./internal/store -count=1`
+Service layer (room detail views, content views, DM creation and auto-join):
 
-Service layer:
 - `SSANTA_INTEGRATION=1 go test ./internal/service -count=1`
-
-Notes:
-- Requires a working Docker daemon.
-- Tests start a temporary Postgres container, run migrations from `migrations/`, then truncate tables between tests.
 
 ## Mocks (uber-go/mock)
 

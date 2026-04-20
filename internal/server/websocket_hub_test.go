@@ -13,7 +13,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
-	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -123,14 +122,7 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil).AnyTimes()
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{{ID: userID, Username: "alice", PGPPublicKey: armoredPub, PGPVerifiedAt: &verifiedAt}}, nil).AnyTimes()
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(&service.RoomDetailView{
-		Room: store.RoomDetail{
-			Room: store.Room{
-				ID: roomID,
-			},
-			PGPRequired: true,
-		},
-	}, nil).AnyTimes()
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -224,14 +216,7 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 		// Extra keyed user not connected should not matter.
 		{ID: 999, Username: "ghost", PGPPublicKey: pubB},
 	}, nil).AnyTimes()
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, gomock.Any()).Return(&service.RoomDetailView{
-		Room: store.RoomDetail{
-			Room: store.Room{
-				ID: roomID,
-			},
-			PGPRequired: true,
-		},
-	}, nil).AnyTimes()
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -344,14 +329,7 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 		{ID: userA, Username: "alice", PGPPublicKey: pubA, PGPVerifiedAt: nil},
 		{ID: userB, Username: "bob", PGPPublicKey: ""},
 	}, nil).AnyTimes()
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, gomock.Any()).Return(&service.RoomDetailView{
-		Room: store.RoomDetail{
-			Room: store.Room{
-				ID: roomID,
-			},
-			PGPRequired: true,
-		},
-	}, nil).AnyTimes()
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -590,5 +568,213 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 	p2 := readOne(c2.send)
 	if p1.Type != "invite_received" || p2.Type != "invite_received" {
 		t.Fatalf("expected fanout type invite_received")
+	}
+}
+
+func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	roomID := store.RoomID(10)
+	userA := store.UserID(2)
+	userB := store.UserID(3)
+	userC := store.UserID(4)
+
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+		switch r.Header.Get("X-Test-User") {
+		case "alice":
+			return userA, true
+		case "bob":
+			return userB, true
+		case "charlie":
+			return userC, true
+		default:
+			return 0, false
+		}
+	}).AnyTimes()
+
+	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
+	svc.EXPECT().GetUsername(gomock.Any(), userA).Return("alice", nil).AnyTimes()
+	svc.EXPECT().GetUsername(gomock.Any(), userB).Return("bob", nil).AnyTimes()
+	svc.EXPECT().GetUsername(gomock.Any(), userC).Return("charlie", nil).AnyTimes()
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: userA, Username: "alice"},
+		{ID: userB, Username: "bob"},
+		{ID: userC, Username: "charlie"},
+	}, nil).AnyTimes()
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
+
+	hub := NewChatHub()
+	go hub.Run()
+	defer hub.Stop()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
+
+	dial := func(userHeader string) *websocket.Conn {
+		hdr := http.Header{}
+		hdr.Set("Origin", srv.URL)
+		hdr.Set("X-Test-User", userHeader)
+		conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+		if err != nil {
+			if resp != nil {
+				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
+			}
+			t.Fatalf("dial websocket %s: %v", userHeader, err)
+		}
+		return conn
+	}
+
+	connA := dial("alice")
+	defer connA.Close() //nolint:errcheck
+	connB := dial("bob")
+	defer connB.Close() //nolint:errcheck
+	connC := dial("charlie")
+	defer connC.Close() //nolint:errcheck
+
+	// Alice whispers to bob
+	msg := ChatMessagePayload{Type: "message", Message: "secret", TargetUserID: userB}
+	b, _ := json.Marshal(msg)
+	if err := connA.WriteMessage(websocket.TextMessage, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Alice should receive the whisper
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, gotA, err := connA.ReadMessage()
+	if err != nil {
+		t.Fatalf("read alice: %v", err)
+	}
+	var payloadA ChatMessagePayload
+	if err := json.Unmarshal(gotA, &payloadA); err != nil {
+		t.Fatalf("unmarshal alice: %v", err)
+	}
+	if payloadA.Type != "message" || payloadA.Message != "secret" || !payloadA.Whisper {
+		t.Fatalf("alice: expected whisper message 'secret', got type=%q msg=%q whisper=%v", payloadA.Type, payloadA.Message, payloadA.Whisper)
+	}
+
+	// Bob should receive the whisper
+	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, gotB, err := connB.ReadMessage()
+	if err != nil {
+		t.Fatalf("read bob: %v", err)
+	}
+	var payloadB ChatMessagePayload
+	if err := json.Unmarshal(gotB, &payloadB); err != nil {
+		t.Fatalf("unmarshal bob: %v", err)
+	}
+	if payloadB.Type != "message" || payloadB.Message != "secret" || !payloadB.Whisper {
+		t.Fatalf("bob: expected whisper message 'secret', got type=%q msg=%q whisper=%v", payloadB.Type, payloadB.Message, payloadB.Whisper)
+	}
+
+	// Charlie should NOT receive anything
+	_ = connC.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	_, _, err = connC.ReadMessage()
+	if err == nil {
+		t.Fatalf("expected charlie to receive no message")
+	}
+}
+
+func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	roomID := store.RoomID(10)
+	userA := store.UserID(2)
+	userB := store.UserID(3)
+
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+		switch r.Header.Get("X-Test-User") {
+		case "alice":
+			return userA, true
+		case "bob":
+			return userB, true
+		default:
+			return 0, false
+		}
+	}).AnyTimes()
+
+	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
+	svc.EXPECT().GetUsername(gomock.Any(), userA).Return("alice", nil).AnyTimes()
+	svc.EXPECT().GetUsername(gomock.Any(), userB).Return("bob", nil).AnyTimes()
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: userA, Username: "alice"},
+		{ID: userB, Username: "bob"},
+	}, nil).AnyTimes()
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
+
+	hub := NewChatHub()
+	go hub.Run()
+	defer hub.Stop()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
+
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/rooms/10/ws"
+
+	dial := func(userHeader string) *websocket.Conn {
+		hdr := http.Header{}
+		hdr.Set("Origin", srv.URL)
+		hdr.Set("X-Test-User", userHeader)
+		conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+		if err != nil {
+			if resp != nil {
+				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
+			}
+			t.Fatalf("dial websocket %s: %v", userHeader, err)
+		}
+		return conn
+	}
+
+	connA := dial("alice")
+	defer connA.Close() //nolint:errcheck
+	connB := dial("bob")
+	defer connB.Close() //nolint:errcheck
+
+	// Alice whispers to a non-existent user
+	msg := ChatMessagePayload{Type: "message", Message: "secret", TargetUserID: 999}
+	b, _ := json.Marshal(msg)
+	if err := connA.WriteMessage(websocket.TextMessage, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Alice should get a system error
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, gotA, err := connA.ReadMessage()
+	if err != nil {
+		t.Fatalf("read alice: %v", err)
+	}
+	var payloadA ChatMessagePayload
+	if err := json.Unmarshal(gotA, &payloadA); err != nil {
+		t.Fatalf("unmarshal alice: %v", err)
+	}
+	if payloadA.Type != "system" {
+		t.Fatalf("expected type=system, got %q", payloadA.Type)
+	}
+	if !strings.Contains(payloadA.Message, "not in this room") {
+		t.Fatalf("expected error about user not in room, got %q", payloadA.Message)
+	}
+
+	// Bob should NOT receive anything
+	_ = connB.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	_, _, err = connB.ReadMessage()
+	if err == nil {
+		t.Fatalf("expected bob to receive no message")
 	}
 }
