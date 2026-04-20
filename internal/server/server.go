@@ -98,6 +98,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
+	mux.HandleFunc("GET /rooms/{id}/members-list", handleRoomMembersList(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))

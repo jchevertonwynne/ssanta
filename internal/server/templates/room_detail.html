@@ -5,103 +5,22 @@
 </div>
 
 <div class="cols">
-    <div id="room-sidebar">
-        <h2>{{.Room.DisplayName}}</h2>
-        <p>
-            <strong>Creator:</strong> {{.Room.CreatorUsername}}<br>
-            <strong>Created:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}
-        </p>
-
-        <div style="margin-bottom: 1rem;">
-            {{if .IsMember}}
-            {{if .IsCreator}}
-            <button hx-post="/rooms/{{.Room.ID}}/leave"
-                    hx-target="#room-sidebar"
-                    hx-swap="outerHTML"
-                    hx-confirm="Leave this room? You will remain the creator but won't be a member.">Leave room</button>
-            {{else}}
-            <button hx-post="/rooms/{{.Room.ID}}/leave"
-                    hx-target="#content"
-                    hx-swap="innerHTML"
-                    hx-push-url="/"
-                    hx-confirm="Leave this room?">Leave room</button>
-            {{end}}
-            {{else}}
-            {{if .IsCreator}}
-            <button hx-post="/rooms/{{.Room.ID}}/join"
-                    hx-target="#room-sidebar"
-                    hx-swap="outerHTML">Join room</button>
-            {{else}}
-            <button hx-post="/rooms/{{.Room.ID}}/join"
-                    hx-target="#content"
-                    hx-swap="innerHTML">Join room</button>
-            {{end}}
-            {{end}}
-            {{if .IsCreator}}
-            <button hx-delete="/rooms/{{.Room.ID}}"
-                    hx-target="#content"
-                    hx-swap="innerHTML"
-                    hx-push-url="/"
-                    hx-confirm="Delete room {{.Room.DisplayName}}? This cannot be undone.">Delete room</button>
-            {{end}}
-        </div>
-
-        {{if .IsCreator}}
-        <section style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-            <h4 style="margin-top: 0;">Room Settings</h4>
-            
-            <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
-                hx-target="#room-sidebar" 
-                hx-swap="outerHTML"
-              hx-trigger="change" style="margin-bottom: 1rem;">
-            <label>
-                <input type="checkbox" 
-                       name="value" 
-                       value="true"
-                       {{if .Room.MembersCanInvite}}checked{{end}}
-                       onchange="this.value = this.checked ? 'true' : 'false'">
-                Members can invite
-            </label>
-        </form>
-
-            <form hx-post="/rooms/{{.Room.ID}}/pgp-required" 
-                hx-target="#room-sidebar" 
-                hx-swap="outerHTML"
-              hx-trigger="change">
-            <label>
-                <input type="checkbox" 
-                       name="value" 
-                       value="true"
-                       {{if .Room.PGPRequired}}checked{{end}}
-                       onchange="this.value = this.checked ? 'true' : 'false'">
-                Require PGP encryption
-            </label>
-        </form>
-        </section>
-        {{end}}
-
-        {{template "room_dynamic.html" .}}
-
-        {{if .CanInvite}}
-        <section style="margin-top: 2rem;">
-            <h3>Invite a user</h3>
-            <form hx-post="/rooms/{{.Room.ID}}/invites" hx-target="#room-sidebar" hx-swap="outerHTML">
-                <input name="invitee_username" placeholder="Username" required
-                       pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
-                       value="{{.InviteFormAttempted}}">
-                <button type="submit">Send invite</button>
-            </form>
-            {{if .InviteFormError}}
-                <p class="error">{{.InviteFormError}}</p>
-            {{end}}
-        </section>
-        {{end}}
-    </div>
+    {{template "room_sidebar.html" .}}
 
     <section>
         <h3>Chat</h3>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
-        <form id="chat-form" style="display: flex; gap: 0.5rem;">
+        <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: center;">
+            {{if not .IsDMRoom}}
+            <select id="chat-target" {{if not .IsMember}}disabled{{end}}>
+                <option value="0">Everyone</option>
+                {{range .Members}}
+                {{if ne .ID $.CurrentUserID}}
+                <option value="{{.ID}}">{{.Username}}</option>
+                {{end}}
+                {{end}}
+            </select>
+            {{end}}
             <input id="chat-input" type="text"
                    placeholder="{{if .IsMember}}Type a message...{{else if .IsCreator}}Join to send messages{{else}}Join the room to chat{{end}}"
                    style="flex: 1;" maxlength="500"
@@ -154,6 +73,29 @@
         
         if (data.type === 'refresh') {
             htmx.ajax('GET', '/rooms/' + roomId + '/dynamic', {target: '#room-dynamic', swap: 'outerHTML'});
+            // Update whisper target dropdown when members change
+            if (chatTarget) {
+                const prevValue = chatTarget.value;
+                fetch('/rooms/' + roomId + '/members-list')
+                    .then(function(r) { return r.json(); })
+                    .then(function(membersList) {
+                        while (chatTarget.options.length > 1) chatTarget.remove(1);
+                        membersList.forEach(function(m) {
+                            const opt = document.createElement('option');
+                            opt.value = m.id;
+                            opt.textContent = m.username;
+                            chatTarget.appendChild(opt);
+                        });
+                        // Restore previous selection if still valid
+                        for (let i = 0; i < chatTarget.options.length; i++) {
+                            if (chatTarget.options[i].value === prevValue) {
+                                chatTarget.value = prevValue;
+                                break;
+                            }
+                        }
+                    })
+                    .catch(function() {}); // ignore errors, dropdown stays as-is
+            }
             return;
         }
         
@@ -174,10 +116,15 @@
         if (data.type === 'message') {
             const msgDiv = document.createElement('div');
             msgDiv.style.marginBottom = '0.5rem';
+            if (data.whisper) {
+                msgDiv.style.color = '#6a1b9a';
+                msgDiv.style.fontStyle = 'italic';
+            }
             
             const time = new Date(data.created_at).toLocaleTimeString();
+            const whisperLabel = data.whisper ? ' <em>(whisper)</em>' : '';
 
-            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small><br>';
+            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small>' + whisperLabel + '<br>';
 
             const pre = document.createElement('pre');
             pre.style.margin = '0.25rem 0 0 0';
@@ -219,14 +166,23 @@
         chatMessages.appendChild(msgDiv);
     };
     
+    const chatTarget = document.getElementById('chat-target');
+
     chatForm.onsubmit = function(e) {
         e.preventDefault();
         const message = chatInput.value.trim();
         if (message && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
+            const payload = {
                 type: 'message',
                 message: message
-            }));
+            };
+            if (chatTarget) {
+                const targetId = parseInt(chatTarget.value, 10);
+                if (targetId > 0) {
+                    payload.target_user_id = targetId;
+                }
+            }
+            ws.send(JSON.stringify(payload));
             chatInput.value = '';
         }
     };

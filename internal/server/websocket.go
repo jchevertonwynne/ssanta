@@ -76,10 +76,12 @@ type ChatClient struct {
 }
 
 type ChatMessagePayload struct {
-	Type      string    `json:"type"` // "message", "error"
-	Username  string    `json:"username,omitempty"`
-	Message   string    `json:"message,omitempty"`
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	Type         string       `json:"type"` // "message", "error"
+	Username     string       `json:"username,omitempty"`
+	Message      string       `json:"message,omitempty"`
+	CreatedAt    time.Time    `json:"created_at,omitempty"`
+	TargetUserID store.UserID `json:"target_user_id,omitempty"`
+	Whisper      bool         `json:"whisper,omitempty"`
 }
 
 func NewChatHub() *ChatHub {
@@ -541,6 +543,34 @@ func (c *ChatClient) readPump() {
 
 			plaintext := payload.Message
 			createdAt := time.Now()
+			targetUserID := payload.TargetUserID
+			isWhisper := targetUserID != 0
+
+			// Validate whisper target is a room member
+			if isWhisper {
+				found := false
+				for _, m := range members {
+					if m.ID == targetUserID {
+						found = true
+						break
+					}
+				}
+				if !found {
+					sys := ChatMessagePayload{
+						Type:      "system",
+						Message:   "That user is not in this room.",
+						CreatedAt: time.Now(),
+					}
+					if b, err := json.Marshal(sys); err == nil {
+						select {
+						case c.send <- b:
+						default:
+						}
+					}
+					span.End()
+					continue
+				}
+			}
 
 			// If PGP is optional, send plaintext to all members
 			if !roomDetail.Room.PGPRequired {
@@ -550,6 +580,7 @@ func (c *ChatClient) readPump() {
 					Username:  c.username,
 					Message:   plaintext,
 					CreatedAt: createdAt,
+					Whisper:   isWhisper,
 				}
 				outBytes, err := json.Marshal(out)
 				if err != nil {
@@ -557,8 +588,13 @@ func (c *ChatClient) readPump() {
 					span.End()
 					continue
 				}
-				for _, m := range members {
-					perUser[m.ID] = outBytes
+				if isWhisper {
+					perUser[c.userID] = outBytes
+					perUser[targetUserID] = outBytes
+				} else {
+					for _, m := range members {
+						perUser[m.ID] = outBytes
+					}
 				}
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 
@@ -602,12 +638,23 @@ func (c *ChatClient) readPump() {
 				continue
 			}
 
+			// Determine which members should receive this message
+			recipients := members
+			if isWhisper {
+				recipients = make([]store.RoomMember, 0, 2)
+				for _, m := range members {
+					if m.ID == c.userID || m.ID == targetUserID {
+						recipients = append(recipients, m)
+					}
+				}
+			}
+
 			// Parallelize per-recipient encryption using errgroup
-			perUser := make(map[store.UserID][]byte, len(members))
+			perUser := make(map[store.UserID][]byte, len(recipients))
 			var mu sync.Mutex
 			var g errgroup.Group
 
-			for _, m := range members {
+			for _, m := range recipients {
 				// capture loop variable
 				g.Go(func() error {
 					var b []byte
@@ -619,6 +666,7 @@ func (c *ChatClient) readPump() {
 							Username:  c.username,
 							Message:   "<encrypted message>",
 							CreatedAt: createdAt,
+							Whisper:   isWhisper,
 						}
 						b, err = json.Marshal(out)
 						if err != nil {
@@ -635,6 +683,7 @@ func (c *ChatClient) readPump() {
 							Username:  c.username,
 							Message:   ciphertext,
 							CreatedAt: createdAt,
+							Whisper:   isWhisper,
 						}
 						b, err = json.Marshal(out)
 						if err != nil {

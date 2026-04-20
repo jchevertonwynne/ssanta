@@ -382,3 +382,51 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 		renderRoomDynamic(w, r.Context(), svc, currentID, roomID)
 	}
 }
+
+type MembersListService interface {
+	UserExistsService
+	IsRoomMemberService
+	RoomMembersWithPGPService
+}
+
+func handleRoomMembersList(svc MembersListService, sessions SessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
+		if !ok {
+			http.Error(w, "login required", http.StatusUnauthorized)
+			return
+		}
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
+			return
+		}
+
+		isMember, err := svc.IsRoomMember(r.Context(), roomID, currentID)
+		if err != nil {
+			http.Error(w, "failed to check membership", http.StatusInternalServerError)
+			return
+		}
+		if !isMember {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return
+		}
+
+		members, err := svc.ListRoomMembersWithPGP(r.Context(), roomID)
+		if err != nil {
+			http.Error(w, "failed to list members", http.StatusInternalServerError)
+			return
+		}
+
+		type memberEntry struct {
+			ID       store.UserID `json:"id"`
+			Username string       `json:"username"`
+		}
+		out := make([]memberEntry, 0, len(members))
+		for _, m := range members {
+			if m.ID != currentID {
+				out = append(out, memberEntry{ID: m.ID, Username: m.Username})
+			}
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}

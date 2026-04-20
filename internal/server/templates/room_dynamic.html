@@ -94,6 +94,7 @@
     {{end}}
     {{end}}
 
+    {{if not .IsDMRoom}}
     <h3>Pending invites</h3>
     {{if .PendingInvites}}
         <ul>
@@ -113,5 +114,6 @@
         </ul>
     {{else}}
         <p>None yet.</p>
+    {{end}}
     {{end}}
 </div>
