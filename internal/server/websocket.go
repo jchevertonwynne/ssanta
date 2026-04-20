@@ -712,15 +712,15 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			return
 		}
 
-		// Check if user is a member (creators who aren't members can't chat)
-		isMember, err := svc.IsRoomMember(r.Context(), roomID, currentID)
+		// Check if user is a creator or member (allow both to access chat)
+		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
 			http.Error(w, "failed to check room access", http.StatusInternalServerError)
 			return
 		}
 
-		if !isMember {
-			http.Error(w, "must be a member to access chat", http.StatusForbidden)
+		if !isCreator && !isMember {
+			http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
 			return
 		}
 

@@ -3086,6 +3086,46 @@ func (m *MockWebSocketHandlersService) EXPECT() *MockWebSocketHandlersServiceMoc
 	return m.recorder
 }
 
+// GetRoomAccess mocks base method.
+func (m *MockWebSocketHandlersService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetRoomAccess indicates an expected call of GetRoomAccess.
+func (mr *MockWebSocketHandlersServiceMockRecorder) GetRoomAccess(ctx, roomID, userID any) *MockWebSocketHandlersServiceGetRoomAccessCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomAccess", reflect.TypeOf((*MockWebSocketHandlersService)(nil).GetRoomAccess), ctx, roomID, userID)
+	return &MockWebSocketHandlersServiceGetRoomAccessCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceGetRoomAccessCall wrap *gomock.Call
+type MockWebSocketHandlersServiceGetRoomAccessCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Return(isCreator, isMember bool, err error) *MockWebSocketHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.Return(isCreator, isMember, err)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetRoomDetailView mocks base method.
 func (m *MockWebSocketHandlersService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()

@@ -157,6 +157,7 @@ type WebSocketHandlersService interface {
 	IsRoomMemberService
 	RoomMembersWithPGPService
 	RoomDetailViewService
+	RoomAccessService
 }
 
 // ServerService is the full surface required to wire all routes.
