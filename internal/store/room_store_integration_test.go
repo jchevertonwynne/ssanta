@@ -27,7 +27,7 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 		t.Fatalf("create invitee: %v", err)
 	}
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 	}
 	_ = inviteeID
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create member: %v", err)
 	}
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestRoomStore_SetPGPRequired_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create creator: %v", err)
 	}
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -231,12 +231,197 @@ func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create other: %v", err)
 	}
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
 
 	if err := st.Rooms.SetRoomPGPRequired(ctx, roomID, otherID, true); !errors.Is(err, ErrNotRoomCreator) {
 		t.Fatalf("expected ErrNotRoomCreator, got %v", err)
+	}
+}
+
+func TestRoomStore_CreateRoom_IsDM_Field(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+
+	regularID, err := st.Rooms.CreateRoom(ctx, "regular-room", creatorID, false)
+	if err != nil {
+		t.Fatalf("create regular room: %v", err)
+	}
+
+	dmID, err := st.Rooms.CreateRoom(ctx, "dm:aaa:bbb", creatorID, true)
+	if err != nil {
+		t.Fatalf("create dm room: %v", err)
+	}
+
+	rd, err := st.Rooms.GetRoomDetail(ctx, regularID)
+	if err != nil {
+		t.Fatalf("get regular room detail: %v", err)
+	}
+	if rd.IsDM {
+		t.Fatalf("expected regular room IsDM=false, got true")
+	}
+
+	rd, err = st.Rooms.GetRoomDetail(ctx, dmID)
+	if err != nil {
+		t.Fatalf("get dm room detail: %v", err)
+	}
+	if !rd.IsDM {
+		t.Fatalf("expected DM room IsDM=true, got false")
+	}
+}
+
+func TestRoomStore_LeaveRoom_DMDeletesOnLastLeave(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	memberID, err := st.Users.CreateUser(ctx, "member", "testhash")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+
+	// DM with a non-standard name to prove is_dm column drives deletion, not name prefix
+	dmID, err := st.Rooms.CreateRoom(ctx, "not-dm-prefix", creatorID, true)
+	if err != nil {
+		t.Fatalf("create dm room: %v", err)
+	}
+	if err := st.Rooms.JoinRoom(ctx, dmID, creatorID); err != nil {
+		t.Fatalf("join creator: %v", err)
+	}
+	if err := st.Rooms.JoinRoom(ctx, dmID, memberID); err != nil {
+		t.Fatalf("join member: %v", err)
+	}
+
+	// First leave — room survives
+	if err := st.Rooms.LeaveRoom(ctx, dmID, memberID); err != nil {
+		t.Fatalf("leave member: %v", err)
+	}
+	if _, err := st.Rooms.GetRoomDetail(ctx, dmID); err != nil {
+		t.Fatalf("room should still exist after first leave, got: %v", err)
+	}
+
+	// Second leave — room deleted
+	if err := st.Rooms.LeaveRoom(ctx, dmID, creatorID); err != nil {
+		t.Fatalf("leave creator: %v", err)
+	}
+	if _, err := st.Rooms.GetRoomDetail(ctx, dmID); !errors.Is(err, ErrRoomNotFound) {
+		t.Fatalf("expected room to be deleted after all members leave, got: %v", err)
+	}
+}
+
+func TestRoomStore_ListRoomsByMember_ExcludesDMs(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+
+	regularID, err := st.Rooms.CreateRoom(ctx, "regular", creatorID, false)
+	if err != nil {
+		t.Fatalf("create regular room: %v", err)
+	}
+	dmID, err := st.Rooms.CreateRoom(ctx, "dm:aaa:bbb", creatorID, true)
+	if err != nil {
+		t.Fatalf("create dm room: %v", err)
+	}
+
+	if err := st.Rooms.JoinRoom(ctx, regularID, creatorID); err != nil {
+		t.Fatalf("join regular: %v", err)
+	}
+	if err := st.Rooms.JoinRoom(ctx, dmID, creatorID); err != nil {
+		t.Fatalf("join dm: %v", err)
+	}
+
+	rooms, err := st.Rooms.ListRoomsByMember(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms by member: %v", err)
+	}
+	for _, r := range rooms {
+		if r.IsDM {
+			t.Fatalf("ListRoomsByMember returned DM room %d", r.ID)
+		}
+	}
+
+	dmRooms, err := st.Rooms.ListDMRoomsByMember(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list dm rooms by member: %v", err)
+	}
+	for _, r := range dmRooms {
+		if !r.IsDM {
+			t.Fatalf("ListDMRoomsByMember returned non-DM room %d", r.ID)
+		}
+	}
+	if len(dmRooms) != 1 || dmRooms[0].ID != dmID {
+		t.Fatalf("expected exactly the dm room, got %v", dmRooms)
+	}
+}
+
+func TestRoomStore_ListPublicRooms_ExcludesDMs(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+
+	regularID, err := st.Rooms.CreateRoom(ctx, "public-regular", creatorID, false)
+	if err != nil {
+		t.Fatalf("create regular room: %v", err)
+	}
+	dmID, err := st.Rooms.CreateRoom(ctx, "dm:public:test", creatorID, true)
+	if err != nil {
+		t.Fatalf("create dm room: %v", err)
+	}
+
+	// Make both public
+	if err := st.Rooms.SetRoomPublic(ctx, regularID, creatorID, true); err != nil {
+		t.Fatalf("set regular public: %v", err)
+	}
+	if err := st.Rooms.SetRoomPublic(ctx, dmID, creatorID, true); err != nil {
+		t.Fatalf("set dm public: %v", err)
+	}
+
+	rooms, err := st.Rooms.ListPublicRooms(ctx, 100, 0)
+	if err != nil {
+		t.Fatalf("list public rooms: %v", err)
+	}
+	for _, r := range rooms {
+		if r.IsDM {
+			t.Fatalf("ListPublicRooms returned DM room %d", r.ID)
+		}
+	}
+	var found bool
+	for _, r := range rooms {
+		if r.ID == regularID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected regular room to appear in public list")
 	}
 }

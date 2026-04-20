@@ -1,11 +1,25 @@
 <div id="room-sidebar">
+    {{if .Room.IsDM}}
+    <h2>{{.DMPartnerName}}</h2>
+    <p><strong>Started:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}</p>
+    {{else}}
     <h2>{{.Room.DisplayName}}</h2>
     <p>
         <strong>Creator:</strong> {{.Room.CreatorUsername}}<br>
         <strong>Created:</strong> {{.Room.CreatedAt.Format "2006-01-02 15:04:05"}}
     </p>
+    {{end}}
 
     <div style="margin-bottom: 1rem;">
+        {{if .Room.IsDM}}
+        {{if .IsMember}}
+        <button hx-post="/rooms/{{.Room.ID}}/leave"
+                hx-target="#content"
+                hx-swap="innerHTML"
+                hx-push-url="/"
+                hx-confirm="Leave this conversation?">Leave conversation</button>
+        {{end}}
+        {{else}}
         {{if .IsMember}}
         {{if .IsCreator}}
         <button hx-post="/rooms/{{.Room.ID}}/leave"
@@ -37,39 +51,40 @@
                 hx-push-url="/"
                 hx-confirm="Delete room {{.Room.DisplayName}}? This cannot be undone.">Delete room</button>
         {{end}}
+        {{end}}
     </div>
 
-    {{if .IsCreator}}
+    {{if and .IsCreator (not .Room.IsDM)}}
     <section style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
         <h4 style="margin-top: 0;">Room Settings</h4>
-        
-        <form hx-post="/rooms/{{.Room.ID}}/members-can-invite" 
-            hx-target="#room-sidebar" 
+
+        <form hx-post="/rooms/{{.Room.ID}}/members-can-invite"
+            hx-target="#room-sidebar"
             hx-swap="outerHTML"
-          hx-trigger="change" style="margin-bottom: 1rem;">
+            hx-trigger="change" style="margin-bottom: 1rem;">
         <label>
-            <input type="checkbox" 
-                   name="value" 
+            <input type="checkbox"
+                   name="value"
                    value="true"
                    {{if .Room.MembersCanInvite}}checked{{end}}
                    onchange="this.value = this.checked ? 'true' : 'false'">
             Members can invite
         </label>
-    </form>
+        </form>
 
-        <form hx-post="/rooms/{{.Room.ID}}/pgp-required" 
-            hx-target="#room-sidebar" 
+        <form hx-post="/rooms/{{.Room.ID}}/pgp-required"
+            hx-target="#room-sidebar"
             hx-swap="outerHTML"
-          hx-trigger="change">
+            hx-trigger="change">
         <label>
-            <input type="checkbox" 
-                   name="value" 
+            <input type="checkbox"
+                   name="value"
                    value="true"
                    {{if .Room.PGPRequired}}checked{{end}}
                    onchange="this.value = this.checked ? 'true' : 'false'">
             Require PGP encryption
         </label>
-    </form>
+        </form>
     </section>
     {{end}}
 

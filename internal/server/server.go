@@ -47,6 +47,7 @@ type roomDetailData struct {
 	CanInvite           bool
 	Members             []store.RoomMember
 	PendingInvites      []store.InviteForRoom
+	DMPartnerName       string
 	InviteFormError     string
 	InviteFormAttempted string
 	PGPKeyFormError     string
@@ -279,6 +280,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		CanInvite:           view.CanInvite,
 		Members:             view.Members,
 		PendingInvites:      view.PendingInvites,
+		DMPartnerName:       view.DMPartnerName,
 		InviteFormAttempted: opts.inviteAttempted,
 		InviteFormError:     opts.inviteErr,
 		PGPKeyFormAttempted: opts.pgpKeyAttempted,
@@ -348,6 +350,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.Users = view.Users
 	data.CreatedRooms = view.CreatedRooms
 	data.MemberRooms = view.MemberRooms
+	data.DMRooms = view.DMRooms
 	data.Invites = view.Invites
 
 	w.Header().Set("HX-Push-Url", "/")

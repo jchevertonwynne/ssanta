@@ -24,7 +24,7 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 		t.Fatalf("create invitee: %v", err)
 	}
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *tes
 	}
 	_ = inviteeID
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *te
 	}
 	_ = inviteeID
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
 	}
 	_ = inviteeID
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 		t.Fatalf("create other: %v", err)
 	}
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}

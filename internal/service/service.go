@@ -88,6 +88,7 @@ type RoomDetailView struct {
 	CanInvite       bool
 	Members         []store.RoomMember
 	PendingInvites  []store.InviteForRoom
+	DMPartnerName   string // non-empty only when Room.IsDM is true
 }
 
 // GetContentView loads all data needed for the main content page
@@ -185,6 +186,16 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 		return nil, err
 	}
 
+	var dmPartnerName string
+	if room.IsDM {
+		for _, m := range members {
+			if m.ID != userID {
+				dmPartnerName = m.Username
+				break
+			}
+		}
+	}
+
 	return &RoomDetailView{
 		CurrentUsername: user.Username,
 		Room:            room,
@@ -193,6 +204,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 		CanInvite:       isCreator || (isMember && room.MembersCanInvite),
 		Members:         members,
 		PendingInvites:  invites,
+		DMPartnerName:   dmPartnerName,
 	}, nil
 }
 
@@ -358,7 +370,10 @@ func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID 
 	if len(name) > store.MaxRoomNameLength {
 		return 0, store.ErrRoomNameTooLong
 	}
-	roomID, err := s.store.Rooms.CreateRoom(ctx, name, creatorID)
+	if strings.HasPrefix(strings.ToLower(name), "dm:") {
+		return 0, store.ErrRoomNameReservedPrefix
+	}
+	roomID, err := s.store.Rooms.CreateRoom(ctx, name, creatorID, false)
 	if err == nil {
 		slog.InfoContext(ctx, "room created", "room_name", name, "creator_id", creatorID, "room_id", roomID.Int64())
 		span.SetAttributes(attribute.Int64("room_id", roomID.Int64()))
@@ -366,7 +381,21 @@ func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID 
 	return roomID, err
 }
 
+func (s *Service) assertNotDM(ctx context.Context, roomID store.RoomID) error {
+	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
+		return err
+	}
+	if detail.IsDM {
+		return store.ErrOperationNotAllowedOnDM
+	}
+	return nil
+}
+
 func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	return s.store.Rooms.DeleteRoom(ctx, roomID, creatorID)
 }
 
@@ -387,14 +416,23 @@ func (s *Service) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID
 }
 
 func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
 func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, creatorID, value)
 }
 
 func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	return s.store.Rooms.RemoveMember(ctx, roomID, memberID, creatorID)
 }
 
@@ -409,6 +447,9 @@ func (s *Service) CreateInvite(ctx context.Context, roomID store.RoomID, inviter
 		attribute.String("invitee_username", inviteeUsername),
 	)
 
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	expiresAt := time.Now().Add(s.inviteMaxAge)
 	err := s.store.Invites.CreateInvite(ctx, roomID, inviterID, inviteeUsername, expiresAt)
 	if err == nil {
@@ -490,6 +531,9 @@ func (s *Service) SearchPublicRooms(ctx context.Context, query string, limit int
 }
 
 func (s *Service) SetRoomPublic(ctx context.Context, roomID store.RoomID, creatorID store.UserID, isPublic bool) error {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
 	return s.store.Rooms.SetRoomPublic(ctx, roomID, creatorID, isPublic)
 }
 
@@ -518,38 +562,28 @@ func (s *Service) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.
 	}
 	displayName := "dm:" + name1 + ":" + name2
 
-	// Try to find existing room
-	rooms, err := s.store.Rooms.ListRoomsByMember(ctx, user1ID)
-	if err != nil {
+	// DM rooms are identified by the reserved displayName prefix. We treat them as
+	// special rooms and ensure both users are members, even if one previously left.
+	room, err := s.store.Rooms.GetRoomByDisplayName(ctx, displayName)
+	if err != nil && !errors.Is(err, store.ErrRoomNotFound) {
 		return 0, err
 	}
 
-	for _, room := range rooms {
-		if room.DisplayName == displayName {
-			// Ensure user2 is also a member
-			isMember, err := s.store.Rooms.IsRoomMember(ctx, room.ID, user2ID)
-			if err != nil {
-				return 0, err
-			}
-			if !isMember {
-				err = s.store.Rooms.JoinRoom(ctx, room.ID, user2ID)
-				if err != nil {
-					return 0, err
-				}
-			}
-			return room.ID, nil
+	roomID := room.ID
+	if errors.Is(err, store.ErrRoomNotFound) {
+		// Create new DM room (user1 is creator)
+		roomID, err = s.store.Rooms.CreateRoom(ctx, displayName, user1ID, true)
+		if err != nil {
+			return 0, err
 		}
 	}
 
-	// Create new DM room (user1 is creator)
-	roomID, err := s.store.Rooms.CreateRoom(ctx, displayName, user1ID)
-	if err != nil {
+	// Ensure BOTH participants are members.
+	// This makes DMs usable immediately and also allows re-joining after leaving.
+	if err := s.store.Rooms.JoinRoom(ctx, roomID, user1ID); err != nil {
 		return 0, err
 	}
-
-	// Join user2 to the newly created room
-	err = s.store.Rooms.JoinRoom(ctx, roomID, user2ID)
-	if err != nil {
+	if err := s.store.Rooms.JoinRoom(ctx, roomID, user2ID); err != nil {
 		return 0, err
 	}
 
@@ -574,7 +608,7 @@ func (s *Service) GetDMPartnerUsername(ctx context.Context, roomID store.RoomID,
 
 // getDMRoomsForUser returns a list of DM rooms for a user with partner info
 func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, users []store.User) ([]DMRoomInfo, error) {
-	memberRooms, err := s.store.Rooms.ListRoomsByMember(ctx, userID)
+	memberRooms, err := s.store.Rooms.ListDMRoomsByMember(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -588,10 +622,6 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 	var dmRooms []DMRoomInfo
 
 	for _, room := range memberRooms {
-		if !strings.HasPrefix(room.DisplayName, "dm:") {
-			continue
-		}
-
 		// Extract partner username from DM name format "dm:user1:user2"
 		parts := strings.Split(room.DisplayName, ":")
 		if len(parts) != 3 {

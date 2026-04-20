@@ -30,7 +30,7 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 		t.Fatalf("create nonmember: %v", err)
 	}
 
-	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	_, err = st.Rooms.CreateRoom(ctx, "room", id)
+	_, err = st.Rooms.CreateRoom(ctx, "room", id, false)
 	if err != nil {
 		t.Fatalf("create room: %v", err)
 	}
@@ -122,5 +122,164 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 	}
 	if len(view.CreatedRooms) != 1 {
 		t.Fatalf("expected 1 created room, got %d", len(view.CreatedRooms))
+	}
+}
+
+func TestService_GetOrCreateDMRoom_AutoJoinsAndRejoins(t *testing.T) {
+	pool := requireIntegration(t)
+	st := store.New(pool)
+	svc := New(st)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userA, err := st.Users.CreateUser(ctx, "alice", "testhash")
+	if err != nil {
+		t.Fatalf("create userA: %v", err)
+	}
+	userB, err := st.Users.CreateUser(ctx, "bob", "testhash")
+	if err != nil {
+		t.Fatalf("create userB: %v", err)
+	}
+
+	roomID, err := svc.GetOrCreateDMRoom(ctx, userA, userB)
+	if err != nil {
+		t.Fatalf("get or create dm room: %v", err)
+	}
+
+	// Initiator should be joined automatically.
+	isMemberA, err := st.Rooms.IsRoomMember(ctx, roomID, userA)
+	if err != nil {
+		t.Fatalf("is room member (A): %v", err)
+	}
+	if !isMemberA {
+		t.Fatalf("expected userA to be a member after DM creation")
+	}
+	// Partner should also be a member.
+	isMemberB, err := st.Rooms.IsRoomMember(ctx, roomID, userB)
+	if err != nil {
+		t.Fatalf("is room member (B): %v", err)
+	}
+	if !isMemberB {
+		t.Fatalf("expected userB to be a member after DM creation")
+	}
+
+	// If A leaves, a subsequent DM creation should re-join A (and not create a new room).
+	if err := st.Rooms.LeaveRoom(ctx, roomID, userA); err != nil {
+		t.Fatalf("leave room (A): %v", err)
+	}
+
+	roomID2, err := svc.GetOrCreateDMRoom(ctx, userA, userB)
+	if err != nil {
+		t.Fatalf("get or create dm room (second call): %v", err)
+	}
+	if roomID2 != roomID {
+		t.Fatalf("expected same DM room id, got %d then %d", roomID.Int64(), roomID2.Int64())
+	}
+
+	isMemberA, err = st.Rooms.IsRoomMember(ctx, roomID2, userA)
+	if err != nil {
+		t.Fatalf("is room member (A, rejoined): %v", err)
+	}
+	if !isMemberA {
+		t.Fatalf("expected userA to be re-joined after DM re-creation")
+	}
+}
+
+func TestService_DMOperationsBlocked(t *testing.T) {
+	pool := requireIntegration(t)
+	st := store.New(pool)
+	svc := New(st)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userA, err := st.Users.CreateUser(ctx, "userablock", "testhash")
+	if err != nil {
+		t.Fatalf("create userA: %v", err)
+	}
+	userB, err := st.Users.CreateUser(ctx, "userbblock", "testhash")
+	if err != nil {
+		t.Fatalf("create userB: %v", err)
+	}
+
+	dmID, err := svc.GetOrCreateDMRoom(ctx, userA, userB)
+	if err != nil {
+		t.Fatalf("get or create DM: %v", err)
+	}
+
+	if err := svc.SetRoomMembersCanInvite(ctx, dmID, userA, true); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("SetRoomMembersCanInvite on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+	if err := svc.SetRoomPGPRequired(ctx, dmID, userA, true); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("SetRoomPGPRequired on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+	if err := svc.SetRoomPublic(ctx, dmID, userA, true); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("SetRoomPublic on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+	if err := svc.DeleteRoom(ctx, dmID, userA); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("DeleteRoom on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+	if err := svc.CreateInvite(ctx, dmID, userA, "userbblock"); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("CreateInvite on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+	if err := svc.RemoveMember(ctx, dmID, userB, userA); !errors.Is(err, store.ErrOperationNotAllowedOnDM) {
+		t.Fatalf("RemoveMember on DM: expected ErrOperationNotAllowedOnDM, got %v", err)
+	}
+}
+
+func TestService_GetContentView_ExcludesDMsFromRoomLists(t *testing.T) {
+	pool := requireIntegration(t)
+	st := store.New(pool)
+	svc := New(st)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	userA, err := st.Users.CreateUser(ctx, "useraqq", "testhash")
+	if err != nil {
+		t.Fatalf("create userA: %v", err)
+	}
+	userB, err := st.Users.CreateUser(ctx, "userbqq", "testhash")
+	if err != nil {
+		t.Fatalf("create userB: %v", err)
+	}
+
+	regularID, err := svc.CreateRoom(ctx, "my-regular-room", userA)
+	if err != nil {
+		t.Fatalf("create regular room: %v", err)
+	}
+
+	_, err = svc.GetOrCreateDMRoom(ctx, userA, userB)
+	if err != nil {
+		t.Fatalf("create dm: %v", err)
+	}
+
+	view, err := svc.GetContentView(ctx, userA)
+	if err != nil {
+		t.Fatalf("get content view: %v", err)
+	}
+
+	for _, r := range view.CreatedRooms {
+		if r.IsDM {
+			t.Fatalf("CreatedRooms contains DM room %d", r.ID)
+		}
+	}
+	for _, r := range view.MemberRooms {
+		if r.IsDM {
+			t.Fatalf("MemberRooms contains DM room %d", r.ID)
+		}
+	}
+	var foundRegular bool
+	for _, r := range view.CreatedRooms {
+		if r.ID == regularID {
+			foundRegular = true
+		}
+	}
+	if !foundRegular {
+		t.Fatalf("expected regular room in CreatedRooms")
+	}
+	if len(view.DMRooms) != 1 {
+		t.Fatalf("expected 1 DM room, got %d", len(view.DMRooms))
 	}
 }

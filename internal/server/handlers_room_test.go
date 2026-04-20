@@ -54,6 +54,28 @@ func TestHandleCreateRoom_EmptyName_RendersError(t *testing.T) {
 	}
 }
 
+func TestHandleCreateRoom_ReservedDMPrefix_RendersError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	expectLoggedIn(t, svc, sessions, 1)
+	svc.EXPECT().CreateRoom(gomock.Any(), "dm:alice:bob", store.UserID(1)).Return(0, store.ErrRoomNameReservedPrefix)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(1)).Return(stubContentView(""), nil)
+
+	r := newFormRequest(t, "/rooms", url.Values{"display_name": {"dm:alice:bob"}})
+	w := serve(t, handleCreateRoom(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), store.ErrRoomNameReservedPrefix.Error()) {
+		t.Fatalf("expected reserved prefix error rendered")
+	}
+}
+
 func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

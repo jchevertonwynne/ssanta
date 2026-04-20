@@ -30,7 +30,7 @@ func createRoom(t *testing.T, pool *pgxpool.Pool, name string, creatorID UserID)
 	st := New(pool)
 	ctx, cancel := testCtx(t)
 	defer cancel()
-	roomID, err := st.Rooms.CreateRoom(ctx, name, creatorID)
+	roomID, err := st.Rooms.CreateRoom(ctx, name, creatorID, false)
 	if err != nil {
 		t.Fatalf("create room %q: %v", name, err)
 	}

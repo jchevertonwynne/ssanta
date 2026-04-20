@@ -41,6 +41,10 @@ func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 			span.SetStatus(codes.Error, err.Error())
 			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
 			return
+		case errors.Is(err, store.ErrRoomNameReservedPrefix):
+			span.SetStatus(codes.Error, err.Error())
+			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
+			return
 		case errors.Is(err, store.ErrRoomNameTaken):
 			span.SetStatus(codes.Error, err.Error())
 			renderContentWithRoomFormError(w, ctx, svc, currentID, attempted, err.Error())
@@ -77,6 +81,9 @@ func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 		switch {
 		case errors.Is(err, store.ErrRoomNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("delete room", "err", err)
@@ -277,6 +284,9 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 		case errors.Is(err, store.ErrNotRoomCreator):
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
+			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("set members_can_invite", "err", err)
 			http.Error(w, "failed to update room", http.StatusInternalServerError)
@@ -306,6 +316,9 @@ func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http
 		switch {
 		case errors.Is(err, store.ErrNotRoomCreator):
 			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("set pgp_required", "err", err)
@@ -344,6 +357,9 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 			return
 		case errors.Is(err, store.ErrNotRoomMember):
 			http.Error(w, "user is not a member", http.StatusNotFound)
+			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("remove member", "err", err)

@@ -52,6 +52,10 @@ func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub 
 			span.SetStatus(codes.Error, err.Error())
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			span.SetStatus(codes.Error, err.Error())
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
+			return
 		case err != nil:
 			span.SetStatus(codes.Error, err.Error())
 			loggerFromContext(ctx).Error("create invite", "err", err, "room_id", roomID, "invitee", attempted)

@@ -92,8 +92,11 @@
         {{end}}
 
         {{template "content_invites.html" .}}
+    </section>
 
-        <h3>Direct Messages</h3>
+    <section>
+        <h2>Direct Messages</h2>
+
         <div id="dm-section">
             <form style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                 <select id="dm-partner-select" required>
@@ -113,9 +116,9 @@
                 if (!partnerID) return;
 
 				console.log('[dm] start', {partnerID});
-                
+
                 const form = new URLSearchParams({partner_id: partnerID});
-                
+
                 fetch('/dms', {
                     method: 'POST',
                     headers: {
@@ -138,7 +141,6 @@
         </div>
 
         {{if .DMRooms}}
-            <h3>My DMs</h3>
             <ul>
             {{range .DMRooms}}
                 <li>
@@ -147,6 +149,8 @@
                 </li>
             {{end}}
             </ul>
+        {{else}}
+            <p>No conversations yet.</p>
         {{end}}
     </section>
     {{end}}

@@ -13,10 +13,11 @@ import (
 const MaxRoomNameLength = 64
 
 var (
-	ErrRoomNameTaken   = errors.New("room name already taken")
-	ErrRoomNameEmpty   = errors.New("room name cannot be empty")
-	ErrRoomNameTooLong = errors.New("room name too long")
-	ErrRoomNotFound    = errors.New("room not found")
+	ErrRoomNameTaken          = errors.New("room name already taken")
+	ErrRoomNameEmpty          = errors.New("room name cannot be empty")
+	ErrRoomNameTooLong        = errors.New("room name too long")
+	ErrRoomNameReservedPrefix = errors.New("room name cannot start with dm:")
+	ErrRoomNotFound           = errors.New("room not found")
 
 	ErrUsernameTaken            = errors.New("username already taken")
 	ErrUsernameInvalid          = errors.New("username must be 3-32 letters or digits")
@@ -41,6 +42,8 @@ var (
 	ErrPGPChallengeMissing   = errors.New("pgp challenge missing")
 	ErrPGPChallengeExpired   = errors.New("pgp challenge expired")
 	ErrPGPChallengeIncorrect = errors.New("pgp challenge incorrect")
+
+	ErrOperationNotAllowedOnDM = errors.New("operation not allowed on DM room")
 )
 
 // dbtx is the subset of pgxpool.Pool / pgx.Tx that the stores call. It lets a
@@ -142,6 +145,7 @@ type Room struct {
 	DisplayName string
 	CreatedAt   time.Time
 	PGPRequired bool
+	IsDM        bool
 }
 
 type RoomDetail struct {

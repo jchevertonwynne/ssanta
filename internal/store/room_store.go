@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,11 +15,23 @@ type RoomStore struct {
 	db dbtx
 }
 
-func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID) (RoomID, error) {
+func (s *RoomStore) GetRoomByDisplayName(ctx context.Context, displayName string) (Room, error) {
+	var r Room
+	err := s.db.QueryRow(ctx,
+		`SELECT id, display_name, created_at, pgp_required, is_dm FROM rooms WHERE display_name = $1`,
+		displayName,
+	).Scan(&r.ID, &r.DisplayName, &r.CreatedAt, &r.PGPRequired, &r.IsDM)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Room{}, ErrRoomNotFound
+	}
+	return r, err
+}
+
+func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
 	var roomID RoomID
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO rooms (display_name, creator_id) VALUES ($1, $2) RETURNING id`,
-		displayName, creatorID,
+		`INSERT INTO rooms (display_name, creator_id, is_dm) VALUES ($1, $2, $3) RETURNING id`,
+		displayName, creatorID, isDM,
 	).Scan(&roomID)
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -49,7 +60,7 @@ func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID Use
 
 func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at, pgp_required FROM rooms WHERE creator_id = $1 ORDER BY id DESC`,
+		`SELECT id, display_name, created_at, pgp_required, is_dm FROM rooms WHERE creator_id = $1 AND is_dm = FALSE ORDER BY id DESC`,
 		userID,
 	)
 	if err != nil {
@@ -60,10 +71,25 @@ func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Ro
 
 func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT r.id, r.display_name, r.created_at, r.pgp_required
+		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
-		 WHERE ru.user_id = $1
+		 WHERE ru.user_id = $1 AND r.is_dm = FALSE
+		 ORDER BY r.id DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanRooms(rows)
+}
+
+func (s *RoomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm
+		 FROM rooms r
+		 JOIN room_users ru ON ru.room_id = r.id
+		 WHERE ru.user_id = $1 AND r.is_dm = TRUE
 		 ORDER BY r.id DESC`,
 		userID,
 	)
@@ -76,12 +102,12 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetail, error) {
 	var d RoomDetail
 	err := s.db.QueryRow(ctx,
-		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, u.username
+		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, r.is_dm, u.username
 		 FROM rooms r
 		 JOIN users u ON u.id = r.creator_id
 		 WHERE r.id = $1`,
 		roomID,
-	).Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.PGPRequired, &d.CreatorUsername)
+	).Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.PGPRequired, &d.IsDM, &d.CreatorUsername)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RoomDetail{}, ErrRoomNotFound
 	}
@@ -210,11 +236,11 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 
 	// Check if room exists and if user is the creator
 	var creatorID UserID
-	var displayName string
+	var isDM bool
 	err = tx.QueryRow(ctx,
-		`SELECT creator_id, display_name FROM rooms WHERE id = $1`,
+		`SELECT creator_id, is_dm FROM rooms WHERE id = $1`,
 		roomID,
-	).Scan(&creatorID, &displayName)
+	).Scan(&creatorID, &isDM)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrRoomNotFound
@@ -248,7 +274,7 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 
 	// For DM rooms, check if there are any remaining members
 	// If no members left, delete the room entirely
-	if strings.HasPrefix(displayName, "dm:") {
+	if isDM {
 		var memberCount int
 		err = tx.QueryRow(ctx,
 			`SELECT COUNT(*) FROM room_users WHERE room_id = $1`,
@@ -358,9 +384,9 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 
 func (s *RoomStore) ListPublicRooms(ctx context.Context, limit int, offset int) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at 
-		 FROM rooms 
-		 WHERE is_public = true
+		`SELECT id, display_name, created_at, pgp_required, is_dm
+		 FROM rooms
+		 WHERE is_public = TRUE AND is_dm = FALSE
 		 ORDER BY id DESC
 		 LIMIT $1 OFFSET $2`,
 		limit, offset,
@@ -373,9 +399,9 @@ func (s *RoomStore) ListPublicRooms(ctx context.Context, limit int, offset int) 
 
 func (s *RoomStore) SearchPublicRooms(ctx context.Context, query string, limit int) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at 
-		 FROM rooms 
-		 WHERE is_public = true AND display_name ILIKE $1
+		`SELECT id, display_name, created_at, pgp_required, is_dm
+		 FROM rooms
+		 WHERE is_public = TRUE AND is_dm = FALSE AND display_name ILIKE $1
 		 ORDER BY id DESC
 		 LIMIT $2`,
 		"%"+query+"%", limit,
@@ -405,7 +431,7 @@ func scanRooms(rows pgx.Rows) ([]Room, error) {
 	var rooms []Room
 	for rows.Next() {
 		var r Room
-		if err := rows.Scan(&r.ID, &r.DisplayName, &r.CreatedAt, &r.PGPRequired); err != nil {
+		if err := rows.Scan(&r.ID, &r.DisplayName, &r.CreatedAt, &r.PGPRequired, &r.IsDM); err != nil {
 			return nil, err
 		}
 		rooms = append(rooms, r)
