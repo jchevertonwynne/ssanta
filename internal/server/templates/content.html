@@ -111,18 +111,28 @@
                 const select = document.getElementById('dm-partner-select');
                 const partnerID = select.value;
                 if (!partnerID) return;
+
+				console.log('[dm] start', {partnerID});
                 
-                const form = new FormData();
-                form.append('partner_id', partnerID);
+                const form = new URLSearchParams({partner_id: partnerID});
                 
                 fetch('/dms', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
                     body: form
-                }).then(r => {
+                }).then(async r => {
+					console.log('[dm] response', {status: r.status, redirected: r.redirected, url: r.url});
                     if (r.redirected) {
                         window.location.href = r.url;
+						return;
                     }
-                });
+					const text = await r.text();
+					console.warn('[dm] non-redirect response', text);
+				}).catch(err => {
+					console.error('[dm] request failed', err);
+				});
             }
             </script>
         </div>

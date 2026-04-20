@@ -6,32 +6,50 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := loggerFromContext(r.Context())
+		contentType := r.Header.Get("Content-Type")
+		logger.Info("dm create_or_get start", "content_type", contentType, "content_length", r.ContentLength)
+
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
+			logger.Warn("dm create_or_get unauthorized")
 			http.Error(w, "login required", http.StatusUnauthorized)
 			return
 		}
 
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form", http.StatusBadRequest)
-			return
+		if strings.HasPrefix(contentType, "multipart/form-data") {
+			if err := r.ParseMultipartForm(32 << 20); err != nil {
+				logger.Warn("dm parse multipart form", "err", err, "content_type", contentType)
+				http.Error(w, "invalid form", http.StatusBadRequest)
+				return
+			}
+		} else {
+			if err := r.ParseForm(); err != nil {
+				logger.Warn("dm parse form", "err", err, "content_type", contentType)
+				http.Error(w, "invalid form", http.StatusBadRequest)
+				return
+			}
 		}
 
 		partnerIDStr := r.FormValue("partner_id")
 		if partnerIDStr == "" {
+			logger.Warn("dm missing partner_id", "content_type", contentType, "form_keys", formKeys(r.Form))
 			http.Error(w, "partner_id required", http.StatusBadRequest)
 			return
 		}
 
 		partnerID64, err := strconv.ParseInt(partnerIDStr, 10, 64)
 		if err != nil {
+			logger.Warn("dm invalid partner_id", "partner_id", partnerIDStr)
 			http.Error(w, "invalid partner_id", http.StatusBadRequest)
 			return
 		}
@@ -40,11 +58,12 @@ func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.Ha
 		// Validate partner exists
 		partnerExists, err := svc.UserExists(r.Context(), partnerID)
 		if err != nil {
-			loggerFromContext(r.Context()).Error("check user exists", "err", err)
+			logger.Error("dm check partner exists", "err", err, "partner_id", partnerID)
 			http.Error(w, "failed to check partner", http.StatusInternalServerError)
 			return
 		}
 		if !partnerExists {
+			logger.Info("dm partner not found", "partner_id", partnerID)
 			http.Error(w, "partner user not found", http.StatusNotFound)
 			return
 		}
@@ -52,17 +71,20 @@ func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.Ha
 		// Get or create DM room
 		roomID, err := svc.GetOrCreateDMRoom(r.Context(), currentID, partnerID)
 		if errors.Is(err, store.ErrCannotInviteSelf) {
+			logger.Info("dm cannot message self", "user_id", currentID)
 			http.Error(w, "cannot message yourself", http.StatusConflict)
 			return
 		}
 		if err != nil {
-			loggerFromContext(r.Context()).Error("get or create dm room", "err", err)
+			logger.Error("dm get or create room", "err", err, "partner_id", partnerID)
 			http.Error(w, "failed to create DM", http.StatusInternalServerError)
 			return
 		}
 
 		// Redirect to the room
-		http.Redirect(w, r, fmt.Sprintf("/rooms/%d", roomID), http.StatusSeeOther)
+		redirectURL := fmt.Sprintf("/rooms/%d", roomID)
+		logger.Info("dm create_or_get success", "partner_id", partnerID, "room_id", roomID, "redirect", redirectURL)
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 	}
 }
 
@@ -124,4 +146,16 @@ func escapeHTML(s string) string {
 		}
 	}
 	return buf.String()
+}
+
+func formKeys(form map[string][]string) []string {
+	if len(form) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(form))
+	for k := range form {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
