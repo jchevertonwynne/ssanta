@@ -36,10 +36,13 @@
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
     const chatTarget = document.getElementById('chat-target');
-    
+
     const isMember = {{if .IsMember}}true{{else}}false{{end}};
     const isCreator = {{if .IsCreator}}true{{else}}false{{end}};
     const roomId = {{.Room.ID}};
+    const roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
+    const currentUserID = String({{.CurrentUserID}});
+    const memberPGPKeys = {{.MemberPGPKeysJSON}};
     
     // Connect to WebSocket (even if not a member yet - membership_gained will enable chat input)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -76,29 +79,33 @@
         
         if (data.type === 'refresh') {
             htmx.ajax('GET', '/rooms/' + roomId + '/dynamic', {target: '#room-dynamic', swap: 'outerHTML'});
-            // Update whisper target dropdown when members change
-            if (chatTarget) {
-                const prevValue = chatTarget.value;
-                fetch('/rooms/' + roomId + '/members-list')
-                    .then(function(r) { return r.json(); })
-                    .then(function(membersList) {
+            fetch('/rooms/' + roomId + '/members-list')
+                .then(function(r) { return r.json(); })
+                .then(function(resp) {
+                    // Update PGP keys map so future messages encrypt to the latest keys
+                    if (resp.pgp_keys) {
+                        Object.keys(memberPGPKeys).forEach(function(k) { delete memberPGPKeys[k]; });
+                        Object.assign(memberPGPKeys, resp.pgp_keys);
+                    }
+                    // Update whisper target dropdown when members change
+                    if (chatTarget && resp.members) {
+                        const prevValue = chatTarget.value;
                         while (chatTarget.options.length > 1) chatTarget.remove(1);
-                        membersList.forEach(function(m) {
+                        resp.members.forEach(function(m) {
                             const opt = document.createElement('option');
                             opt.value = m.id;
                             opt.textContent = m.username;
                             chatTarget.appendChild(opt);
                         });
-                        // Restore previous selection if still valid
                         for (let i = 0; i < chatTarget.options.length; i++) {
                             if (chatTarget.options[i].value === prevValue) {
                                 chatTarget.value = prevValue;
                                 break;
                             }
                         }
-                    })
-                    .catch(function() {}); // ignore errors, dropdown stays as-is
-            }
+                    }
+                })
+                .catch(function() {}); // ignore errors, state stays as-is
             return;
         }
         
@@ -169,25 +176,59 @@
         chatMessages.appendChild(msgDiv);
     };
     
-    chatForm.onsubmit = function(e) {
+    chatForm.onsubmit = async function(e) {
         e.preventDefault();
         const message = chatInput.value.trim();
-        if (message && ws.readyState === WebSocket.OPEN) {
-            const payload = {
-                type: 'message',
-                message: message
-            };
-            if (chatTarget) {
-                const targetId = parseInt(chatTarget.value, 10);
-                if (targetId > 0) {
-                    payload.target_user_id = targetId;
-                }
+        if (!message || ws.readyState !== WebSocket.OPEN) return;
+
+        const payload = { type: 'message', message: message };
+        if (chatTarget) {
+            const targetId = parseInt(chatTarget.value, 10);
+            if (targetId > 0) {
+                payload.target_user_id = targetId;
             }
-            ws.send(JSON.stringify(payload));
-            chatInput.value = '';
         }
+
+        if (roomPGPRequired) {
+            const recipientIDs = payload.target_user_id
+                ? [currentUserID, String(payload.target_user_id)]
+                : Object.keys(memberPGPKeys);
+
+            const missing = recipientIDs.filter(function(id) { return !memberPGPKeys[id]; });
+            if (missing.length > 0) {
+                appendSystemMessage('Cannot send: some recipients have no verified PGP key. Reload the page and try again.');
+                return;
+            }
+
+            try {
+                const encryptionKeys = await Promise.all(
+                    recipientIDs.map(function(id) { return openpgp.readKey({ armoredKey: memberPGPKeys[id] }); })
+                );
+                payload.message = await openpgp.encrypt({
+                    message: await openpgp.createMessage({ text: message }),
+                    encryptionKeys: encryptionKeys,
+                });
+                payload.pre_encrypted = true;
+            } catch (err) {
+                appendSystemMessage('Encryption failed: ' + err.message);
+                return;
+            }
+        }
+
+        ws.send(JSON.stringify(payload));
+        chatInput.value = '';
     };
     
+    function appendSystemMessage(text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.style.marginBottom = '0.5rem';
+        msgDiv.style.color = '#b00020';
+        msgDiv.style.fontStyle = 'italic';
+        msgDiv.textContent = text;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;

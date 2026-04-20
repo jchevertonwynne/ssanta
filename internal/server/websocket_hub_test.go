@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ProtonMail/gopenpgp/v3/crypto"
 	"github.com/gorilla/websocket"
 	"go.uber.org/mock/gomock"
 
@@ -102,7 +101,7 @@ func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 	hub.Stop()
 }
 
-func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
+func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -111,17 +110,15 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
-
-	// Key for recipient (self)
-	armoredPub, privKey := mustGenerateTestKeyPair(t)
 	verifiedAt := time.Now()
 
-	// For websocket handler auth.
 	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil).AnyTimes()
-	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{{ID: userID, Username: "alice", PGPPublicKey: armoredPub, PGPVerifiedAt: &verifiedAt}}, nil).AnyTimes()
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: userID, Username: "alice", PGPPublicKey: "armoredkey", PGPVerifiedAt: &verifiedAt},
+	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -148,7 +145,8 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	}
 	defer conn.Close() //nolint:errcheck
 
-	msg := ChatMessagePayload{Type: "message", Message: "hello"}
+	const ciphertext = "-----BEGIN PGP MESSAGE-----\nfakeciphertext\n-----END PGP MESSAGE-----"
+	msg := ChatMessagePayload{Type: "message", Message: ciphertext, PreEncrypted: true}
 	b, _ := json.Marshal(msg)
 	if err := conn.WriteMessage(websocket.TextMessage, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -170,13 +168,12 @@ func TestWebSocket_E2E_MessageEncryptedToSelfWithKey(t *testing.T) {
 	if payload.Username != "alice" {
 		t.Fatalf("expected username=alice, got %q", payload.Username)
 	}
-	plaintext := mustDecryptArmored(t, privKey, payload.Message)
-	if plaintext != "hello" {
-		t.Fatalf("expected decrypted plaintext=hello, got %q", plaintext)
+	if payload.Message != ciphertext {
+		t.Fatalf("expected ciphertext forwarded unchanged, got %q", payload.Message)
 	}
 }
 
-func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
+func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -184,15 +181,10 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	roomID := store.RoomID(10)
-
 	userA := store.UserID(2)
 	userB := store.UserID(3)
-
-	pubA, privA := mustGenerateTestKeyPair(t)
-	pubB, _ := mustGenerateTestKeyPair(t)
 	verifiedAt := time.Now()
 
-	// Session user based on header, so we can dial two websocket conns.
 	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case "alice":
@@ -208,13 +200,9 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return("alice", nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return("bob", nil).AnyTimes()
-
-	// Alice has a verified key; bob has no key and should receive a placeholder.
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
-		{ID: userA, Username: "alice", PGPPublicKey: pubA, PGPVerifiedAt: &verifiedAt},
+		{ID: userA, Username: "alice", PGPPublicKey: "keyA", PGPVerifiedAt: &verifiedAt},
 		{ID: userB, Username: "bob", PGPPublicKey: ""},
-		// Extra keyed user not connected should not matter.
-		{ID: 999, Username: "ghost", PGPPublicKey: pubB},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
@@ -250,50 +238,42 @@ func TestWebSocket_E2E_MessageOnlyDeliveredToUsersWithKeys(t *testing.T) {
 	connB := dial("bob")
 	defer connB.Close() //nolint:errcheck
 
-	msg := ChatMessagePayload{Type: "message", Message: "hello"}
+	const ciphertext = "-----BEGIN PGP MESSAGE-----\nfakeciphertext\n-----END PGP MESSAGE-----"
+	msg := ChatMessagePayload{Type: "message", Message: ciphertext, PreEncrypted: true}
 	b, _ := json.Marshal(msg)
-	requireWrite := func(c *websocket.Conn) {
-		if err := c.WriteMessage(websocket.TextMessage, b); err != nil {
-			t.Fatalf("write: %v", err)
+	if err := connA.WriteMessage(websocket.TextMessage, b); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	for _, tc := range []struct {
+		conn *websocket.Conn
+		name string
+	}{
+		{connA, "alice"},
+		{connB, "bob"},
+	} {
+		_ = tc.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, got, err := tc.conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("read %s: %v", tc.name, err)
 		}
-	}
-	requireWrite(connA)
-
-	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotA, err := connA.ReadMessage()
-	if err != nil {
-		t.Fatalf("read alice: %v", err)
-	}
-	var payloadA ChatMessagePayload
-	if err := json.Unmarshal(gotA, &payloadA); err != nil {
-		t.Fatalf("unmarshal alice: %v", err)
-	}
-	plaintext := mustDecryptArmored(t, privA, payloadA.Message)
-	if plaintext != "hello" {
-		t.Fatalf("expected decrypted plaintext=hello, got %q", plaintext)
-	}
-
-	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotB, err := connB.ReadMessage()
-	if err != nil {
-		t.Fatalf("read bob: %v", err)
-	}
-	var payloadB ChatMessagePayload
-	if err := json.Unmarshal(gotB, &payloadB); err != nil {
-		t.Fatalf("unmarshal bob: %v", err)
-	}
-	if payloadB.Type != "message" {
-		t.Fatalf("expected bob type=message, got %q", payloadB.Type)
-	}
-	if payloadB.Username != "alice" {
-		t.Fatalf("expected bob username=alice, got %q", payloadB.Username)
-	}
-	if payloadB.Message != "<encrypted message>" {
-		t.Fatalf("expected bob placeholder message, got %q", payloadB.Message)
+		var p ChatMessagePayload
+		if err := json.Unmarshal(got, &p); err != nil {
+			t.Fatalf("unmarshal %s: %v", tc.name, err)
+		}
+		if p.Type != "message" {
+			t.Fatalf("%s: expected type=message, got %q", tc.name, p.Type)
+		}
+		if p.Username != "alice" {
+			t.Fatalf("%s: expected username=alice, got %q", tc.name, p.Username)
+		}
+		if p.Message != ciphertext {
+			t.Fatalf("%s: expected ciphertext forwarded unchanged, got %q", tc.name, p.Message)
+		}
 	}
 }
 
-func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
+func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -301,13 +281,9 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	roomID := store.RoomID(10)
-
 	userA := store.UserID(2)
 	userB := store.UserID(3)
 
-	pubA, _ := mustGenerateTestKeyPair(t)
-
-	// Session user based on header, so we can dial two websocket conns.
 	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case "alice":
@@ -323,11 +299,9 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return("alice", nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return("bob", nil).AnyTimes()
-
-	// Alice has an unverified key: sending should be blocked.
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
-		{ID: userA, Username: "alice", PGPPublicKey: pubA, PGPVerifiedAt: nil},
-		{ID: userB, Username: "bob", PGPPublicKey: ""},
+		{ID: userA, Username: "alice"},
+		{ID: userB, Username: "bob"},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
@@ -363,7 +337,8 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	connB := dial("bob")
 	defer connB.Close() //nolint:errcheck
 
-	msg := ChatMessagePayload{Type: "message", Message: "hello"}
+	// Send without pre_encrypted: true — server must reject this.
+	msg := ChatMessagePayload{Type: "message", Message: "hello plaintext"}
 	b, _ := json.Marshal(msg)
 	if err := connA.WriteMessage(websocket.TextMessage, b); err != nil {
 		t.Fatalf("write: %v", err)
@@ -381,8 +356,8 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	if payloadA.Type != "system" {
 		t.Fatalf("expected type=system, got %q", payloadA.Type)
 	}
-	if !strings.Contains(payloadA.Message, "verify") {
-		t.Fatalf("expected system message to mention verify, got %q", payloadA.Message)
+	if !strings.Contains(payloadA.Message, "PGP") {
+		t.Fatalf("expected system message to mention PGP, got %q", payloadA.Message)
 	}
 
 	_ = connB.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
@@ -390,43 +365,6 @@ func TestWebSocket_E2E_SenderWithoutVerifiedKeyBlocked(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected bob to receive no message")
 	}
-}
-
-func mustGenerateTestKeyPair(t *testing.T) (armoredPublicKey string, privateKey *crypto.Key) {
-	t.Helper()
-
-	pgpHandle := crypto.PGP()
-	priv, err := pgpHandle.KeyGeneration().AddUserId("test", "test@example.com").New().GenerateKey()
-	if err != nil {
-		t.Fatalf("generate key: %v", err)
-	}
-
-	pub, err := priv.ToPublic()
-	if err != nil {
-		t.Fatalf("to public: %v", err)
-	}
-
-	armoredPub, err := pub.Armor()
-	if err != nil {
-		t.Fatalf("armor public: %v", err)
-	}
-
-	return armoredPub, priv
-}
-
-func mustDecryptArmored(t *testing.T, privateKey *crypto.Key, armoredCiphertext string) string {
-	t.Helper()
-
-	pgpHandle := crypto.PGP()
-	decHandle, err := pgpHandle.Decryption().DecryptionKey(privateKey).New()
-	if err != nil {
-		t.Fatalf("decrypt handle: %v", err)
-	}
-	decrypted, err := decHandle.Decrypt([]byte(armoredCiphertext), crypto.Armor)
-	if err != nil {
-		t.Fatalf("decrypt: %v", err)
-	}
-	return string(decrypted.Bytes())
 }
 
 func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {

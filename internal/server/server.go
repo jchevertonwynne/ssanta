@@ -56,6 +56,7 @@ type roomDetailData struct {
 	PGPVerifyFormError  string
 	PGPVerifyAttempted  string
 	PGPRemoveFormError  string
+	MemberPGPKeysJSON   template.JS
 }
 
 type roomRenderOpts struct {
@@ -272,6 +273,19 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		http.Error(w, "failed to load room", http.StatusInternalServerError)
 		return
 	}
+	verifiedKeys := make(map[store.UserID]string)
+	for _, m := range view.Members {
+		if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
+			verifiedKeys[m.ID] = m.PGPPublicKey
+		}
+	}
+	keysJSON, err := json.Marshal(verifiedKeys)
+	if err != nil {
+		slog.Error("marshal member pgp keys", "err", err)
+		http.Error(w, "failed to load room", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("HX-Push-Url", fmt.Sprintf("/rooms/%d", roomID))
 	render(w, opts.template, roomDetailData{
 		CurrentUserID:       currentID,
@@ -291,6 +305,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		PGPVerifyAttempted:  opts.pgpVerifyAttempted,
 		PGPVerifyFormError:  opts.pgpVerifyErr,
 		PGPRemoveFormError:  opts.pgpRemoveErr,
+		MemberPGPKeysJSON:   template.JS(keysJSON), //nolint:gosec // JSON-encoded map of public keys, safe for script context
 	})
 }
 

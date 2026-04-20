@@ -404,25 +404,34 @@ func handleRoomMembersList(svc MembersListService, sessions SessionManager) http
 			return
 		}
 
-		// Check membership from the results instead of a separate query
 		isMember := false
 		type memberEntry struct {
 			ID       store.UserID `json:"id"`
 			Username string       `json:"username"`
 		}
-		out := make([]memberEntry, 0, len(members))
+		type membersListResponse struct {
+			Members []memberEntry          `json:"members"`
+			PGPKeys map[store.UserID]string `json:"pgp_keys"`
+		}
+		resp := membersListResponse{
+			Members: make([]memberEntry, 0, len(members)-1),
+			PGPKeys: make(map[store.UserID]string),
+		}
 		for _, m := range members {
 			if m.ID == currentID {
 				isMember = true
-				continue
+			} else {
+				resp.Members = append(resp.Members, memberEntry{ID: m.ID, Username: m.Username})
 			}
-			out = append(out, memberEntry{ID: m.ID, Username: m.Username})
+			if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
+				resp.PGPKeys[m.ID] = m.PGPPublicKey
+			}
 		}
 		if !isMember {
 			http.Error(w, "not a member of this room", http.StatusForbidden)
 			return
 		}
 
-		writeJSON(w, http.StatusOK, out)
+		writeJSON(w, http.StatusOK, resp)
 	}
 }

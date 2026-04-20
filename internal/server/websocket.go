@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"golang.org/x/sync/errgroup"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -82,6 +80,7 @@ type ChatMessagePayload struct {
 	CreatedAt    time.Time    `json:"created_at,omitempty"`
 	TargetUserID store.UserID `json:"target_user_id,omitempty"`
 	Whisper      bool         `json:"whisper,omitempty"`
+	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
 }
 
 func NewChatHub() *ChatHub {
@@ -572,9 +571,23 @@ func (c *ChatClient) readPump() {
 				}
 			}
 
-			// If PGP is optional, send plaintext to all members
-			if !pgpRequired {
-				perUser := make(map[store.UserID][]byte, len(members))
+			// PGP-required rooms only accept client-pre-encrypted messages
+			if pgpRequired {
+				if !payload.PreEncrypted {
+					sys := ChatMessagePayload{
+						Type:      "system",
+						Message:   "This room requires PGP encryption. Your client must encrypt messages before sending.",
+						CreatedAt: time.Now(),
+					}
+					if b, err := json.Marshal(sys); err == nil {
+						select {
+						case c.send <- b:
+						default:
+						}
+					}
+					span.End()
+					continue
+				}
 				out := ChatMessagePayload{
 					Type:      "message",
 					Username:  c.username,
@@ -584,10 +597,11 @@ func (c *ChatClient) readPump() {
 				}
 				outBytes, err := json.Marshal(out)
 				if err != nil {
-					slog.Error("marshal chat message", "err", err)
+					slog.Error("marshal pre-encrypted chat message", "err", err)
 					span.End()
 					continue
 				}
+				perUser := make(map[store.UserID][]byte, len(members))
 				if isWhisper {
 					perUser[c.userID] = outBytes
 					perUser[targetUserID] = outBytes
@@ -597,8 +611,6 @@ func (c *ChatClient) readPump() {
 					}
 				}
 				c.hub.SendToRoomUsers(c.roomID, perUser)
-
-				// Record messages sent metric (one per recipient)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
 						attribute.Int64("room_id", c.roomID.Int64()),
@@ -606,104 +618,35 @@ func (c *ChatClient) readPump() {
 					)
 					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
 				}
-				slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
+				slog.InfoContext(ctx, "pre-encrypted chat message forwarded", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 				span.End()
 				continue
 			}
 
-			// PGP is required - validate sender has verified key
-			senderVerified := false
-			for _, m := range members {
-				if m.ID != c.userID {
-					continue
-				}
-				if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
-					senderVerified = true
-				}
-				break
+			// PGP optional: send plaintext to all members
+			perUser := make(map[store.UserID][]byte, len(members))
+			out := ChatMessagePayload{
+				Type:      "message",
+				Username:  c.username,
+				Message:   plaintext,
+				CreatedAt: createdAt,
+				Whisper:   isWhisper,
 			}
-			if !senderVerified {
-				sys := ChatMessagePayload{
-					Type:      "system",
-					Message:   "You must upload and verify a PGP key to send messages in this room.",
-					CreatedAt: time.Now(),
-				}
-				if b, err := json.Marshal(sys); err == nil {
-					select {
-					case c.send <- b:
-					default:
-					}
-				}
+			outBytes, err := json.Marshal(out)
+			if err != nil {
+				slog.Error("marshal chat message", "err", err)
 				span.End()
 				continue
 			}
-
-			// Determine which members should receive this message
-			recipients := members
 			if isWhisper {
-				recipients = make([]store.RoomMember, 0, 2)
+				perUser[c.userID] = outBytes
+				perUser[targetUserID] = outBytes
+			} else {
 				for _, m := range members {
-					if m.ID == c.userID || m.ID == targetUserID {
-						recipients = append(recipients, m)
-					}
+					perUser[m.ID] = outBytes
 				}
 			}
-
-			// Parallelize per-recipient encryption using errgroup
-			perUser := make(map[store.UserID][]byte, len(recipients))
-			var mu sync.Mutex
-			var g errgroup.Group
-
-			for _, m := range recipients {
-				// capture loop variable
-				g.Go(func() error {
-					var b []byte
-					var err error
-
-					if m.PGPPublicKey == "" {
-						out := ChatMessagePayload{
-							Type:      "message",
-							Username:  c.username,
-							Message:   "<encrypted message>",
-							CreatedAt: createdAt,
-							Whisper:   isWhisper,
-						}
-						b, err = json.Marshal(out)
-						if err != nil {
-							return nil //nolint:nilerr // skip on marshal error, don't fail the whole batch
-						}
-					} else {
-						ciphertext, err := pgp.EncryptToPublicKey(m.PGPPublicKey, []byte(plaintext))
-						if err != nil {
-							slog.Error("encrypt chat message", "room_id", c.roomID, "recipient_user_id", m.ID, "err", err)
-							return nil //nolint:nilerr // skip on encryption error, don't fail the whole batch
-						}
-						out := ChatMessagePayload{
-							Type:      "message",
-							Username:  c.username,
-							Message:   ciphertext,
-							CreatedAt: createdAt,
-							Whisper:   isWhisper,
-						}
-						b, err = json.Marshal(out)
-						if err != nil {
-							return nil //nolint:nilerr // skip on marshal error, don't fail the whole batch
-						}
-					}
-
-					mu.Lock()
-					perUser[m.ID] = b
-					mu.Unlock()
-					return nil
-				})
-			}
-
-			// Wait for all encryptions to complete
-			_ = g.Wait() //nolint:errcheck // ignore error, we handled errors inside goroutines
-
 			c.hub.SendToRoomUsers(c.roomID, perUser)
-
-			// Record messages sent metric (one per recipient)
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
 					attribute.Int64("room_id", c.roomID.Int64()),
@@ -711,8 +654,7 @@ func (c *ChatClient) readPump() {
 				)
 				metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
 			}
-			slog.InfoContext(ctx, "chat message sent", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
-
+			slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 			span.End()
 		}
 	}
