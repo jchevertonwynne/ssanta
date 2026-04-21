@@ -9,15 +9,20 @@
 
     <section>
         <h3>Chat</h3>
+        <div id="chat-controls" style="display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;font-size:0.85em;">
+            <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="sound-toggle"> Sound</label>
+            <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="notif-toggle"> Browser notifications</label>
+        </div>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
         <details id="pgp-key-section" style="margin-bottom: 0.5rem;">
             <summary style="cursor: pointer; user-select: none;">PGP Private Key (for decryption)</summary>
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
                 <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical;"></textarea>
                 <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
-                <div style="display: flex; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                     <button type="button" id="pgp-load-key-btn">Load Key</button>
                     <button type="button" id="pgp-clear-key-btn">Clear Key</button>
+                    <label style="cursor:pointer;user-select:none;font-size:0.85em;"><input type="checkbox" id="pgp-persist-toggle"> Remember across sessions</label>
                 </div>
                 <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
             </div>
@@ -54,114 +59,212 @@
     const roomId = {{.Room.ID}};
     let roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
     const currentUserID = String({{.CurrentUserID}});
+    const currentUsername = "{{.CurrentUsername}}";
     const memberPGPKeys = {{.MemberPGPKeysJSON}};
 
     let loadedPrivateKey = null;
     const messageHistory = [];
-    
-    // Connect to WebSocket (even if not a member yet - membership_gained will enable chat input)
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
-    
-    ws.onopen = function() {
-        console.log('Connected to chat');
+
+    // --- Sound & browser notification controls ---
+
+    const soundToggle = document.getElementById('sound-toggle');
+    const notifToggle = document.getElementById('notif-toggle');
+
+    soundToggle.checked = localStorage.getItem('chat_sound_enabled') === 'true';
+    notifToggle.checked = localStorage.getItem('chat_notif_enabled') === 'true';
+
+    soundToggle.onchange = function() {
+        localStorage.setItem('chat_sound_enabled', soundToggle.checked);
     };
-    
-    ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'kicked') {
-            ws.close();
-            window.location.href = '/';
-            return;
-        }
 
-        if (data.type === 'membership_lost') {
-            chatInput.disabled = true;
-            chatInput.placeholder = 'Join the room to chat';
-            document.querySelector('#chat-form button[type=submit]').disabled = true;
-            if (chatTarget) chatTarget.disabled = true;
+    notifToggle.onchange = function() {
+        if (!notifToggle.checked) {
+            localStorage.setItem('chat_notif_enabled', 'false');
             return;
         }
+        if (Notification.permission === 'denied') {
+            notifToggle.checked = false;
+            alert('Notifications are blocked by the browser. Enable them in your browser settings.');
+            return;
+        }
+        Notification.requestPermission().then(function(perm) {
+            if (perm === 'granted') {
+                localStorage.setItem('chat_notif_enabled', 'true');
+            } else {
+                notifToggle.checked = false;
+                localStorage.setItem('chat_notif_enabled', 'false');
+            }
+        });
+    };
 
-        if (data.type === 'membership_gained') {
-            chatInput.disabled = false;
-            chatInput.placeholder = 'Type a message...';
-            document.querySelector('#chat-form button[type=submit]').disabled = false;
-            if (chatTarget) chatTarget.disabled = false;
-            return;
+    // Revoke notif toggle if permission was revoked externally
+    if (Notification.permission !== 'granted' && notifToggle.checked) {
+        notifToggle.checked = false;
+        localStorage.setItem('chat_notif_enabled', 'false');
+    }
+
+    function playNotificationSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch(e) {}
+    }
+
+    function sendBrowserNotification(username, text) {
+        if (!notifToggle.checked || Notification.permission !== 'granted' || !document.hidden) return;
+        const n = new Notification(username, { body: text.slice(0, 80) });
+        n.onclick = function() { window.focus(); n.close(); };
+    }
+
+    // --- WebSocket with auto-reconnect ---
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    let ws;
+    let reconnectTimer = null;
+    let reconnectDelay = 1000;
+    let intentionalClose = false;
+    let wasDisconnected = false;
+    let reconnectMsgEl = null;
+
+    function showReconnectMsg(text) {
+        if (!reconnectMsgEl) {
+            reconnectMsgEl = document.createElement('div');
+            reconnectMsgEl.style.marginBottom = '0.5rem';
+            reconnectMsgEl.style.fontStyle = 'italic';
+            chatMessages.appendChild(reconnectMsgEl);
         }
-        
-        if (data.type === 'refresh') {
-            htmx.ajax('GET', '/rooms/' + roomId + '/dynamic', {target: '#room-dynamic', swap: 'outerHTML'});
-            fetch('/rooms/' + roomId + '/members-list')
-                .then(function(r) { return r.json(); })
-                .then(function(resp) {
-                    if (resp.members) {
-                        // Rebuild PGP keys map from member entries
-                        Object.keys(memberPGPKeys).forEach(function(k) { delete memberPGPKeys[k]; });
-                        resp.members.forEach(function(m) {
-                            if (m.pgp_key) memberPGPKeys[m.id] = m.pgp_key;
-                        });
-                    }
-                    if (resp.pgp_required !== undefined) {
-                        roomPGPRequired = resp.pgp_required;
-                    }
-                    // Update whisper target dropdown when members change
-                    if (chatTarget && resp.members) {
-                        const prevValue = chatTarget.value;
-                        while (chatTarget.options.length > 1) chatTarget.remove(1);
-                        resp.members.forEach(function(m) {
-                            if (String(m.id) === currentUserID) return;
-                            const opt = document.createElement('option');
-                            opt.value = m.id;
-                            opt.textContent = m.username;
-                            chatTarget.appendChild(opt);
-                        });
-                        for (let i = 0; i < chatTarget.options.length; i++) {
-                            if (chatTarget.options[i].value === prevValue) {
-                                chatTarget.value = prevValue;
-                                break;
+        reconnectMsgEl.style.color = '#b8860b';
+        reconnectMsgEl.textContent = text;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function clearReconnectMsg() {
+        if (reconnectMsgEl && reconnectMsgEl.parentNode) {
+            reconnectMsgEl.parentNode.removeChild(reconnectMsgEl);
+        }
+        reconnectMsgEl = null;
+    }
+
+    function connect() {
+        ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
+
+        ws.onopen = function() {
+            console.log('Connected to chat');
+            reconnectDelay = 1000;
+            if (wasDisconnected) {
+                clearReconnectMsg();
+                appendSystemMessage('Reconnected to chat.');
+                wasDisconnected = false;
+            }
+        };
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'kicked') {
+                intentionalClose = true;
+                ws.close();
+                window.location.href = '/';
+                return;
+            }
+
+            if (data.type === 'membership_lost') {
+                chatInput.disabled = true;
+                chatInput.placeholder = 'Join the room to chat';
+                document.querySelector('#chat-form button[type=submit]').disabled = true;
+                if (chatTarget) chatTarget.disabled = true;
+                return;
+            }
+
+            if (data.type === 'membership_gained') {
+                chatInput.disabled = false;
+                chatInput.placeholder = 'Type a message...';
+                document.querySelector('#chat-form button[type=submit]').disabled = false;
+                if (chatTarget) chatTarget.disabled = false;
+                return;
+            }
+
+            if (data.type === 'refresh') {
+                htmx.ajax('GET', '/rooms/' + roomId + '/dynamic', {target: '#room-dynamic', swap: 'outerHTML'});
+                fetch('/rooms/' + roomId + '/members-list')
+                    .then(function(r) { return r.json(); })
+                    .then(function(resp) {
+                        if (resp.members) {
+                            Object.keys(memberPGPKeys).forEach(function(k) { delete memberPGPKeys[k]; });
+                            resp.members.forEach(function(m) {
+                                if (m.pgp_key) memberPGPKeys[m.id] = m.pgp_key;
+                            });
+                        }
+                        if (resp.pgp_required !== undefined) {
+                            roomPGPRequired = resp.pgp_required;
+                        }
+                        if (chatTarget && resp.members) {
+                            const prevValue = chatTarget.value;
+                            while (chatTarget.options.length > 1) chatTarget.remove(1);
+                            resp.members.forEach(function(m) {
+                                if (String(m.id) === currentUserID) return;
+                                const opt = document.createElement('option');
+                                opt.value = m.id;
+                                opt.textContent = m.username;
+                                chatTarget.appendChild(opt);
+                            });
+                            for (let i = 0; i < chatTarget.options.length; i++) {
+                                if (chatTarget.options[i].value === prevValue) {
+                                    chatTarget.value = prevValue;
+                                    break;
+                                }
                             }
                         }
-                    }
-                })
-                .catch(function() {}); // ignore errors, state stays as-is
-            return;
-        }
-        
-        if (data.type === 'system') {
-            const msgDiv = document.createElement('div');
-            msgDiv.style.marginBottom = '0.5rem';
-            msgDiv.style.color = '#666';
-            msgDiv.style.fontStyle = 'italic';
-            
-            const time = new Date(data.created_at).toLocaleTimeString();
-            msgDiv.innerHTML = '<small>(' + time + ')</small> ' + escapeHtml(data.message);
-            
-            chatMessages.appendChild(msgDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return;
-        }
-        
-        if (data.type === 'message') {
-            appendMessageAsync(data);
-            return;
-        }
-    };
-    
-    ws.onerror = function(error) {
-        console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = function() {
-        console.log('Disconnected from chat');
-        const msgDiv = document.createElement('div');
-        msgDiv.style.color = '#b00020';
-        msgDiv.textContent = 'Disconnected from chat. Reload the page to reconnect.';
-        chatMessages.appendChild(msgDiv);
-    };
-    
+                    })
+                    .catch(function() {});
+                return;
+            }
+
+            if (data.type === 'system') {
+                const msgDiv = document.createElement('div');
+                msgDiv.style.marginBottom = '0.5rem';
+                msgDiv.style.color = '#666';
+                msgDiv.style.fontStyle = 'italic';
+
+                const time = new Date(data.created_at).toLocaleTimeString();
+                msgDiv.innerHTML = '<small>(' + time + ')</small> ' + escapeHtml(data.message);
+
+                chatMessages.appendChild(msgDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return;
+            }
+
+            if (data.type === 'message') {
+                appendMessageAsync(data);
+                return;
+            }
+        };
+
+        ws.onerror = function(error) {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = function() {
+            if (intentionalClose) return;
+            console.log('Disconnected from chat');
+            wasDisconnected = true;
+            const secs = Math.round(reconnectDelay / 1000);
+            showReconnectMsg('Disconnected. Reconnecting in ' + secs + 's…');
+            reconnectTimer = setTimeout(connect, reconnectDelay);
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        };
+    }
+
+    connect();
+
     chatForm.onsubmit = async function(e) {
         e.preventDefault();
         const message = chatInput.value.trim();
@@ -204,7 +307,46 @@
         ws.send(JSON.stringify(payload));
         chatInput.value = '';
     };
-    
+
+    // --- PGP key management ---
+
+    const pgpPersistToggle = document.getElementById('pgp-persist-toggle');
+    pgpPersistToggle.checked = localStorage.getItem('pgp_persist_across_sessions') === 'true';
+
+    pgpPersistToggle.onchange = function() {
+        localStorage.setItem('pgp_persist_across_sessions', pgpPersistToggle.checked);
+        if (!loadedPrivateKey) return;
+        const armoredKey = document.getElementById('pgp-private-key-input').value;
+        const passphrase = document.getElementById('pgp-passphrase-input').value;
+        if (pgpPersistToggle.checked) {
+            localStorage.setItem('pgp_armored_key', armoredKey);
+            localStorage.setItem('pgp_passphrase', passphrase);
+            sessionStorage.removeItem('pgp_armored_key');
+            sessionStorage.removeItem('pgp_passphrase');
+        } else {
+            sessionStorage.setItem('pgp_armored_key', armoredKey);
+            sessionStorage.setItem('pgp_passphrase', passphrase);
+            localStorage.removeItem('pgp_armored_key');
+            localStorage.removeItem('pgp_passphrase');
+        }
+    };
+
+    function pgpKeyStore() {
+        return pgpPersistToggle.checked ? localStorage : sessionStorage;
+    }
+
+    function savePGPKey(armoredKey, passphrase) {
+        pgpKeyStore().setItem('pgp_armored_key', armoredKey);
+        pgpKeyStore().setItem('pgp_passphrase', passphrase);
+    }
+
+    function clearPGPStorage() {
+        localStorage.removeItem('pgp_armored_key');
+        localStorage.removeItem('pgp_passphrase');
+        sessionStorage.removeItem('pgp_armored_key');
+        sessionStorage.removeItem('pgp_passphrase');
+    }
+
     document.getElementById('pgp-load-key-btn').onclick = async function() {
         const armoredKey = document.getElementById('pgp-private-key-input').value.trim();
         const passphrase = document.getElementById('pgp-passphrase-input').value;
@@ -216,6 +358,7 @@
                 key = await openpgp.decryptKey({ privateKey: key, passphrase });
             }
             loadedPrivateKey = key;
+            savePGPKey(armoredKey, passphrase);
             statusEl.style.color = 'green';
             statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
             await rerenderAllMessages();
@@ -228,12 +371,41 @@
 
     document.getElementById('pgp-clear-key-btn').onclick = async function() {
         loadedPrivateKey = null;
+        clearPGPStorage();
+        pgpPersistToggle.checked = false;
+        localStorage.setItem('pgp_persist_across_sessions', 'false');
         document.getElementById('pgp-private-key-input').value = '';
         document.getElementById('pgp-passphrase-input').value = '';
         document.getElementById('pgp-key-status').textContent = '';
         document.getElementById('pgp-key-status').style.color = '';
         await rerenderAllMessages();
     };
+
+    // Auto-load stored PGP key on page load
+    (async function() {
+        const persist = localStorage.getItem('pgp_persist_across_sessions') === 'true';
+        const store = persist ? localStorage : sessionStorage;
+        const storedKey = store.getItem('pgp_armored_key');
+        if (!storedKey) return;
+        const storedPassphrase = store.getItem('pgp_passphrase') || '';
+        document.getElementById('pgp-private-key-input').value = storedKey;
+        document.getElementById('pgp-passphrase-input').value = storedPassphrase;
+        try {
+            let key = await openpgp.readPrivateKey({ armoredKey: storedKey });
+            if (!key.isDecrypted()) {
+                key = await openpgp.decryptKey({ privateKey: key, passphrase: storedPassphrase });
+            }
+            loadedPrivateKey = key;
+            const statusEl = document.getElementById('pgp-key-status');
+            statusEl.style.color = 'green';
+            statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
+        } catch(err) {
+            clearPGPStorage();
+            loadedPrivateKey = null;
+        }
+    })();
+
+    // --- Message helpers ---
 
     function isPGPMessage(text) {
         return text && text.trimStart().startsWith('-----BEGIN PGP MESSAGE-----');
@@ -258,10 +430,17 @@
         const el = await buildMessageElement(data);
         chatMessages.appendChild(el);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (data.username !== currentUsername) {
+            if (soundToggle.checked) playNotificationSound();
+            const notifText = isPGPMessage(data.message) ? '(encrypted message)' : data.message;
+            sendBrowserNotification(data.username, notifText);
+        }
     }
 
     async function rerenderAllMessages() {
         chatMessages.innerHTML = '';
+        if (reconnectMsgEl) reconnectMsgEl = null;
         for (const data of messageHistory) {
             const el = await buildMessageElement(data);
             chatMessages.appendChild(el);
