@@ -9,14 +9,12 @@ set -euo pipefail
 #
 # Usage:
 #   bash scripts/create_app.sh
-#   ALLOW_LOCAL_IP=1 bash scripts/create_app.sh  # if your machine needs DB access for psql grants
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DB_CLUSTER_NAME="${DB_CLUSTER_NAME:-ssanta-pg}"
 APP_SPEC="${APP_SPEC:-$REPO_ROOT/.do/app.yaml}"
-ALLOW_LOCAL_IP="${ALLOW_LOCAL_IP:-0}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 1; }
@@ -70,7 +68,6 @@ fi
 log "running do_setup_migrate_job.sh..."
 APP_ID="$APP_ID" \
 DB_CLUSTER_ID="$DB_CLUSTER_ID" \
-ALLOW_LOCAL_IP="$ALLOW_LOCAL_IP" \
   bash "$SCRIPT_DIR/do_setup_migrate_job.sh"
 
 

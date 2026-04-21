@@ -136,7 +136,7 @@ func Migrate(url, dir string) error {
 	return nil
 }
 
-func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role string) error {
+func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role, password string) error {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {
 		schema = "public"
@@ -152,13 +152,26 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role 
 	}
 	defer pool.Close() //nolint:errcheck
 
-	// Ensure the role exists.
+	roleIdent := quoteIdent(role)
+
+	// Create the role if it doesn't exist, otherwise rotate its password.
 	var one int
-	if err := pool.QueryRow(ctx, "SELECT 1 FROM pg_roles WHERE rolname = $1", role).Scan(&one); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("runtime role %q does not exist", role)
+	err = pool.QueryRow(ctx, "SELECT 1 FROM pg_roles WHERE rolname = $1", role).Scan(&one)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, err := pool.Exec(ctx, "CREATE ROLE "+roleIdent+" WITH LOGIN PASSWORD "+quoteLiteral(password)); err != nil {
+			return fmt.Errorf("create role %q: %w", role, err)
 		}
+	} else if err != nil {
 		return fmt.Errorf("check runtime role exists: %w", err)
+	} else if password != "" {
+		if _, err := pool.Exec(ctx, "ALTER ROLE "+roleIdent+" WITH PASSWORD "+quoteLiteral(password)); err != nil {
+			return fmt.Errorf("rotate password for role %q: %w", role, err)
+		}
+	}
+
+	var dbName string
+	if err := pool.QueryRow(ctx, "SELECT current_database()").Scan(&dbName); err != nil {
+		return fmt.Errorf("get current database: %w", err)
 	}
 
 	// Default privileges must be set by the role that will create future objects.
@@ -168,10 +181,10 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role 
 	}
 
 	schemaIdent := quoteIdent(schema)
-	roleIdent := quoteIdent(role)
 	creatorIdent := quoteIdent(currentUser)
 
 	stmts := []string{
+		"GRANT CONNECT ON DATABASE " + quoteIdent(dbName) + " TO " + roleIdent,
 		"GRANT USAGE ON SCHEMA " + schemaIdent + " TO " + roleIdent,
 		"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA " + schemaIdent + " TO " + roleIdent,
 		"GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA " + schemaIdent + " TO " + roleIdent,
@@ -187,4 +200,8 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role 
 	}
 
 	return nil
+}
+
+func quoteLiteral(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

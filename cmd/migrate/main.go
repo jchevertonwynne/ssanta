@@ -51,7 +51,8 @@ func run() error {
 	}
 
 	if runtimeDBUser != "" {
-		if err := db.GrantRuntimePrivileges(ctx, dbURL, databaseSchema, runtimeDBUser); err != nil {
+		runtimeDBPass := strings.TrimSpace(os.Getenv("RUNTIME_DB_PASS"))
+		if err := db.GrantRuntimePrivileges(ctx, dbURL, databaseSchema, runtimeDBUser, runtimeDBPass); err != nil {
 			return err
 		}
 		slog.Info("runtime privileges granted", "role", runtimeDBUser, "schema", envOrDefault("DATABASE_SCHEMA", "public"))

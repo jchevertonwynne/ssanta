@@ -5,10 +5,12 @@ set -euo pipefail
 #
 # What this script does:
 # 1) Ensures the app can reach the DB (DB firewall rule for app).
-# 2) Creates/rotates a least-privileged DB role for the web service.
+# 2) Generates a runtime DB password and injects secrets into the App Platform spec.
 # 3) Updates the App Platform spec to:
 #    - run a PRE_DEPLOY Job that executes /app/migrate using MIGRATE_DATABASE_URL (DDL-capable)
 #    - run the web service using DATABASE_URL (least-privileged)
+#
+# Role creation and privilege grants are handled by the migrate binary during PRE_DEPLOY.
 #
 # Secrets handling:
 # - This script does NOT print any DB passwords.
@@ -22,9 +24,6 @@ DB_CLUSTER_ID="${DB_CLUSTER_ID:-${2:-}}"
 SERVICE_NAME="${SERVICE_NAME:-ssanta}"
 JOB_NAME="${JOB_NAME:-migrate}"
 RUNTIME_DB_USER="${RUNTIME_DB_USER:-ssanta_app}"
-ALLOW_LOCAL_IP="${ALLOW_LOCAL_IP:-0}"
-LOCAL_IP_RULE="${LOCAL_IP_RULE:-}"
-PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -35,7 +34,6 @@ require() {
 
 require doctl
 require openssl
-require psql
 require python3
 
 log() {
@@ -71,24 +69,6 @@ log "db_cluster_id=$DB_CLUSTER_ID"
 log "ensuring db firewall allows app" 
 doctl databases firewalls append "$DB_CLUSTER_ID" --rule "app:${APP_ID}" >/dev/null 2>&1 || true
 
-if [[ "$ALLOW_LOCAL_IP" == "1" ]]; then
-  # Allow the machine running this script to connect to the DB (useful for psql grants).
-  # You can also provide LOCAL_IP_RULE explicitly, e.g. LOCAL_IP_RULE=203.0.113.10
-  if [[ -z "$LOCAL_IP_RULE" ]]; then
-    if command -v curl >/dev/null 2>&1; then
-      LOCAL_IP_RULE="$(curl -fsSL https://api.ipify.org || true)"
-    fi
-  fi
-  if [[ -z "$LOCAL_IP_RULE" ]]; then
-    log "ALLOW_LOCAL_IP=1 but couldn't determine public IP (set LOCAL_IP_RULE=<your.ip.addr>)"
-    exit 2
-  fi
-  log "ensuring db firewall allows local ip_addr:$LOCAL_IP_RULE"
-  doctl databases firewalls append "$DB_CLUSTER_ID" --rule "ip_addr:${LOCAL_IP_RULE}" >/dev/null 2>&1 || true
-  # Give firewall propagation a moment.
-  sleep 3
-fi
-
 log "fetching database connection details"
 # Admin connection (contains password). Keep it in memory only.
 ADMIN_URI="$(doctl databases connection "$DB_CLUSTER_ID" --format URI --no-header)"
@@ -98,57 +78,12 @@ DB_NAME="$(doctl databases connection "$DB_CLUSTER_ID" --format Database --no-he
 
 log "db_host=$DB_HOST db_port=$DB_PORT db_name=$DB_NAME"
 
-if command -v nc >/dev/null 2>&1; then
-  log "checking TCP connectivity to database host"
-  if nc -z -w 5 "$DB_HOST" "$DB_PORT" >/dev/null 2>&1; then
-    log "tcp check ok"
-  else
-    log "tcp check failed (this often means outbound port is blocked or firewall rule hasn't propagated yet)"
-  fi
-else
-  log "nc not found; skipping TCP check"
-fi
-
 log "current db firewall rules:"
 doctl databases firewalls list "$DB_CLUSTER_ID" 2>/dev/null | sed 's/^/[do-setup]   /' >&2 || true
 
-# Create/rotate the runtime user's password.
+# Generate the runtime user's password. Role creation and grants are handled
+# by the migrate binary during the PRE_DEPLOY job.
 RUNTIME_DB_PASS="$(openssl rand -hex 24)"
-
-log "creating/rotating runtime db role and grants (user=$RUNTIME_DB_USER db=$DB_NAME host=$DB_HOST port=$DB_PORT)"
-
-# Create/rotate the runtime role and grant least-privilege rights.
-# NOTE: DigitalOcean's doctl database users are *admin* on the cluster.
-# We therefore create a Postgres role ourselves and lock it down.
-
-if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
-  <<SQL >/dev/null
-DO \$\$
-BEGIN
-  CREATE ROLE "${RUNTIME_DB_USER}" LOGIN PASSWORD '${RUNTIME_DB_PASS}';
-EXCEPTION WHEN duplicate_object THEN
-  ALTER ROLE "${RUNTIME_DB_USER}" WITH PASSWORD '${RUNTIME_DB_PASS}';
-END\$\$;
-
-GRANT CONNECT ON DATABASE "${DB_NAME}" TO "${RUNTIME_DB_USER}";
-GRANT USAGE ON SCHEMA public TO "${RUNTIME_DB_USER}";
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${RUNTIME_DB_USER}";
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${RUNTIME_DB_USER}";
-ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${RUNTIME_DB_USER}";
-ALTER DEFAULT PRIVILEGES FOR ROLE doadmin IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${RUNTIME_DB_USER}";
-REVOKE CREATE ON SCHEMA public FROM "${RUNTIME_DB_USER}";
-SQL
-then
-  log "psql failed to connect (timeout or network block)."
-  log "Common causes:"
-  log "- Your network blocks outbound port ${DB_PORT}"
-  log "- DB firewall/trusted sources hasn't propagated or is missing your IP"
-  log "Fixes:"
-  log "- Wait ~30s and rerun"
-  log "- Ensure firewall has ip_addr:<your_public_ip> (script can do this with ALLOW_LOCAL_IP=1)"
-  log "- Try from another network (phone hotspot)"
-  exit 2
-fi
 
 # Runtime URL used by the public service (least privilege).
 RUNTIME_URI="postgresql://${RUNTIME_DB_USER}:${RUNTIME_DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
@@ -209,6 +144,7 @@ ADMIN_URI="$ADMIN_URI" \
 SERVICE_NAME="$SERVICE_NAME" \
 JOB_NAME="$JOB_NAME" \
 SESSION_SECRET_VAL="$SESSION_SECRET_VAL" \
+RUNTIME_DB_PASS="$RUNTIME_DB_PASS" \
 python3 - "$APP_GET_JSON_FILE" <<'PY' >"$SPEC_FILE"
 import json
 import os
@@ -219,6 +155,7 @@ admin_uri = os.environ["ADMIN_URI"]
 service_name = os.environ["SERVICE_NAME"]
 job_name = os.environ["JOB_NAME"]
 session_secret_val = os.environ["SESSION_SECRET_VAL"]
+runtime_db_pass = os.environ["RUNTIME_DB_PASS"]
 
 with open(sys.argv[1], "r", encoding="utf-8") as f:
   apps = json.load(f)
@@ -299,6 +236,8 @@ if "instance_size_slug" in service:
 
 job_envs = job.get("envs") or []
 upsert_env(job_envs, "MIGRATE_DATABASE_URL", admin_uri, env_type="SECRET")
+upsert_env(job_envs, "DATABASE_URL", runtime_uri, env_type="SECRET")
+upsert_env(job_envs, "RUNTIME_DB_PASS", runtime_db_pass, env_type="SECRET")
 upsert_env(job_envs, "MIGRATIONS_DIR", "/app/migrations", env_type="GENERAL")
 upsert_env(job_envs, "RUNTIME_DB_USER", "ssanta_app", env_type="GENERAL")
 job["envs"] = job_envs
