@@ -10,7 +10,8 @@ import (
 // Cleanup deletes/clears expired rows.
 // - Invites: expires_at < now
 // - Room PGP challenges: pgp_challenge_expires_at < now
-func (s *Service) Cleanup(ctx context.Context, now time.Time) (deletedInvites int64, clearedChallenges int64, err error) {
+// - Queued messages: created_at < now - messageQueueMaxAge
+func (s *Service) Cleanup(ctx context.Context, now time.Time, messageQueueMaxAge time.Duration) (deletedInvites, clearedChallenges, deletedQueuedMessages int64, err error) {
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -25,9 +26,15 @@ func (s *Service) Cleanup(ctx context.Context, now time.Time) (deletedInvites in
 		return err
 	})
 
+	g.Go(func() error {
+		var err error
+		deletedQueuedMessages, err = s.store.Messages.DeleteOldMessages(gCtx, now.Add(-messageQueueMaxAge))
+		return err
+	})
+
 	if err := g.Wait(); err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
-	return deletedInvites, clearedChallenges, nil
+	return deletedInvites, clearedChallenges, deletedQueuedMessages, nil
 }

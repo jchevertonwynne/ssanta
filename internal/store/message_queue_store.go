@@ -42,6 +42,18 @@ func (s *MessageQueueStore) Enqueue(
 	return nil
 }
 
+// DeleteOldMessages deletes queued messages whose created_at is before cutoff.
+func (s *MessageQueueStore) DeleteOldMessages(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := s.db.Exec(ctx,
+		`DELETE FROM message_queue WHERE created_at < $1`,
+		cutoff,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 // FlushForUser returns and deletes all queued messages for a user in a room,
 // ordered by created_at, in a single transaction.
 func (s *MessageQueueStore) FlushForUser(

@@ -142,14 +142,18 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 			case <-ticker.C:
 				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				now := time.Now()
-				deletedInvites, clearedChallenges, err := svc.Cleanup(cleanupCtx, now)
+				deletedInvites, clearedChallenges, deletedQueuedMessages, err := svc.Cleanup(cleanupCtx, now, cfg.MessageQueueMaxAge)
 				cancel()
 				if err != nil {
 					slog.Error("janitor cleanup failed", "err", err)
 					continue
 				}
-				if deletedInvites > 0 || clearedChallenges > 0 {
-					slog.Info("janitor cleanup", "deleted_invites", deletedInvites, "cleared_room_pgp_challenges", clearedChallenges)
+				if deletedInvites > 0 || clearedChallenges > 0 || deletedQueuedMessages > 0 {
+					slog.Info("janitor cleanup",
+						"deleted_invites", deletedInvites,
+						"cleared_room_pgp_challenges", clearedChallenges,
+						"deleted_queued_messages", deletedQueuedMessages,
+					)
 				}
 			}
 		}
