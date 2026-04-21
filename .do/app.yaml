@@ -1,0 +1,37 @@
+name: ssanta
+region: nyc
+
+services:
+  - name: ssanta
+    github:
+      repo: jchevertonwynne/ssanta
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    http_port: 8080
+    routes:
+      - path: /
+    envs:
+      - key: SECURE_COOKIES
+        scope: RUN_TIME
+        value: "true"
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: jchevertonwynne/ssanta
+      branch: main
+    dockerfile_path: Dockerfile
+    run_command: /app/migrate
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    envs:
+      - key: MIGRATIONS_DIR
+        scope: RUN_TIME
+        value: /app/migrations
+      - key: RUNTIME_DB_USER
+        scope: RUN_TIME
+        value: ssanta_app
