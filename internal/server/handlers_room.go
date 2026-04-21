@@ -136,6 +136,7 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 		// Send system message and notify other members to update their member lists
 		hub.BroadcastSystemMessage(roomID, username+" joined the room")
 		hub.NotifyRoomUpdate(roomID)
+		hub.BroadcastRoomPresence(roomID)
 
 		if isCreator {
 			hub.NotifyUser(currentID, "membership_gained", "")
@@ -190,6 +191,7 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 		// Send system message and notify other members to update their member lists
 		hub.BroadcastSystemMessage(roomID, username+" left the room")
 		hub.NotifyRoomUpdate(roomID)
+		hub.BroadcastRoomPresence(roomID)
 
 		// If user is the creator, stay on the room detail page
 		// Otherwise, go back to the main content page
@@ -374,6 +376,7 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 
 		// Notify remaining members to update their member lists
 		hub.NotifyRoomUpdate(roomID)
+		hub.BroadcastRoomPresence(roomID)
 
 		renderRoomDynamic(w, r.Context(), svc, currentID, roomID)
 	}

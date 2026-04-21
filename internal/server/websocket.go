@@ -179,9 +179,10 @@ func (h *ChatHub) Run() {
 				room.clients[client] = true
 				room.mu.Unlock()
 			}
-			// No immediate presence broadcast on register; clients will be
-			// notified by other triggers. Release lock and continue.
 			h.mu.Unlock()
+			if client.roomID > 0 {
+				h.BroadcastRoomPresence(client.roomID)
+			}
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -227,14 +228,15 @@ func (h *ChatHub) Run() {
 					}
 				}
 			}
-			// No immediate presence broadcast on unregister; release lock and
-			// continue. Other mechanisms will notify clients when necessary.
 			h.mu.Unlock()
+			if client.roomID > 0 {
+				h.BroadcastRoomPresence(client.roomID)
+			}
 		}
 	}
 }
 
-func (h *ChatHub) broadcastRoomPresence(roomID store.RoomID) {
+func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	if !ok {
@@ -464,7 +466,7 @@ func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
 		roomSet[r] = struct{}{}
 	}
 	for roomID := range roomSet {
-		h.broadcastRoomPresence(roomID)
+		h.BroadcastRoomPresence(roomID)
 		h.NotifyRoomUpdate(roomID)
 	}
 }

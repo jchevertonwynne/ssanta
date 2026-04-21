@@ -194,4 +194,5 @@ type Hub interface {
 	NotifyUser(userID store.UserID, msgType, message string)
 	NotifyContentUpdate(msgType string)
 	DisconnectUser(roomID store.RoomID, userID store.UserID)
+	BroadcastRoomPresence(roomID store.RoomID)
 }

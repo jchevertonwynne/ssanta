@@ -4866,6 +4866,42 @@ func (m *MockHub) EXPECT() *MockHubMockRecorder {
 	return m.recorder
 }
 
+// BroadcastRoomPresence mocks base method.
+func (m *MockHub) BroadcastRoomPresence(roomID store.RoomID) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "BroadcastRoomPresence", roomID)
+}
+
+// BroadcastRoomPresence indicates an expected call of BroadcastRoomPresence.
+func (mr *MockHubMockRecorder) BroadcastRoomPresence(roomID any) *MockHubBroadcastRoomPresenceCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BroadcastRoomPresence", reflect.TypeOf((*MockHub)(nil).BroadcastRoomPresence), roomID)
+	return &MockHubBroadcastRoomPresenceCall{Call: call}
+}
+
+// MockHubBroadcastRoomPresenceCall wrap *gomock.Call
+type MockHubBroadcastRoomPresenceCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHubBroadcastRoomPresenceCall) Return() *MockHubBroadcastRoomPresenceCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHubBroadcastRoomPresenceCall) Do(f func(store.RoomID)) *MockHubBroadcastRoomPresenceCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHubBroadcastRoomPresenceCall) DoAndReturn(f func(store.RoomID)) *MockHubBroadcastRoomPresenceCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // BroadcastSystemMessage mocks base method.
 func (m *MockHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
 	m.ctrl.T.Helper()

@@ -15,6 +15,44 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
+// readNextNonPresenceMessage reads from the WebSocket, skipping any presence messages,
+// and returns the first non-presence message.
+func readNextNonPresenceMessage(t *testing.T, conn *websocket.Conn) ChatMessagePayload {
+	t.Helper()
+	for {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			t.Fatalf("read message: %v", err)
+		}
+		var payload ChatMessagePayload
+		if err := json.Unmarshal(data, &payload); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if payload.Type != "presence" {
+			return payload
+		}
+	}
+}
+
+// assertNoNonPresenceMessage reads from the WebSocket for the given timeout, skipping
+// presence messages, and fails the test if any non-presence message arrives.
+func assertNoNonPresenceMessage(t *testing.T, conn *websocket.Conn, timeout time.Duration) {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	for {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			return // deadline exceeded or connection closed — no non-presence message received
+		}
+		var p struct {
+			Type string `json:"type"`
+		}
+		if jsonErr := json.Unmarshal(data, &p); jsonErr != nil || p.Type != "presence" {
+			t.Fatalf("expected no non-presence message, got: %s", data)
+		}
+	}
+}
+
 func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	if !upgrader.CheckOrigin(r) {
@@ -60,6 +98,20 @@ func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Drain the presence broadcast fired on registration.
+	select {
+	case msg := <-client.send:
+		var p struct {
+			Type string `json:"type"`
+		}
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != "presence" {
+			t.Fatalf("expected presence broadcast after registration, got: %s", msg)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for initial presence broadcast")
 	}
 
 	payload := []byte(`{"type":"system","message":"hi"}`)
@@ -153,15 +205,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	}
 
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, got, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-
-	var payload ChatMessagePayload
-	if err := json.Unmarshal(got, &payload); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
+	payload := readNextNonPresenceMessage(t, conn)
 	if payload.Type != "message" {
 		t.Fatalf("expected type=message, got %q", payload.Type)
 	}
@@ -253,14 +297,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 		{connB, "bob"},
 	} {
 		_ = tc.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-		_, got, err := tc.conn.ReadMessage()
-		if err != nil {
-			t.Fatalf("read %s: %v", tc.name, err)
-		}
-		var p ChatMessagePayload
-		if err := json.Unmarshal(got, &p); err != nil {
-			t.Fatalf("unmarshal %s: %v", tc.name, err)
-		}
+		p := readNextNonPresenceMessage(t, tc.conn)
 		if p.Type != "message" {
 			t.Fatalf("%s: expected type=message, got %q", tc.name, p.Type)
 		}
@@ -345,14 +382,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	}
 
 	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotA, err := connA.ReadMessage()
-	if err != nil {
-		t.Fatalf("read alice: %v", err)
-	}
-	var payloadA ChatMessagePayload
-	if err := json.Unmarshal(gotA, &payloadA); err != nil {
-		t.Fatalf("unmarshal alice: %v", err)
-	}
+	payloadA := readNextNonPresenceMessage(t, connA)
 	if payloadA.Type != "system" {
 		t.Fatalf("expected type=system, got %q", payloadA.Type)
 	}
@@ -360,11 +390,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 		t.Fatalf("expected system message to mention PGP, got %q", payloadA.Message)
 	}
 
-	_ = connB.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
-	_, _, err = connB.ReadMessage()
-	if err == nil {
-		t.Fatalf("expected bob to receive no message")
-	}
+	assertNoNonPresenceMessage(t, connB, 200*time.Millisecond)
 }
 
 func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
@@ -450,14 +476,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	hub.DisconnectUser(roomID, userID)
 
 	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, got, err := conn.ReadMessage()
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-	var payload ChatMessagePayload
-	if err := json.Unmarshal(got, &payload); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
+	payload := readNextNonPresenceMessage(t, conn)
 	if payload.Type != "kicked" {
 		t.Fatalf("expected type=kicked, got %q", payload.Type)
 	}
@@ -588,38 +607,20 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 
 	// Alice should receive the whisper
 	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotA, err := connA.ReadMessage()
-	if err != nil {
-		t.Fatalf("read alice: %v", err)
-	}
-	var payloadA ChatMessagePayload
-	if err := json.Unmarshal(gotA, &payloadA); err != nil {
-		t.Fatalf("unmarshal alice: %v", err)
-	}
+	payloadA := readNextNonPresenceMessage(t, connA)
 	if payloadA.Type != "message" || payloadA.Message != "secret" || !payloadA.Whisper {
 		t.Fatalf("alice: expected whisper message 'secret', got type=%q msg=%q whisper=%v", payloadA.Type, payloadA.Message, payloadA.Whisper)
 	}
 
 	// Bob should receive the whisper
 	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotB, err := connB.ReadMessage()
-	if err != nil {
-		t.Fatalf("read bob: %v", err)
-	}
-	var payloadB ChatMessagePayload
-	if err := json.Unmarshal(gotB, &payloadB); err != nil {
-		t.Fatalf("unmarshal bob: %v", err)
-	}
+	payloadB := readNextNonPresenceMessage(t, connB)
 	if payloadB.Type != "message" || payloadB.Message != "secret" || !payloadB.Whisper {
 		t.Fatalf("bob: expected whisper message 'secret', got type=%q msg=%q whisper=%v", payloadB.Type, payloadB.Message, payloadB.Whisper)
 	}
 
-	// Charlie should NOT receive anything
-	_ = connC.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
-	_, _, err = connC.ReadMessage()
-	if err == nil {
-		t.Fatalf("expected charlie to receive no message")
-	}
+	// Charlie should NOT receive anything (presence messages are allowed, but no chat message)
+	assertNoNonPresenceMessage(t, connC, 200*time.Millisecond)
 }
 
 func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
@@ -694,14 +695,7 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 
 	// Alice should get a system error
 	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
-	_, gotA, err := connA.ReadMessage()
-	if err != nil {
-		t.Fatalf("read alice: %v", err)
-	}
-	var payloadA ChatMessagePayload
-	if err := json.Unmarshal(gotA, &payloadA); err != nil {
-		t.Fatalf("unmarshal alice: %v", err)
-	}
+	payloadA := readNextNonPresenceMessage(t, connA)
 	if payloadA.Type != "system" {
 		t.Fatalf("expected type=system, got %q", payloadA.Type)
 	}
@@ -709,10 +703,6 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 		t.Fatalf("expected error about user not in room, got %q", payloadA.Message)
 	}
 
-	// Bob should NOT receive anything
-	_ = connB.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
-	_, _, err = connB.ReadMessage()
-	if err == nil {
-		t.Fatalf("expected bob to receive no message")
-	}
+	// Bob should NOT receive anything (presence messages are allowed, but no chat message)
+	assertNoNonPresenceMessage(t, connB, 200*time.Millisecond)
 }

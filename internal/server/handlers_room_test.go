@@ -92,6 +92,7 @@ func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T
 	svc.EXPECT().JoinRoom(gomock.Any(), roomID, userID).Return(nil)
 	hub.EXPECT().BroadcastSystemMessage(roomID, "alice joined the room")
 	hub.EXPECT().NotifyRoomUpdate(roomID)
+	hub.EXPECT().BroadcastRoomPresence(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "alice"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/join", nil)
@@ -122,6 +123,7 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	svc.EXPECT().JoinRoom(gomock.Any(), roomID, userID).Return(nil)
 	hub.EXPECT().BroadcastSystemMessage(roomID, "creator joined the room")
 	hub.EXPECT().NotifyRoomUpdate(roomID)
+	hub.EXPECT().BroadcastRoomPresence(roomID)
 	hub.EXPECT().NotifyUser(userID, "membership_gained", "")
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "creator"), nil)
 
@@ -285,6 +287,7 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	hub.EXPECT().BroadcastSystemMessage(roomID, "bob was removed from the room")
 	hub.EXPECT().DisconnectUser(roomID, memberID)
 	hub.EXPECT().NotifyRoomUpdate(roomID)
+	hub.EXPECT().BroadcastRoomPresence(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView(roomID, "creator"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/rooms/10/members/2", nil)
