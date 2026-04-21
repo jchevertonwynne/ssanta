@@ -20,6 +20,10 @@ var templatesFS embed.FS
 
 var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
+type indexData struct {
+	BootstrapURL string
+}
+
 type contentData struct {
 	CurrentUserID       store.UserID
 	CurrentUsername     string
@@ -145,7 +149,7 @@ func handleHealth(svc HealthService) http.HandlerFunc {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", nil)
+	render(w, "index.html", indexData{})
 }
 
 func handleContent(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {
@@ -313,9 +317,6 @@ func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetail
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail.html"})
 }
 
-func renderRoomDetailPage(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
-	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail_page.html"})
-}
 
 func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})

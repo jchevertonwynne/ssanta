@@ -22,6 +22,6 @@
 </head>
 <body>
     <h1>ssanta</h1>
-    <div id="content" hx-get="/content" hx-trigger="load"></div>
+    <div id="content" hx-get="{{if .BootstrapURL}}{{.BootstrapURL}}{{else}}/content{{end}}" hx-trigger="load"></div>
 </body>
 </html>

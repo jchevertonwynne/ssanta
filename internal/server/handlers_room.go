@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"go.opentelemetry.io/otel"
@@ -218,13 +219,10 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 			return
 		}
 
-		// Check if this is an HTMX request
 		if r.Header.Get("HX-Request") != "" {
-			// HTMX request: render just the fragment
 			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 		} else {
-			// Direct browser request: render full page with room detail content
-			renderRoomDetailPage(w, r.Context(), svc, currentID, roomID)
+			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID)})
 		}
 	}
 }
