@@ -518,6 +518,7 @@
             statusEl.style.color = 'green';
             statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
             await rerenderAllMessages();
+            await autoHandlePGPVerification();
         } catch (err) {
             loadedPrivateKey = null;
             statusEl.style.color = 'red';
@@ -555,6 +556,7 @@
             const statusEl = document.getElementById('pgp-key-status');
             statusEl.style.color = 'green';
             statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
+            await autoHandlePGPVerification();
         } catch(err) {
             clearPGPStorage();
             loadedPrivateKey = null;
@@ -648,6 +650,47 @@
             return { ok: true, plaintext };
         } catch {
             return { ok: false };
+        }
+    }
+
+    async function swapRoomDynamic(html) {
+        const existing = document.getElementById('room-dynamic');
+        if (!existing) return;
+        existing.outerHTML = html;
+        const next = document.getElementById('room-dynamic');
+        if (next) {
+            htmx.process(next);
+            applyPresenceIndicators();
+        }
+    }
+
+    async function autoHandlePGPVerification() {
+        if (!loadedPrivateKey) return;
+
+        // State 2: challenge pending — decrypt and POST the answer directly
+        const challengeTextarea = document.getElementById('pgp-challenge-ciphertext');
+        if (challengeTextarea && challengeTextarea.value.trim()) {
+            const result = await tryDecrypt(challengeTextarea.value.trim());
+            if (!result.ok) return;
+            const body = new URLSearchParams();
+            body.append('decrypted_challenge', result.plaintext);
+            const resp = await fetch('/rooms/' + roomId + '/pgp-key/verify', {method: 'POST', body});
+            if (resp.ok) await swapRoomDynamic(await resp.text());
+            return;
+        }
+
+        // State 1: no public key uploaded yet — derive and POST it directly
+        const allPGPForms = document.querySelectorAll('#room-dynamic form[hx-post$="/pgp-key"]');
+        const uploadForm = Array.from(allPGPForms).find(f => !f.closest('details'));
+        if (uploadForm) {
+            const armoredPublic = loadedPrivateKey.toPublic().armor();
+            const body = new URLSearchParams();
+            body.append('pgp_public_key', armoredPublic);
+            const resp = await fetch('/rooms/' + roomId + '/pgp-key', {method: 'POST', body});
+            if (resp.ok) {
+                await swapRoomDynamic(await resp.text());
+                await autoHandlePGPVerification(); // proceed to State 2
+            }
         }
     }
 
