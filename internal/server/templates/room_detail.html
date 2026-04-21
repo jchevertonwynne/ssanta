@@ -64,6 +64,7 @@
 
     let loadedPrivateKey = null;
     const messageHistory = [];
+    let onlineUserIDs = new Set();
 
     // --- Sound & browser notification controls ---
 
@@ -153,6 +154,28 @@
         reconnectMsgEl = null;
     }
 
+    function applyPresenceIndicators() {
+        document.querySelectorAll('[data-member-id]').forEach(function(li) {
+            const uid = li.getAttribute('data-member-id');
+            let dot = li.querySelector('.presence-dot');
+            if (!dot) {
+                dot = document.createElement('span');
+                dot.className = 'presence-dot';
+                dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;';
+                li.prepend(dot);
+            }
+            const online = onlineUserIDs.has(uid);
+            dot.style.background = online ? '#4caf50' : '#9e9e9e';
+            dot.title = online ? 'Online' : 'Offline';
+        });
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'room-dynamic') {
+            applyPresenceIndicators();
+        }
+    });
+
     function connect() {
         ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
 
@@ -189,6 +212,12 @@
                 chatInput.placeholder = 'Type a message...';
                 document.querySelector('#chat-form button[type=submit]').disabled = false;
                 if (chatTarget) chatTarget.disabled = false;
+                return;
+            }
+
+            if (data.type === 'presence') {
+                onlineUserIDs = new Set((data.online_user_ids || []).map(String));
+                applyPresenceIndicators();
                 return;
             }
 
@@ -457,8 +486,33 @@
         }
 
         const time = new Date(data.created_at).toLocaleTimeString();
-        const whisperLabel = data.whisper ? ' <em>(whisper)</em>' : '';
-        msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small>' + whisperLabel + '<br>';
+
+        const header = document.createElement('div');
+
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = data.username;
+        header.appendChild(nameEl);
+
+        header.appendChild(document.createTextNode(' '));
+
+        const timeEl = document.createElement('small');
+        timeEl.textContent = '(' + time + ')';
+        header.appendChild(timeEl);
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'Copy';
+        copyBtn.style.cssText = 'font-size:0.75em;padding:1px 4px;margin-left:0.4rem;cursor:pointer;vertical-align:middle;';
+        copyBtn.onclick = function() { copyText(pre.textContent || ''); };
+        header.appendChild(copyBtn);
+
+        if (data.whisper) {
+            const whisperEl = document.createElement('em');
+            whisperEl.textContent = ' (whisper)';
+            header.appendChild(whisperEl);
+        }
+
+        msgDiv.appendChild(header);
 
         let displayText = data.message;
         let decrypted = false;
@@ -485,17 +539,7 @@
         pre.style.fontFamily = 'monospace';
         pre.textContent = displayText;
 
-        const actions = document.createElement('div');
-        actions.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.type = 'button';
-        copyBtn.textContent = 'Copy';
-        copyBtn.onclick = function() { copyText(pre.textContent || ''); };
-        actions.appendChild(copyBtn);
-
         msgDiv.appendChild(pre);
-        msgDiv.appendChild(actions);
         return msgDiv;
     }
 

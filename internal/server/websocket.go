@@ -180,6 +180,9 @@ func (h *ChatHub) Run() {
 				room.mu.Unlock()
 			}
 			h.mu.Unlock()
+			if client.roomID > 0 {
+				h.broadcastRoomPresence(client.roomID)
+			}
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -226,8 +229,40 @@ func (h *ChatHub) Run() {
 				}
 			}
 			h.mu.Unlock()
+			if client.roomID > 0 {
+				h.broadcastRoomPresence(client.roomID)
+			}
 		}
 	}
+}
+
+func (h *ChatHub) broadcastRoomPresence(roomID store.RoomID) {
+	h.mu.RLock()
+	room, ok := h.rooms[roomID]
+	if !ok {
+		h.mu.RUnlock()
+		return
+	}
+	room.mu.RLock()
+	seen := make(map[store.UserID]bool)
+	var onlineIDs []store.UserID
+	for client := range room.clients {
+		if !seen[client.userID] {
+			seen[client.userID] = true
+			onlineIDs = append(onlineIDs, client.userID)
+		}
+	}
+	room.mu.RUnlock()
+	h.mu.RUnlock()
+
+	msg, err := json.Marshal(struct {
+		Type          string         `json:"type"`
+		OnlineUserIDs []store.UserID `json:"online_user_ids"`
+	}{Type: "presence", OnlineUserIDs: onlineIDs})
+	if err != nil {
+		return
+	}
+	h.BroadcastToRoom(roomID, msg)
 }
 
 func (h *ChatHub) BroadcastToRoom(roomID store.RoomID, message []byte) {
