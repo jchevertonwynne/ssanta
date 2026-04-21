@@ -108,7 +108,7 @@ func (s *UserStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordH
 }
 
 func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY id DESC`)
+	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY username ASC`)
 	if err != nil {
 		return nil, err
 	}

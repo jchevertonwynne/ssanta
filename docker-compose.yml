@@ -34,25 +34,6 @@ services:
       MIGRATIONS_DIR: /app/migrations
     entrypoint: ["/app/migrate"]
 
-  server-prod:
-    profiles: ["prod"]
-    build: .
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-      otel-lgtm:
-        condition: service_started
-    environment:
-      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
-      HTTP_ADDR: ":8080"
-      SESSION_SECRET: dev-secret-change-me
-      SECURE_COOKIES: "true"
-      OTLP_ENDPOINT: otel-lgtm:4317
-    ports:
-      - "8080:8080"
-
   server:
     build: .
     depends_on:
@@ -70,6 +51,43 @@ services:
       OTLP_ENDPOINT: otel-lgtm:4317
     ports:
       - "8080:8080"
+
+  # Run unit tests inside the build image. Integration tests are skipped
+  # by default (they require SSANTA_INTEGRATION=1 and Testcontainers).
+  test:
+    build:
+      context: .
+      target: build
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
+      SSANTA_INTEGRATION: "0"
+    command: ["sh", "-c", "go test ./... -v"]
+    tty: true
+
+  # Run integration tests which use Testcontainers. This mounts the host
+  # Docker socket so the tests can start containers from inside this
+  # container. Use with caution (`docker compose run --rm integration-test`).
+  integration-test:
+    build:
+      context: .
+      target: build
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
+      SSANTA_INTEGRATION: "1"
+    command: ["sh", "-c", "go test ./internal/store ./internal/service -count=1 -v"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    tty: true
 
 volumes:
   db-data:

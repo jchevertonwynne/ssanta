@@ -86,6 +86,12 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			return
 		}
 		sessions.Clear(w)
+        // Notify websocket hub about account deletion if it supports the optional
+        // HandleAccountDeletion hook. We keep this optional to avoid forcing a
+        // signature change on the Hub interface and to make tests simpler.
+        if notifier, ok := hub.(interface{ HandleAccountDeletion(store.UserID) }); ok {
+            notifier.HandleAccountDeletion(id)
+        }
 		renderContent(w, r.Context(), svc, 0)
 		hub.NotifyContentUpdate("users_updated")
 	}

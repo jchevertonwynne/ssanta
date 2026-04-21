@@ -236,3 +236,78 @@ After adding/changing dependencies:
 go mod tidy
 go mod vendor
 ```
+
+## Development Setup (Local)
+
+These steps get a local development environment running quickly.
+
+1. Install Postgres (for example, via Homebrew on macOS):
+
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+2. Create a database and user (example):
+
+```bash
+psql -c "CREATE USER ssanta WITH PASSWORD 'ssanta';"
+psql -c "CREATE DATABASE ssanta OWNER ssanta;"
+```
+
+3. Export environment variables:
+
+```bash
+export DATABASE_URL="postgres://ssanta:ssanta@localhost:5432/ssanta?sslmode=disable"
+export SESSION_SECRET="$(openssl rand -hex 32)"
+```
+
+4. Run migrations:
+
+```bash
+go run ./cmd/migrate
+```
+
+5. Run the server:
+
+```bash
+go run ./cmd/server
+```
+
+Alternatively use Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+## Running Tests
+
+Unit tests:
+
+```bash
+go test ./... -v
+```
+
+Integration tests (require Postgres / Testcontainers):
+
+```bash
+SSANTA_INTEGRATION=1 go test ./internal/store ./internal/service -count=1 -v
+```
+
+Local CI checks (match what GitHub Actions runs):
+
+```bash
+# formatting
+gofmt -l .
+
+# vet
+go vet ./...
+
+# lint (install first)
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.58.0
+golangci-lint run ./...
+```
+
+## Continuous Integration (GitHub Actions)
+
+A lightweight CI workflow is provided at `.github/workflows/ci.yml` and runs on pushes and pull requests to `main`. It checks formatting, runs `go vet`, runs `golangci-lint`, and executes `go test ./...`.

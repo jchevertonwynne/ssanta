@@ -60,7 +60,7 @@ func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID Use
 
 func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, display_name, created_at, pgp_required, is_dm FROM rooms WHERE creator_id = $1 AND is_dm = FALSE ORDER BY id DESC`,
+		`SELECT id, display_name, created_at, pgp_required, is_dm FROM rooms WHERE creator_id = $1 AND is_dm = FALSE ORDER BY display_name ASC`,
 		userID,
 	)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
 		 WHERE ru.user_id = $1 AND r.is_dm = FALSE
-		 ORDER BY r.id DESC`,
+		 ORDER BY ru.username DESC`,
 		userID,
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *RoomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]R
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
 		 WHERE ru.user_id = $1 AND r.is_dm = TRUE
-		 ORDER BY r.id DESC`,
+		 ORDER BY ru.username DESC`,
 		userID,
 	)
 	if err != nil {
@@ -175,7 +175,7 @@ func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) (
 		 FROM users u
 		 JOIN room_users ru ON ru.user_id = u.id
 		 WHERE ru.room_id = $1
-		 ORDER BY ru.joined_at ASC`,
+		 ORDER BY u.username ASC`,
 		roomID,
 	)
 	if err != nil {

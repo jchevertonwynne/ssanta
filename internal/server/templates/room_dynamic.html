@@ -21,12 +21,12 @@
                             <span> · <span id="pgp-fingerprint-{{.ID}}">{{.PGPFingerprint}}</span></span>
                             <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-{{.ID}}'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
                         {{end}}
-                        {{if and $isCreator (ne .ID $currentID)}}
+                        {{if or $isCreator (eq .ID $currentID)}}
                             <div style="margin-top: 0.25rem;">
                                 <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}/pgp-key"
                                         hx-target="#room-dynamic"
                                         hx-swap="outerHTML"
-                                        hx-confirm="Remove {{.Username}}'s PGP key for this room?">Remove PGP key</button>
+                                        hx-confirm="{{if eq .ID $currentID}}Remove your PGP key for this room?{{else}}Remove {{.Username}}'s PGP key for this room?{{end}}">Remove PGP key</button>
                             </div>
                         {{end}}
                         <details style="margin-top: 0.25rem;">
@@ -67,11 +67,6 @@
                         <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-self'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
                     {{end}}
                 </div>
-                <button hx-delete="/rooms/{{$.Room.ID}}/pgp-key"
-                        hx-target="#room-dynamic"
-                        hx-swap="outerHTML"
-                        hx-confirm="Remove your PGP key for this room?"
-                        style="margin-bottom: 0.75rem;">Remove PGP key</button>
 
                 {{if .PGPChallengeCiphertext}}
                     <p style="margin-top: 1rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>

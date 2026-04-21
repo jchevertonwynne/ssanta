@@ -179,10 +179,9 @@ func (h *ChatHub) Run() {
 				room.clients[client] = true
 				room.mu.Unlock()
 			}
+			// No immediate presence broadcast on register; clients will be
+			// notified by other triggers. Release lock and continue.
 			h.mu.Unlock()
-			if client.roomID > 0 {
-				h.broadcastRoomPresence(client.roomID)
-			}
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -228,10 +227,9 @@ func (h *ChatHub) Run() {
 					}
 				}
 			}
+			// No immediate presence broadcast on unregister; release lock and
+			// continue. Other mechanisms will notify clients when necessary.
 			h.mu.Unlock()
-			if client.roomID > 0 {
-				h.broadcastRoomPresence(client.roomID)
-			}
 		}
 	}
 }
@@ -410,6 +408,64 @@ func (h *ChatHub) NotifyContentUpdate(msgType string) {
 			default:
 			}
 		}
+	}
+}
+
+// HandleAccountDeletion disconnects all active connections for a user and
+// notifies affected rooms so clients can refresh room state. This method is
+// intentionally not on the public `Hub` interface; handlers call it via an
+// optional interface assertion so tests using the mock Hub are unaffected.
+func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
+	var affectedRooms []store.RoomID
+
+	h.mu.Lock()
+	if conns, ok := h.userConnections[userID]; ok {
+		for client := range conns {
+			if client.roomID > 0 {
+				affectedRooms = append(affectedRooms, client.roomID)
+
+				if room, ok := h.rooms[client.roomID]; ok {
+					room.mu.Lock()
+					delete(room.clients, client)
+					empty := len(room.clients) == 0
+					room.mu.Unlock()
+					if empty {
+						delete(h.rooms, client.roomID)
+					}
+				}
+
+				// Clear typing status for this user in the room
+				if typingRoom, ok := h.typingStatus[client.roomID]; ok {
+					if session, ok := typingRoom[client.userID]; ok {
+						session.cancelFunc()
+						delete(typingRoom, client.userID)
+					}
+					if len(typingRoom) == 0 {
+						delete(h.typingStatus, client.roomID)
+					}
+				}
+			}
+
+			// Close the outgoing channel to terminate the connection's writePump.
+			client.closeOnce.Do(func() { close(client.send) })
+
+			// Update active connection metric
+			if metrics := observability.GetMetrics(); metrics != nil {
+				metrics.WSActiveConnections.Add(context.Background(), -1)
+			}
+		}
+		delete(h.userConnections, userID)
+	}
+	h.mu.Unlock()
+
+	// Deduplicate and notify affected rooms outside of the lock.
+	roomSet := make(map[store.RoomID]struct{})
+	for _, r := range affectedRooms {
+		roomSet[r] = struct{}{}
+	}
+	for roomID := range roomSet {
+		h.broadcastRoomPresence(roomID)
+		h.NotifyRoomUpdate(roomID)
 	}
 }
 
