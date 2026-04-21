@@ -25,7 +25,6 @@ RUNTIME_DB_USER="${RUNTIME_DB_USER:-ssanta_app}"
 ALLOW_LOCAL_IP="${ALLOW_LOCAL_IP:-0}"
 LOCAL_IP_RULE="${LOCAL_IP_RULE:-}"
 PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
-FALLBACK_TO_DOCTL_USER="${FALLBACK_TO_DOCTL_USER:-0}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || {
@@ -121,22 +120,6 @@ log "creating/rotating runtime db role and grants (user=$RUNTIME_DB_USER db=$DB_
 # Create/rotate the runtime role and grant least-privilege rights.
 # NOTE: DigitalOcean's doctl database users are *admin* on the cluster.
 # We therefore create a Postgres role ourselves and lock it down.
-#
-# If TCP connectivity is blocked and fallback mode is enabled, skip psql entirely.
-if command -v nc >/dev/null 2>&1 && [[ "$FALLBACK_TO_DOCTL_USER" == "1" ]]; then
-  if ! nc -z -w 2 "$DB_HOST" "$DB_PORT" >/dev/null 2>&1; then
-    log "tcp connectivity appears blocked; skipping psql grants and using fallback DO-managed user"
-    log "FALLBACK_TO_DOCTL_USER=1 enabled; creating/resetting DO-managed DB user instead of custom least-privilege role"
-
-    if ! doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null 2>&1; then
-      doctl databases user create "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
-    else
-      doctl databases user reset "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
-    fi
-
-    RUNTIME_DB_PASS="$(doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" --format Password --no-header)"
-  fi
-fi
 
 if ! PGCONNECT_TIMEOUT="$PGCONNECT_TIMEOUT" psql "$ADMIN_URI" -v ON_ERROR_STOP=1 \
   <<SQL >/dev/null
@@ -159,28 +142,12 @@ then
   log "psql failed to connect (timeout or network block)."
   log "Common causes:"
   log "- Your network blocks outbound port ${DB_PORT}"
-  log "- DB firewall/trusted sources hasn't propagated or is missing your ip"
+  log "- DB firewall/trusted sources hasn't propagated or is missing your IP"
   log "Fixes:"
   log "- Wait ~30s and rerun"
   log "- Ensure firewall has ip_addr:<your_public_ip> (script can do this with ALLOW_LOCAL_IP=1)"
   log "- Try from another network (phone hotspot)"
-  if [[ "$FALLBACK_TO_DOCTL_USER" != "1" ]]; then
-    log "If you can't reach the DB from your machine, rerun with FALLBACK_TO_DOCTL_USER=1."
-    log "This will create a DO-managed database user for the web service (note: DO-managed users are admin on the cluster, so this is not true least-privilege)."
-    exit 2
-  fi
-
-  log "FALLBACK_TO_DOCTL_USER=1 enabled; creating/resetting DO-managed DB user instead of custom least-privilege role"
-
-  # DO-managed users are created at the cluster level. They are admin, but still separate credentials.
-  if ! doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null 2>&1; then
-    doctl databases user create "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
-  else
-    doctl databases user reset "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" >/dev/null
-  fi
-
-  # Fetch password without echoing other fields.
-  RUNTIME_DB_PASS="$(doctl databases user get "$DB_CLUSTER_ID" "$RUNTIME_DB_USER" --format Password --no-header)"
+  exit 2
 fi
 
 # Runtime URL used by the public service (least privilege).
