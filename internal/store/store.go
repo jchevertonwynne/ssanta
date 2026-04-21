@@ -57,9 +57,10 @@ type dbtx interface {
 }
 
 type Store struct {
-	Users   *UserStore
-	Rooms   *RoomStore
-	Invites *InviteStore
+	Users    *UserStore
+	Rooms    *RoomStore
+	Invites  *InviteStore
+	Messages *MessageQueueStore
 
 	pool *pgxpool.Pool // nil for tx-scoped stores; used for Ping/WithTx only
 }
@@ -70,10 +71,11 @@ func New(pool *pgxpool.Pool) *Store {
 
 func storeFromDB(db dbtx, pool *pgxpool.Pool) *Store {
 	return &Store{
-		Users:   &UserStore{db: db},
-		Rooms:   &RoomStore{db: db},
-		Invites: &InviteStore{db: db},
-		pool:    pool,
+		Users:    &UserStore{db: db},
+		Rooms:    &RoomStore{db: db},
+		Invites:  &InviteStore{db: db},
+		Messages: &MessageQueueStore{db: db},
+		pool:     pool,
 	}
 }
 

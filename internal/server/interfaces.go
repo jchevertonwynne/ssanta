@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
@@ -155,6 +156,11 @@ type InviteHandlersService interface {
 	InviteOpsService
 }
 
+type MessageQueueService interface {
+	EnqueueMessages(ctx context.Context, roomID store.RoomID, senderUsername, message string, createdAt time.Time, preEncrypted, whisper bool, recipientIDs []store.UserID) error
+	FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error)
+}
+
 type WebSocketHandlersService interface {
 	UserExistsService
 	UsernameService
@@ -162,6 +168,7 @@ type WebSocketHandlersService interface {
 	RoomMembersWithPGPService
 	IsRoomPGPRequiredService
 	RoomAccessService
+	MessageQueueService
 }
 
 // ServerService is the full surface required to wire all routes.

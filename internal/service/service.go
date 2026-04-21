@@ -223,6 +223,21 @@ func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomI
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
+func (s *Service) EnqueueMessages(
+	ctx context.Context,
+	roomID store.RoomID,
+	senderUsername, message string,
+	createdAt time.Time,
+	preEncrypted, whisper bool,
+	recipientIDs []store.UserID,
+) error {
+	return s.store.Messages.Enqueue(ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+}
+
+func (s *Service) FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error) {
+	return s.store.Messages.FlushForUser(ctx, roomID, userID)
+}
+
 func (s *Service) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
 	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 	if err != nil {

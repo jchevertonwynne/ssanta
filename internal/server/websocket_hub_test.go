@@ -172,6 +172,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 		{ID: userID, Username: "alice", PGPPublicKey: "armoredkey", PGPVerifiedAt: &verifiedAt},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -249,6 +250,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 		{ID: userB, Username: "bob", PGPPublicKey: ""},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -341,6 +343,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 		{ID: userB, Username: "bob"},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -448,6 +451,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -472,6 +476,15 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 		t.Fatalf("dial websocket: %v", err)
 	}
 	defer conn.Close() //nolint:errcheck
+
+	// Wait for the initial presence broadcast, which is sent only after the
+	// client is registered with the hub. This prevents a race where
+	// DisconnectUser runs before registration completes and finds no clients.
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, _, err = conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read initial presence: %v", err)
+	}
 
 	hub.DisconnectUser(roomID, userID)
 
@@ -564,6 +577,7 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 		{ID: userC, Username: "charlie"},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -654,6 +668,7 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 		{ID: userB, Username: "bob"},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
+	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()

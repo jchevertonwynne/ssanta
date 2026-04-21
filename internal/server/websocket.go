@@ -312,6 +312,24 @@ func (h *ChatHub) SendToRoomUsers(roomID store.RoomID, perUserMessage map[store.
 	}
 }
 
+// OnlineUsersInRoom returns the set of user IDs with an active WebSocket
+// connection to this room.
+func (h *ChatHub) OnlineUsersInRoom(roomID store.RoomID) map[store.UserID]bool {
+	h.mu.RLock()
+	room, ok := h.rooms[roomID]
+	h.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	online := make(map[store.UserID]bool, len(room.clients))
+	for client := range room.clients {
+		online[client.userID] = true
+	}
+	return online
+}
+
 func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
@@ -703,6 +721,7 @@ func (c *ChatClient) readPump() {
 						perUser[m.ID] = outBytes
 					}
 				}
+				enqueueOfflineMessages(ctx, c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
@@ -739,6 +758,7 @@ func (c *ChatClient) readPump() {
 					perUser[m.ID] = outBytes
 				}
 			}
+			enqueueOfflineMessages(ctx, c, payload.Message, createdAt, false, isWhisper, perUser)
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
@@ -750,6 +770,28 @@ func (c *ChatClient) readPump() {
 			slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 			span.End()
 		}
+	}
+}
+
+// enqueueOfflineMessages stores rawMessage in the queue for each recipient in
+// perUser that is not currently connected to the room. The sender (c.userID)
+// is always skipped — they already see their own message in their local UI.
+func enqueueOfflineMessages(ctx context.Context, c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
+	onlineUsers := c.hub.OnlineUsersInRoom(c.roomID)
+	var offlineIDs []store.UserID
+	for uid := range perUser {
+		if uid == c.userID {
+			continue
+		}
+		if !onlineUsers[uid] {
+			offlineIDs = append(offlineIDs, uid)
+		}
+	}
+	if len(offlineIDs) == 0 {
+		return
+	}
+	if err := c.svc.EnqueueMessages(ctx, c.roomID, c.username, rawMessage, createdAt, preEncrypted, whisper, offlineIDs); err != nil {
+		slog.ErrorContext(ctx, "enqueue offline messages", "err", err, "room_id", c.roomID)
 	}
 }
 
@@ -819,6 +861,28 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		if err != nil {
 			slog.Error("upgrade websocket", "err", err)
 			return
+		}
+
+		// Flush any queued messages before joining the live room, so replayed
+		// messages are strictly ordered before new incoming messages.
+		queued, err := svc.FlushMessageQueue(r.Context(), roomID, currentID)
+		if err != nil {
+			slog.Error("flush message queue", "err", err, "room_id", roomID, "user_id", currentID)
+		}
+		for _, q := range queued {
+			msg := ChatMessagePayload{
+				Type:         "message",
+				Username:     q.SenderUsername,
+				Message:      q.Message,
+				CreatedAt:    q.CreatedAt,
+				Whisper:      q.Whisper,
+				PreEncrypted: q.PreEncrypted,
+			}
+			if err := conn.WriteJSON(msg); err != nil {
+				slog.Error("write queued message", "err", err, "room_id", roomID, "user_id", currentID)
+				conn.Close() //nolint:errcheck
+				return
+			}
 		}
 
 		client := &ChatClient{

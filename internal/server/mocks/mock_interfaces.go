@@ -13,6 +13,7 @@ import (
 	context "context"
 	http "net/http"
 	reflect "reflect"
+	time "time"
 
 	service "github.com/jchevertonwynne/ssanta/internal/service"
 	store "github.com/jchevertonwynne/ssanta/internal/store"
@@ -3125,6 +3126,107 @@ func (c *MockInviteHandlersServiceUserExistsCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// MockMessageQueueService is a mock of MessageQueueService interface.
+type MockMessageQueueService struct {
+	ctrl     *gomock.Controller
+	recorder *MockMessageQueueServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockMessageQueueServiceMockRecorder is the mock recorder for MockMessageQueueService.
+type MockMessageQueueServiceMockRecorder struct {
+	mock *MockMessageQueueService
+}
+
+// NewMockMessageQueueService creates a new mock instance.
+func NewMockMessageQueueService(ctrl *gomock.Controller) *MockMessageQueueService {
+	mock := &MockMessageQueueService{ctrl: ctrl}
+	mock.recorder = &MockMessageQueueServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMessageQueueService) EXPECT() *MockMessageQueueServiceMockRecorder {
+	return m.recorder
+}
+
+// EnqueueMessages mocks base method.
+func (m *MockMessageQueueService) EnqueueMessages(ctx context.Context, roomID store.RoomID, senderUsername, message string, createdAt time.Time, preEncrypted, whisper bool, recipientIDs []store.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueMessages", ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueMessages indicates an expected call of EnqueueMessages.
+func (mr *MockMessageQueueServiceMockRecorder) EnqueueMessages(ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs any) *MockMessageQueueServiceEnqueueMessagesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueMessages", reflect.TypeOf((*MockMessageQueueService)(nil).EnqueueMessages), ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	return &MockMessageQueueServiceEnqueueMessagesCall{Call: call}
+}
+
+// MockMessageQueueServiceEnqueueMessagesCall wrap *gomock.Call
+type MockMessageQueueServiceEnqueueMessagesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMessageQueueServiceEnqueueMessagesCall) Return(arg0 error) *MockMessageQueueServiceEnqueueMessagesCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMessageQueueServiceEnqueueMessagesCall) Do(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockMessageQueueServiceEnqueueMessagesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMessageQueueServiceEnqueueMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockMessageQueueServiceEnqueueMessagesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FlushMessageQueue mocks base method.
+func (m *MockMessageQueueService) FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FlushMessageQueue", ctx, roomID, userID)
+	ret0, _ := ret[0].([]store.QueuedMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FlushMessageQueue indicates an expected call of FlushMessageQueue.
+func (mr *MockMessageQueueServiceMockRecorder) FlushMessageQueue(ctx, roomID, userID any) *MockMessageQueueServiceFlushMessageQueueCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushMessageQueue", reflect.TypeOf((*MockMessageQueueService)(nil).FlushMessageQueue), ctx, roomID, userID)
+	return &MockMessageQueueServiceFlushMessageQueueCall{Call: call}
+}
+
+// MockMessageQueueServiceFlushMessageQueueCall wrap *gomock.Call
+type MockMessageQueueServiceFlushMessageQueueCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMessageQueueServiceFlushMessageQueueCall) Return(arg0 []store.QueuedMessage, arg1 error) *MockMessageQueueServiceFlushMessageQueueCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMessageQueueServiceFlushMessageQueueCall) Do(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockMessageQueueServiceFlushMessageQueueCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMessageQueueServiceFlushMessageQueueCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockMessageQueueServiceFlushMessageQueueCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockWebSocketHandlersService is a mock of WebSocketHandlersService interface.
 type MockWebSocketHandlersService struct {
 	ctrl     *gomock.Controller
@@ -3147,6 +3249,83 @@ func NewMockWebSocketHandlersService(ctrl *gomock.Controller) *MockWebSocketHand
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockWebSocketHandlersService) EXPECT() *MockWebSocketHandlersServiceMockRecorder {
 	return m.recorder
+}
+
+// EnqueueMessages mocks base method.
+func (m *MockWebSocketHandlersService) EnqueueMessages(ctx context.Context, roomID store.RoomID, senderUsername, message string, createdAt time.Time, preEncrypted, whisper bool, recipientIDs []store.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueMessages", ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueMessages indicates an expected call of EnqueueMessages.
+func (mr *MockWebSocketHandlersServiceMockRecorder) EnqueueMessages(ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs any) *MockWebSocketHandlersServiceEnqueueMessagesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueMessages", reflect.TypeOf((*MockWebSocketHandlersService)(nil).EnqueueMessages), ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	return &MockWebSocketHandlersServiceEnqueueMessagesCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceEnqueueMessagesCall wrap *gomock.Call
+type MockWebSocketHandlersServiceEnqueueMessagesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceEnqueueMessagesCall) Return(arg0 error) *MockWebSocketHandlersServiceEnqueueMessagesCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceEnqueueMessagesCall) Do(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockWebSocketHandlersServiceEnqueueMessagesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceEnqueueMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockWebSocketHandlersServiceEnqueueMessagesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FlushMessageQueue mocks base method.
+func (m *MockWebSocketHandlersService) FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FlushMessageQueue", ctx, roomID, userID)
+	ret0, _ := ret[0].([]store.QueuedMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FlushMessageQueue indicates an expected call of FlushMessageQueue.
+func (mr *MockWebSocketHandlersServiceMockRecorder) FlushMessageQueue(ctx, roomID, userID any) *MockWebSocketHandlersServiceFlushMessageQueueCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushMessageQueue", reflect.TypeOf((*MockWebSocketHandlersService)(nil).FlushMessageQueue), ctx, roomID, userID)
+	return &MockWebSocketHandlersServiceFlushMessageQueueCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceFlushMessageQueueCall wrap *gomock.Call
+type MockWebSocketHandlersServiceFlushMessageQueueCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceFlushMessageQueueCall) Return(arg0 []store.QueuedMessage, arg1 error) *MockWebSocketHandlersServiceFlushMessageQueueCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceFlushMessageQueueCall) Do(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockWebSocketHandlersServiceFlushMessageQueueCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceFlushMessageQueueCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockWebSocketHandlersServiceFlushMessageQueueCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
 }
 
 // GetRoomAccess mocks base method.
@@ -3751,6 +3930,83 @@ func (c *MockServerServiceDeleteUserCall) Do(f func(context.Context, store.UserI
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceDeleteUserCall) DoAndReturn(f func(context.Context, store.UserID) error) *MockServerServiceDeleteUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// EnqueueMessages mocks base method.
+func (m *MockServerService) EnqueueMessages(ctx context.Context, roomID store.RoomID, senderUsername, message string, createdAt time.Time, preEncrypted, whisper bool, recipientIDs []store.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnqueueMessages", ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnqueueMessages indicates an expected call of EnqueueMessages.
+func (mr *MockServerServiceMockRecorder) EnqueueMessages(ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs any) *MockServerServiceEnqueueMessagesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnqueueMessages", reflect.TypeOf((*MockServerService)(nil).EnqueueMessages), ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
+	return &MockServerServiceEnqueueMessagesCall{Call: call}
+}
+
+// MockServerServiceEnqueueMessagesCall wrap *gomock.Call
+type MockServerServiceEnqueueMessagesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceEnqueueMessagesCall) Return(arg0 error) *MockServerServiceEnqueueMessagesCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceEnqueueMessagesCall) Do(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockServerServiceEnqueueMessagesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceEnqueueMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, string, string, time.Time, bool, bool, []store.UserID) error) *MockServerServiceEnqueueMessagesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// FlushMessageQueue mocks base method.
+func (m *MockServerService) FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FlushMessageQueue", ctx, roomID, userID)
+	ret0, _ := ret[0].([]store.QueuedMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FlushMessageQueue indicates an expected call of FlushMessageQueue.
+func (mr *MockServerServiceMockRecorder) FlushMessageQueue(ctx, roomID, userID any) *MockServerServiceFlushMessageQueueCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushMessageQueue", reflect.TypeOf((*MockServerService)(nil).FlushMessageQueue), ctx, roomID, userID)
+	return &MockServerServiceFlushMessageQueueCall{Call: call}
+}
+
+// MockServerServiceFlushMessageQueueCall wrap *gomock.Call
+type MockServerServiceFlushMessageQueueCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceFlushMessageQueueCall) Return(arg0 []store.QueuedMessage, arg1 error) *MockServerServiceFlushMessageQueueCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceFlushMessageQueueCall) Do(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockServerServiceFlushMessageQueueCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceFlushMessageQueueCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) ([]store.QueuedMessage, error)) *MockServerServiceFlushMessageQueueCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
