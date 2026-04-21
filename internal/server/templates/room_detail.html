@@ -10,6 +10,18 @@
     <section>
         <h3>Chat</h3>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
+        <details id="pgp-key-section" style="margin-bottom: 0.5rem;">
+            <summary style="cursor: pointer; user-select: none;">PGP Private Key (for decryption)</summary>
+            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical;"></textarea>
+                <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" id="pgp-load-key-btn">Load Key</button>
+                    <button type="button" id="pgp-clear-key-btn">Clear Key</button>
+                </div>
+                <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
+            </div>
+        </details>
         <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: center;">
             {{if not .IsDMRoom}}
             <select id="chat-target" {{if not .IsMember}}disabled{{end}}>
@@ -43,6 +55,9 @@
     const roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
     const currentUserID = String({{.CurrentUserID}});
     const memberPGPKeys = {{.MemberPGPKeysJSON}};
+
+    let loadedPrivateKey = null;
+    const messageHistory = [];
     
     // Connect to WebSocket (even if not a member yet - membership_gained will enable chat input)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -124,43 +139,8 @@
         }
         
         if (data.type === 'message') {
-            const msgDiv = document.createElement('div');
-            msgDiv.style.marginBottom = '0.5rem';
-            if (data.whisper) {
-                msgDiv.style.color = '#6a1b9a';
-                msgDiv.style.fontStyle = 'italic';
-            }
-            
-            const time = new Date(data.created_at).toLocaleTimeString();
-            const whisperLabel = data.whisper ? ' <em>(whisper)</em>' : '';
-
-            msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small>' + whisperLabel + '<br>';
-
-            const pre = document.createElement('pre');
-            pre.style.margin = '0.25rem 0 0 0';
-            pre.style.whiteSpace = 'pre-wrap';
-            pre.style.fontFamily = 'monospace';
-            pre.textContent = data.message;
-
-            const actions = document.createElement('div');
-            actions.style.display = 'flex';
-            actions.style.gap = '0.5rem';
-            actions.style.alignItems = 'center';
-            actions.style.marginTop = '0.25rem';
-
-            const copyBtn = document.createElement('button');
-            copyBtn.type = 'button';
-            copyBtn.textContent = 'Copy';
-            copyBtn.onclick = function() {
-                copyText(pre.textContent || '');
-            };
-            actions.appendChild(copyBtn);
-
-            msgDiv.appendChild(actions);
-            msgDiv.appendChild(pre);
-            
-            chatMessages.appendChild(msgDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            appendMessageAsync(data);
+            return;
         }
     };
     
@@ -219,6 +199,121 @@
         chatInput.value = '';
     };
     
+    document.getElementById('pgp-load-key-btn').onclick = async function() {
+        const armoredKey = document.getElementById('pgp-private-key-input').value.trim();
+        const passphrase = document.getElementById('pgp-passphrase-input').value;
+        const statusEl = document.getElementById('pgp-key-status');
+        if (!armoredKey) { statusEl.textContent = 'No key entered.'; return; }
+        try {
+            let key = await openpgp.readPrivateKey({ armoredKey });
+            if (!key.isDecrypted()) {
+                key = await openpgp.decryptKey({ privateKey: key, passphrase });
+            }
+            loadedPrivateKey = key;
+            statusEl.style.color = 'green';
+            statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
+            await rerenderAllMessages();
+        } catch (err) {
+            loadedPrivateKey = null;
+            statusEl.style.color = 'red';
+            statusEl.textContent = 'Failed to load key: ' + err.message;
+        }
+    };
+
+    document.getElementById('pgp-clear-key-btn').onclick = async function() {
+        loadedPrivateKey = null;
+        document.getElementById('pgp-private-key-input').value = '';
+        document.getElementById('pgp-passphrase-input').value = '';
+        document.getElementById('pgp-key-status').textContent = '';
+        document.getElementById('pgp-key-status').style.color = '';
+        await rerenderAllMessages();
+    };
+
+    function isPGPMessage(text) {
+        return text && text.trimStart().startsWith('-----BEGIN PGP MESSAGE-----');
+    }
+
+    async function tryDecrypt(armoredMessage) {
+        if (!loadedPrivateKey) return { ok: false };
+        try {
+            const message = await openpgp.readMessage({ armoredMessage });
+            const { data: plaintext } = await openpgp.decrypt({
+                message,
+                decryptionKeys: loadedPrivateKey,
+            });
+            return { ok: true, plaintext };
+        } catch {
+            return { ok: false };
+        }
+    }
+
+    async function appendMessageAsync(data) {
+        messageHistory.push(data);
+        const el = await buildMessageElement(data);
+        chatMessages.appendChild(el);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function rerenderAllMessages() {
+        chatMessages.innerHTML = '';
+        for (const data of messageHistory) {
+            const el = await buildMessageElement(data);
+            chatMessages.appendChild(el);
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function buildMessageElement(data) {
+        const msgDiv = document.createElement('div');
+        msgDiv.style.marginBottom = '0.5rem';
+        if (data.whisper) {
+            msgDiv.style.color = '#6a1b9a';
+            msgDiv.style.fontStyle = 'italic';
+        }
+
+        const time = new Date(data.created_at).toLocaleTimeString();
+        const whisperLabel = data.whisper ? ' <em>(whisper)</em>' : '';
+        msgDiv.innerHTML = '<strong>' + escapeHtml(data.username) + '</strong> <small>(' + time + ')</small>' + whisperLabel + '<br>';
+
+        let displayText = data.message;
+        let decrypted = false;
+
+        if (isPGPMessage(data.message)) {
+            const result = await tryDecrypt(data.message);
+            if (result.ok) {
+                displayText = result.plaintext;
+                decrypted = true;
+            }
+        }
+
+        if (decrypted) {
+            const badge = document.createElement('span');
+            badge.textContent = 'Decrypted';
+            badge.style.cssText = 'display:inline-block;background:#2e7d32;color:#fff;font-size:0.7em;padding:1px 6px;border-radius:3px;margin-bottom:0.25rem;font-family:sans-serif;font-style:normal;';
+            msgDiv.appendChild(badge);
+            msgDiv.appendChild(document.createElement('br'));
+        }
+
+        const pre = document.createElement('pre');
+        pre.style.margin = '0.25rem 0 0 0';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.fontFamily = 'monospace';
+        pre.textContent = displayText;
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = function() { copyText(pre.textContent || ''); };
+        actions.appendChild(copyBtn);
+
+        msgDiv.appendChild(actions);
+        msgDiv.appendChild(pre);
+        return msgDiv;
+    }
+
     function appendSystemMessage(text) {
         const msgDiv = document.createElement('div');
         msgDiv.style.marginBottom = '0.5rem';
