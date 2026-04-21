@@ -721,7 +721,7 @@ func (c *ChatClient) readPump() {
 						perUser[m.ID] = outBytes
 					}
 				}
-				enqueueOfflineMessages(ctx, c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
+				enqueueOfflineMessages(c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
@@ -758,7 +758,7 @@ func (c *ChatClient) readPump() {
 					perUser[m.ID] = outBytes
 				}
 			}
-			enqueueOfflineMessages(ctx, c, payload.Message, createdAt, false, isWhisper, perUser)
+			enqueueOfflineMessages(c, payload.Message, createdAt, false, isWhisper, perUser)
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
@@ -776,7 +776,7 @@ func (c *ChatClient) readPump() {
 // enqueueOfflineMessages stores rawMessage in the queue for each recipient in
 // perUser that is not currently connected to the room. The sender (c.userID)
 // is always skipped — they already see their own message in their local UI.
-func enqueueOfflineMessages(ctx context.Context, c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
+func enqueueOfflineMessages(c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
 	onlineUsers := c.hub.OnlineUsersInRoom(c.roomID)
 	var offlineIDs []store.UserID
 	for uid := range perUser {
@@ -790,8 +790,10 @@ func enqueueOfflineMessages(ctx context.Context, c *ChatClient, rawMessage strin
 	if len(offlineIDs) == 0 {
 		return
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err := c.svc.EnqueueMessages(ctx, c.roomID, c.username, rawMessage, createdAt, preEncrypted, whisper, offlineIDs); err != nil {
-		slog.ErrorContext(ctx, "enqueue offline messages", "err", err, "room_id", c.roomID)
+		slog.Error("enqueue offline messages", "err", err, "room_id", c.roomID)
 	}
 }
 
