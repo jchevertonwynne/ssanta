@@ -348,24 +348,24 @@
 
     // --- PGP key management ---
 
-    const pgpPersistToggle = document.getElementById('pgp-persist-toggle');
-    pgpPersistToggle.checked = localStorage.getItem('pgp_persist_across_sessions') === 'true';
+    const pgpPersistToggle = document.getElementById("${roomId}:pgp-persist-toggle");
+    pgpPersistToggle.checked = localStorage.getItem("${roomId}:pgp_persist_across_sessions") === 'true';
 
     pgpPersistToggle.onchange = function() {
-        localStorage.setItem('pgp_persist_across_sessions', pgpPersistToggle.checked);
+        localStorage.setItem("${roomId}:pgp_persist_across_sessions", pgpPersistToggle.checked);
         if (!loadedPrivateKey) return;
         const armoredKey = document.getElementById('pgp-private-key-input').value;
         const passphrase = document.getElementById('pgp-passphrase-input').value;
         if (pgpPersistToggle.checked) {
-            localStorage.setItem('pgp_armored_key', armoredKey);
-            localStorage.setItem('pgp_passphrase', passphrase);
-            sessionStorage.removeItem('pgp_armored_key');
-            sessionStorage.removeItem('pgp_passphrase');
+            localStorage.setItem("${roomId}:pgp_armored_key", armoredKey);
+            localStorage.setItem("${roomId}:pgp_passphrase", passphrase);
+            sessionStorage.removeItem("${roomId}:pgp_armored_key");
+            sessionStorage.removeItem("${roomId}:pgp_passphrase");
         } else {
-            sessionStorage.setItem('pgp_armored_key', armoredKey);
-            sessionStorage.setItem('pgp_passphrase', passphrase);
-            localStorage.removeItem('pgp_armored_key');
-            localStorage.removeItem('pgp_passphrase');
+            sessionStorage.setItem("${roomId}:pgp_armored_key", armoredKey);
+            sessionStorage.setItem("${roomId}:pgp_passphrase", passphrase);
+            localStorage.removeItem("${roomId}:pgp_armored_key");
+            localStorage.removeItem("${roomId}:pgp_passphrase");
         }
     };
 
@@ -379,10 +379,10 @@
     }
 
     function clearPGPStorage() {
-        localStorage.removeItem('pgp_armored_key');
-        localStorage.removeItem('pgp_passphrase');
-        sessionStorage.removeItem('pgp_armored_key');
-        sessionStorage.removeItem('pgp_passphrase');
+        localStorage.removeItem("${roomId}:pgp_armored_key");
+        localStorage.removeItem("${roomId}:pgp_passphrase");
+        sessionStorage.removeItem("${roomId}:pgp_armored_key");
+        sessionStorage.removeItem("${roomId}:pgp_passphrase");
     }
 
     document.getElementById('pgp-load-key-btn').onclick = async function() {
