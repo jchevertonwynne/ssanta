@@ -309,8 +309,8 @@
         copyBtn.onclick = function() { copyText(pre.textContent || ''); };
         actions.appendChild(copyBtn);
 
-        msgDiv.appendChild(actions);
         msgDiv.appendChild(pre);
+        msgDiv.appendChild(actions);
         return msgDiv;
     }
 
