@@ -16,6 +16,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DB_CLUSTER_NAME="${DB_CLUSTER_NAME:-ssanta-pg}"
 APP_SPEC="${APP_SPEC:-$REPO_ROOT/.do/app.yaml}"
+# Default to the doctl-managed user path to avoid psql SSL issues behind
+# corporate TLS proxies (e.g. Zscaler). The DO-managed user is admin-level
+# rather than least-privilege, but is fine for a toy deployment.
+# Set FALLBACK_TO_DOCTL_USER=0 to attempt least-privilege grants via psql instead.
+FALLBACK_TO_DOCTL_USER="${FALLBACK_TO_DOCTL_USER:-1}"
 ALLOW_LOCAL_IP="${ALLOW_LOCAL_IP:-0}"
 
 require() {
