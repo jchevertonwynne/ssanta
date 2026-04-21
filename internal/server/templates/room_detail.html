@@ -12,21 +12,28 @@
         <div id="chat-controls" style="display:flex;gap:1rem;align-items:center;margin-bottom:0.5rem;font-size:0.85em;">
             <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="sound-toggle"> Sound</label>
             <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="notif-toggle"> Browser notifications</label>
-            <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-toggle"> Persist messages</label>
-            <label style="cursor:pointer;user-select:none;">Storage:
-                <select id="persist-storage" style="font-size:0.85em;">
-                    <option value="local">localStorage</option>
-                    <option value="session">sessionStorage</option>
-                </select>
-            </label>
-            <button type="button" id="persist-clear-btn" style="font-size:0.85em;">Clear stored</button>
         </div>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
-        <div id="persist-settings" style="margin-bottom:0.5rem;">
-            <input id="persist-passphrase-input" type="password" placeholder="Storage passphrase" style="margin-right:0.5rem;">
-            <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-remember-passphrase"> Remember passphrase</label>
-            <button type="button" id="persist-save-btn">Save passphrase</button>
-        </div>
+        <details id="persist-settings" style="margin-bottom:0.5rem;">
+            <summary style="cursor:pointer;user-select:none;">Message persistence</summary>
+            <div style="margin-top:0.5rem;display:flex;flex-direction:column;gap:0.5rem;">
+                <div style="display:flex;gap:1rem;align-items:center;font-size:0.85em;">
+                    <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-toggle"> Persist messages</label>
+                    <label style="cursor:pointer;user-select:none;">Storage:
+                        <select id="persist-storage" style="font-size:0.85em;">
+                            <option value="local">localStorage</option>
+                            <option value="session">sessionStorage</option>
+                        </select>
+                    </label>
+                    <button type="button" id="persist-clear-btn" style="font-size:0.85em;">Clear stored</button>
+                </div>
+                <div>
+                    <input id="persist-passphrase-input" type="password" placeholder="Storage passphrase" style="margin-right:0.5rem;">
+                    <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-remember-passphrase"> Remember passphrase</label>
+                    <button type="button" id="persist-save-btn">Save passphrase</button>
+                </div>
+            </div>
+        </details>
         <details id="pgp-key-section" style="margin-bottom: 0.5rem;">
             <summary style="cursor: pointer; user-select: none;">PGP Private Key (for decryption)</summary>
             <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
