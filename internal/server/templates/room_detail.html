@@ -33,7 +33,7 @@
                 {{end}}
             </select>
             {{end}}
-            <input id="chat-input" type="text"
+            <input id="chat-input" type="text" autocomplete="off"
                    placeholder="{{if .IsMember}}Type a message...{{else if .IsCreator}}Join to send messages{{else}}Join the room to chat{{end}}"
                    style="flex: 1;" maxlength="500"
                    {{if not .IsMember}}disabled{{end}}>
@@ -52,7 +52,7 @@
     const isMember = {{if .IsMember}}true{{else}}false{{end}};
     const isCreator = {{if .IsCreator}}true{{else}}false{{end}};
     const roomId = {{.Room.ID}};
-    const roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
+    let roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
     const currentUserID = String({{.CurrentUserID}});
     const memberPGPKeys = {{.MemberPGPKeysJSON}};
 
@@ -97,16 +97,22 @@
             fetch('/rooms/' + roomId + '/members-list')
                 .then(function(r) { return r.json(); })
                 .then(function(resp) {
-                    // Update PGP keys map so future messages encrypt to the latest keys
-                    if (resp.pgp_keys) {
+                    if (resp.members) {
+                        // Rebuild PGP keys map from member entries
                         Object.keys(memberPGPKeys).forEach(function(k) { delete memberPGPKeys[k]; });
-                        Object.assign(memberPGPKeys, resp.pgp_keys);
+                        resp.members.forEach(function(m) {
+                            if (m.pgp_key) memberPGPKeys[m.id] = m.pgp_key;
+                        });
+                    }
+                    if (resp.pgp_required !== undefined) {
+                        roomPGPRequired = resp.pgp_required;
                     }
                     // Update whisper target dropdown when members change
                     if (chatTarget && resp.members) {
                         const prevValue = chatTarget.value;
                         while (chatTarget.options.length > 1) chatTarget.remove(1);
                         resp.members.forEach(function(m) {
+                            if (String(m.id) === currentUserID) return;
                             const opt = document.createElement('option');
                             opt.value = m.id;
                             opt.textContent = m.username;

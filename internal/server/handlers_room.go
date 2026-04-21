@@ -382,6 +382,7 @@ func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hu
 type MembersListService interface {
 	UserExistsService
 	RoomMembersWithPGPService
+	IsRoomPGPRequiredService
 }
 
 func handleRoomMembersList(svc MembersListService, sessions SessionManager) http.HandlerFunc {
@@ -406,29 +407,36 @@ func handleRoomMembersList(svc MembersListService, sessions SessionManager) http
 		type memberEntry struct {
 			ID       store.UserID `json:"id"`
 			Username string       `json:"username"`
+			PGPKey   string       `json:"pgp_key,omitempty"`
 		}
 		type membersListResponse struct {
-			Members []memberEntry          `json:"members"`
-			PGPKeys map[store.UserID]string `json:"pgp_keys"`
+			Members     []memberEntry `json:"members"`
+			PGPRequired bool          `json:"pgp_required"`
 		}
 		resp := membersListResponse{
-			Members: make([]memberEntry, 0, len(members)-1),
-			PGPKeys: make(map[store.UserID]string),
+			Members: make([]memberEntry, 0, len(members)),
 		}
 		for _, m := range members {
 			if m.ID == currentID {
 				isMember = true
-			} else {
-				resp.Members = append(resp.Members, memberEntry{ID: m.ID, Username: m.Username})
 			}
+			entry := memberEntry{ID: m.ID, Username: m.Username}
 			if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
-				resp.PGPKeys[m.ID] = m.PGPPublicKey
+				entry.PGPKey = m.PGPPublicKey
 			}
+			resp.Members = append(resp.Members, entry)
 		}
 		if !isMember {
 			http.Error(w, "not a member of this room", http.StatusForbidden)
 			return
 		}
+
+		pgpRequired, err := svc.IsRoomPGPRequired(r.Context(), roomID)
+		if err != nil {
+			http.Error(w, "failed to check room settings", http.StatusInternalServerError)
+			return
+		}
+		resp.PGPRequired = pgpRequired
 
 		writeJSON(w, http.StatusOK, resp)
 	}

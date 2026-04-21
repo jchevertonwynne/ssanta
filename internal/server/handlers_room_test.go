@@ -342,7 +342,7 @@ func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
 	}
 }
 
-func TestHandleRoomMembersList_Success_ExcludesCurrentUser(t *testing.T) {
+func TestHandleRoomMembersList_Success_IncludesAllMembers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -357,6 +357,7 @@ func TestHandleRoomMembersList_Success_ExcludesCurrentUser(t *testing.T) {
 		{ID: 2, Username: "bob"},
 		{ID: 3, Username: "charlie"},
 	}, nil)
+	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil)
 
 	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")
@@ -370,10 +371,7 @@ func TestHandleRoomMembersList_Success_ExcludesCurrentUser(t *testing.T) {
 		t.Fatalf("expected Content-Type application/json, got %s", ct)
 	}
 	body := w.Body.String()
-	if strings.Contains(body, `"bob"`) {
-		t.Fatalf("expected current user (bob, id=2) to be excluded from response")
-	}
-	if !strings.Contains(body, `"alice"`) || !strings.Contains(body, `"charlie"`) {
-		t.Fatalf("expected alice and charlie in response, got %s", body)
+	if !strings.Contains(body, `"alice"`) || !strings.Contains(body, `"bob"`) || !strings.Contains(body, `"charlie"`) {
+		t.Fatalf("expected all members in response, got %s", body)
 	}
 }
