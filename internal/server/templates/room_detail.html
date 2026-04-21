@@ -294,6 +294,15 @@
 
     connect();
 
+    document.body.addEventListener('htmx:beforeSwap', function handler(evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'content') {
+            intentionalClose = true;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            ws.close();
+            document.body.removeEventListener('htmx:beforeSwap', handler);
+        }
+    });
+
     chatForm.onsubmit = async function(e) {
         e.preventDefault();
         const message = chatInput.value.trim();
