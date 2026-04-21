@@ -75,7 +75,7 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
 		 WHERE ru.user_id = $1 AND r.is_dm = FALSE
-		 ORDER BY ru.username DESC`,
+		 ORDER BY r.display_name ASC`,
 		userID,
 	)
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *RoomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]R
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
 		 WHERE ru.user_id = $1 AND r.is_dm = TRUE
-		 ORDER BY ru.username DESC`,
+		 ORDER BY r.display_name ASC`,
 		userID,
 	)
 	if err != nil {
