@@ -1,3 +1,4 @@
+// Package db provides PostgreSQL connection, migration, and privilege helpers.
 package db
 
 import (
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// WithSearchPath adds a PostgreSQL search_path query parameter when schema is set.
 func WithSearchPath(databaseURL, schema string) (string, error) {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {
@@ -34,6 +36,7 @@ func WithSearchPath(databaseURL, schema string) (string, error) {
 	return u.String(), nil
 }
 
+// CreateSchema creates the configured schema when needed.
 func CreateSchema(ctx context.Context, databaseURL, schema string) error {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {
@@ -76,6 +79,7 @@ func quoteIdent(ident string) string {
 	return `"` + strings.ReplaceAll(ident, `"`, `""`) + `"`
 }
 
+// Connect opens a PostgreSQL connection pool with observability enabled.
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
@@ -122,6 +126,7 @@ func searchPathFromURL(databaseURL string) (string, bool) {
 	return sp, true
 }
 
+// Migrate runs database migrations from dir against url.
 func Migrate(url, dir string) error {
 	m, err := migrate.New("file://"+dir, url)
 	if err != nil {
@@ -136,6 +141,7 @@ func Migrate(url, dir string) error {
 	return nil
 }
 
+// GrantRuntimePrivileges grants runtime access to the application role.
 func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role, password string) error {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {

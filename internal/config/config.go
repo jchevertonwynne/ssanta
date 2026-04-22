@@ -1,3 +1,4 @@
+// Package config loads application configuration from environment variables.
 package config
 
 import (
@@ -10,6 +11,7 @@ import (
 	"time"
 )
 
+// Config contains all runtime configuration values for the application.
 type Config struct {
 	HTTPAddr           string `env:"HTTP_ADDR,:8080"`
 	DatabaseURL        string `env:"DATABASE_URL"`
@@ -40,6 +42,7 @@ type Config struct {
 	Environment  string `env:"DEPLOYMENT_ENVIRONMENT,local"`
 }
 
+// Load reads configuration from environment variables.
 func Load() (Config, error) {
 	var cfg Config
 	if err := loadFromEnv(&cfg); err != nil {
@@ -49,18 +52,18 @@ func Load() (Config, error) {
 }
 
 func loadFromEnv(dst any) error {
-	rv := reflect.ValueOf(dst)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+	value := reflect.ValueOf(dst)
+	if value.Kind() != reflect.Pointer || value.IsNil() {
 		return errors.New("config: dst must be a non-nil pointer")
 	}
-	rv = rv.Elem()
-	if rv.Kind() != reflect.Struct {
+	value = value.Elem()
+	if value.Kind() != reflect.Struct {
 		return errors.New("config: dst must point to a struct")
 	}
-	rt := rv.Type()
+	structType := value.Type()
 
-	for i := 0; i < rt.NumField(); i++ {
-		field := rt.Field(i)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
 		if !field.IsExported() {
 			continue
 		}
@@ -93,7 +96,7 @@ func loadFromEnv(dst any) error {
 			}
 		}
 
-		if err := setFromString(rv.Field(i), raw); err != nil {
+		if err := setFromString(value.Field(i), raw); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
@@ -101,9 +104,11 @@ func loadFromEnv(dst any) error {
 	return nil
 }
 
-func parseEnvTag(tag string) (name, def string, hasDefault bool) {
+func parseEnvTag(tag string) (string, string, bool) {
 	parts := strings.SplitN(tag, ",", 2)
-	name = strings.TrimSpace(parts[0])
+	name := strings.TrimSpace(parts[0])
+	def := ""
+	hasDefault := false
 	if len(parts) == 2 {
 		def = parts[1]
 		hasDefault = true

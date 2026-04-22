@@ -1,3 +1,4 @@
+// Package pgp provides key normalization, challenge generation, and encryption helpers.
 package pgp
 
 import (
@@ -24,17 +25,23 @@ const (
 )
 
 var (
-	ErrKeyEmpty          = errors.New("pgp key cannot be empty")
-	ErrKeyTooLarge       = errors.New("pgp key too large")
-	ErrKeyMustBePublic   = errors.New("pgp key must be a public key")
+	// ErrKeyEmpty is returned when the supplied key material is empty.
+	ErrKeyEmpty = errors.New("pgp key cannot be empty")
+	// ErrKeyTooLarge is returned when the supplied key exceeds the size limit.
+	ErrKeyTooLarge = errors.New("pgp key too large")
+	// ErrKeyMustBePublic is returned when the supplied key is private.
+	ErrKeyMustBePublic = errors.New("pgp key must be a public key")
+	// ErrKeyNotEncryptable is returned when the key cannot encrypt messages.
 	ErrKeyNotEncryptable = errors.New("pgp key cannot be used for encryption")
-	ErrKeyRevoked        = errors.New("pgp key is revoked")
-	ErrKeyExpired        = errors.New("pgp key is expired")
+	// ErrKeyRevoked is returned when the key has been revoked.
+	ErrKeyRevoked = errors.New("pgp key is revoked")
+	// ErrKeyExpired is returned when the key has expired.
+	ErrKeyExpired = errors.New("pgp key is expired")
 )
 
 // NormalizePublicKey parses an armored key, rejects private keys, and returns a
 // normalized armored public key along with its fingerprint.
-func NormalizePublicKey(armored string, now time.Time) (normalizedArmored string, fingerprint string, err error) {
+func NormalizePublicKey(armored string, now time.Time) (string, string, error) {
 	trimmed := strings.TrimSpace(armored)
 	if trimmed == "" {
 		return "", "", ErrKeyEmpty
@@ -64,8 +71,8 @@ func NormalizePublicKey(armored string, now time.Time) (normalizedArmored string
 		return "", "", ErrKeyNotEncryptable
 	}
 
-	fingerprint = key.GetFingerprint()
-	normalizedArmored, err = key.GetArmoredPublicKey()
+	fingerprint := key.GetFingerprint()
+	normalizedArmored, err := key.GetArmoredPublicKey()
 	if err != nil {
 		return "", "", err
 	}
@@ -86,6 +93,7 @@ func NewChallengeString(size int) (string, error) {
 	return VerificationChallengePrefix + base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
+// HashChallenge returns the SHA-256 digest of a challenge string.
 func HashChallenge(challenge string) []byte {
 	sum := sha256.Sum256([]byte(challenge))
 	return sum[:]

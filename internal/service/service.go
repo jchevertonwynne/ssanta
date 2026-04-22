@@ -1,3 +1,4 @@
+// Package service contains application-level business logic.
 package service
 
 import (
@@ -21,6 +22,14 @@ import (
 
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
 
+const (
+	defaultInviteMaxAge        = 24 * time.Hour
+	defaultRoomPGPChallengeTTL = 10 * time.Minute
+	minimumPasswordLength      = 8
+	dmRoomNameParts            = 3
+)
+
+// Service coordinates store access and application rules.
 type Service struct {
 	store               *store.Store
 	inviteMaxAge        time.Duration
@@ -28,27 +37,29 @@ type Service struct {
 	argon2              Argon2Params
 }
 
+// New constructs a service backed by the provided store.
 func New(store *store.Store) *Service {
 	return &Service{
 		store:               store,
-		inviteMaxAge:        24 * time.Hour,
-		roomPGPChallengeTTL: 10 * time.Minute,
+		inviteMaxAge:        defaultInviteMaxAge,
+		roomPGPChallengeTTL: defaultRoomPGPChallengeTTL,
 		argon2:              DefaultArgon2Params(),
 	}
 }
 
+// SetInviteMaxAge updates the maximum age allowed for new invites.
 func (s *Service) SetInviteMaxAge(d time.Duration) {
 	if d > 0 {
 		s.inviteMaxAge = d
 	}
 }
 
-// Ping checks the database connection health
+// Ping checks the database connection health.
 func (s *Service) Ping(ctx context.Context) error {
 	return s.store.Ping(ctx)
 }
 
-// DMRoomInfo contains info about a direct message room
+// DMRoomInfo contains information about a direct message room.
 type DMRoomInfo struct {
 	RoomID      store.RoomID
 	PartnerID   store.UserID
@@ -57,7 +68,7 @@ type DMRoomInfo struct {
 	CreatedAt   time.Time
 }
 
-// ContentView contains all data needed to render the main content page
+// ContentView contains all data needed to render the main content page.
 type ContentView struct {
 	CurrentUsername string
 	Users           []store.User
@@ -67,7 +78,7 @@ type ContentView struct {
 	Invites         []store.InviteForUser
 }
 
-// RoomDetailView contains all data needed to render a room detail page
+// RoomDetailView contains all data needed to render a room detail page.
 type RoomDetailView struct {
 	CurrentUsername string
 	Room            store.RoomDetail
@@ -81,7 +92,7 @@ type RoomDetailView struct {
 	AllUsers        []store.User // all users in the system, for invite dropdown
 }
 
-// GetContentView loads all data needed for the main content page
+// GetContentView loads all data needed for the main content page.
 func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*ContentView, error) {
 	view := &ContentView{}
 
@@ -227,10 +238,12 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 	}, nil
 }
 
+// ListRoomMembersWithPGP loads room members along with any PGP metadata.
 func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
+// EnqueueMessages queues messages for later delivery.
 func (s *Service) EnqueueMessages(
 	ctx context.Context,
 	roomID store.RoomID,
@@ -242,10 +255,12 @@ func (s *Service) EnqueueMessages(
 	return s.store.Messages.Enqueue(ctx, roomID, senderUsername, message, createdAt, preEncrypted, whisper, recipientIDs)
 }
 
+// FlushMessageQueue returns queued messages for a user in a room.
 func (s *Service) FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error) {
 	return s.store.Messages.FlushForUser(ctx, roomID, userID)
 }
 
+// SetRoomPGPKey stores and challenges a room member's public key.
 func (s *Service) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
 	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 	if err != nil {
@@ -276,6 +291,7 @@ func (s *Service) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID
 	return s.store.Rooms.UpsertRoomUserPGPKeyWithChallenge(ctx, roomID, userID, normalized, fingerprint, ciphertext, hash, expiresAt)
 }
 
+// VerifyRoomPGPKey verifies a decrypted challenge for a room member.
 func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
 	plaintext := strings.TrimSpace(decryptedChallenge)
 	if plaintext == "" {
@@ -284,6 +300,7 @@ func (s *Service) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, use
 	return s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now())
 }
 
+// RemoveRoomUserPGPKey clears a member's PGP key.
 func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
 	if targetUserID != actingUserID {
 		isCreator, err := s.store.Rooms.IsRoomCreator(ctx, roomID, actingUserID)
@@ -300,10 +317,12 @@ func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID,
 
 // User operations
 
+// UserExists reports whether a user exists.
 func (s *Service) UserExists(ctx context.Context, id store.UserID) (bool, error) {
 	return s.store.Users.UserExists(ctx, id)
 }
 
+// CreateUser creates a new user account.
 func (s *Service) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateUser")
 	defer span.End()
@@ -314,7 +333,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (st
 	if !usernameRE.MatchString(name) {
 		return 0, store.ErrUsernameInvalid
 	}
-	if len(password) < 8 {
+	if len(password) < minimumPasswordLength {
 		return 0, store.ErrPasswordTooShort
 	}
 	hash, err := hashPassword(password, s.argon2)
@@ -330,6 +349,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (st
 	return id, nil
 }
 
+// LoginUser authenticates a user by username and password.
 func (s *Service) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.LoginUser")
 	defer span.End()
@@ -356,10 +376,12 @@ func (s *Service) LoginUser(ctx context.Context, username, password string) (sto
 	return user.ID, nil
 }
 
+// DeleteUser removes a user account.
 func (s *Service) DeleteUser(ctx context.Context, id store.UserID) error {
 	return s.store.Users.DeleteUser(ctx, id)
 }
 
+// VerifyPassword checks a user's password without changing it.
 func (s *Service) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.VerifyPassword")
 	defer span.End()
@@ -379,6 +401,7 @@ func (s *Service) VerifyPassword(ctx context.Context, userID store.UserID, passw
 	return nil
 }
 
+// ChangePassword updates a user's password after verifying the current one.
 func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ChangePassword")
 	defer span.End()
@@ -395,7 +418,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, curre
 	if !ok {
 		return store.ErrCurrentPasswordIncorrect
 	}
-	if len(newPassword) < 8 {
+	if len(newPassword) < minimumPasswordLength {
 		return store.ErrPasswordTooShort
 	}
 	hash, err := hashPassword(newPassword, s.argon2)
@@ -407,6 +430,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, curre
 
 // Room operations
 
+// CreateRoom creates a new room for the requesting user.
 func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateRoom")
 	defer span.End()
@@ -445,6 +469,7 @@ func (s *Service) assertNotDM(ctx context.Context, roomID store.RoomID) error {
 	return nil
 }
 
+// DeleteRoom removes a room if the creator is allowed to do so.
 func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
@@ -452,22 +477,27 @@ func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID
 	return s.store.Rooms.DeleteRoom(ctx, roomID, creatorID)
 }
 
+// LeaveRoom removes a user from a room.
 func (s *Service) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
 	return s.store.Rooms.LeaveRoom(ctx, roomID, userID)
 }
 
+// JoinRoom adds a user to a room.
 func (s *Service) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
 	return s.store.Rooms.JoinRoom(ctx, roomID, userID)
 }
 
+// IsRoomCreator reports whether a user created the room.
 func (s *Service) IsRoomCreator(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
 	return s.store.Rooms.IsRoomCreator(ctx, roomID, userID)
 }
 
+// GetRoomAccess reports creator and membership state for a room.
 func (s *Service) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error) {
 	return s.store.Rooms.GetRoomAccess(ctx, roomID, userID)
 }
 
+// SetRoomMembersCanInvite toggles whether room members can invite others.
 func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
@@ -475,6 +505,7 @@ func (s *Service) SetRoomMembersCanInvite(ctx context.Context, roomID store.Room
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
+// SetRoomPGPRequired toggles whether a room requires PGP.
 func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, actingUserID store.UserID, value bool) error {
 	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
 	if err != nil {
@@ -486,6 +517,7 @@ func (s *Service) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, a
 	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, actingUserID, value)
 }
 
+// RemoveMember removes another user from a room.
 func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
@@ -495,6 +527,7 @@ func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberI
 
 // Invite operations
 
+// CreateInvite creates an invite for another user.
 func (s *Service) CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateInvite")
 	defer span.End()
@@ -515,6 +548,7 @@ func (s *Service) CreateInvite(ctx context.Context, roomID store.RoomID, inviter
 	return err
 }
 
+// AcceptInvite accepts an invite and returns the room ID.
 func (s *Service) AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.AcceptInvite")
 	defer span.End()
@@ -531,28 +565,34 @@ func (s *Service) AcceptInvite(ctx context.Context, inviteID store.InviteID, use
 	return roomID, err
 }
 
+// DeclineInvite declines an invite.
 func (s *Service) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
 	return s.store.Invites.DeclineInvite(ctx, inviteID, userID)
 }
 
+// CancelInvite cancels an invite and returns the affected room and user IDs.
 func (s *Service) CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error) {
 	return s.store.Invites.CancelInvite(ctx, inviteID, actingUserID)
 }
 
+// RoomIDForInvite resolves the room associated with an invite.
 func (s *Service) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
 	return s.store.Invites.RoomIDForInvite(ctx, inviteID)
 }
 
 // Helper operations
 
+// IsRoomMember reports whether a user belongs to a room.
 func (s *Service) IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
 	return s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 }
 
+// IsRoomPGPRequired reports whether a room requires PGP.
 func (s *Service) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
 	return s.store.Rooms.IsRoomPGPRequired(ctx, roomID)
 }
 
+// GetUsername resolves a user ID to a username.
 func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	user, err := s.store.Users.GetUserByID(ctx, userID)
 	if err != nil {
@@ -561,13 +601,14 @@ func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string,
 	return user.Username, nil
 }
 
+// GetUserByUsername looks up a user by username.
 func (s *Service) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
 	return s.store.Users.GetUserByUsername(ctx, username)
 }
 
 // Direct Messages
 
-// GetOrCreateDMRoom gets or creates a DM room between two users
+// GetOrCreateDMRoom gets or creates a DM room between two users.
 func (s *Service) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
 	if user1ID == user2ID {
 		return 0, store.ErrCannotInviteSelf
@@ -618,7 +659,7 @@ func (s *Service) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.
 	return roomID, nil
 }
 
-// getDMRoomsForUser returns a list of DM rooms for a user with partner info
+// getDMRoomsForUser returns a list of DM rooms for a user with partner info.
 func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, users []store.User) ([]DMRoomInfo, error) {
 	memberRooms, err := s.store.Rooms.ListDMRoomsByMember(ctx, userID)
 	if err != nil {
@@ -636,7 +677,7 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 	for _, room := range memberRooms {
 		// Extract partner username from DM name format "dm:user1:user2"
 		parts := strings.Split(room.DisplayName, ":")
-		if len(parts) != 3 {
+		if len(parts) != dmRoomNameParts {
 			continue
 		}
 
@@ -684,6 +725,7 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 
 // Message operations
 
+// CreateMessage stores a new room message.
 func (s *Service) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateMessage")
 	defer span.End()
@@ -694,6 +736,7 @@ func (s *Service) CreateMessage(ctx context.Context, roomID store.RoomID, userID
 	return s.store.Chat.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
 }
 
+// ListMessages returns messages for a room.
 func (s *Service) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ListMessages")
 	defer span.End()
@@ -704,6 +747,7 @@ func (s *Service) ListMessages(ctx context.Context, roomID store.RoomID, userID 
 	return s.store.Chat.ListMessages(ctx, roomID, userID, beforeID, limit)
 }
 
+// SearchMessages searches messages in a room.
 func (s *Service) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.SearchMessages")
 	defer span.End()

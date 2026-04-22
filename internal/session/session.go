@@ -1,3 +1,4 @@
+// Package session manages signed session cookies.
 package session
 
 import (
@@ -19,9 +20,11 @@ const (
 )
 
 var (
+	// ErrInvalidSession indicates a malformed or expired session cookie.
 	ErrInvalidSession = errors.New("invalid session")
 )
 
+// Manager signs and validates session cookies.
 type Manager struct {
 	secret []byte
 	secure bool
@@ -29,6 +32,7 @@ type Manager struct {
 	now    func() time.Time
 }
 
+// NewManager constructs a session manager.
 func NewManager(secret string, secure bool, ttl time.Duration) *Manager {
 	if ttl <= 0 {
 		ttl = 168 * time.Hour
@@ -51,6 +55,7 @@ func (m *Manager) Secret() []byte { return m.secret }
 // Secure returns whether cookies should be marked Secure.
 func (m *Manager) Secure() bool { return m.secure }
 
+// Set writes a signed session cookie for the given user.
 func (m *Manager) Set(w http.ResponseWriter, userID store.UserID) {
 	if userID == 0 {
 		return
@@ -67,6 +72,7 @@ func (m *Manager) Set(w http.ResponseWriter, userID store.UserID) {
 	})
 }
 
+// Clear deletes the session cookie.
 func (m *Manager) Clear(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
@@ -79,24 +85,25 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 	})
 }
 
+// UserID extracts and validates the current session user ID.
 func (m *Manager) UserID(r *http.Request) (store.UserID, bool) {
-	c, err := r.Cookie(cookieName)
+	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return 0, false
 	}
-	payload, sig, ok := strings.Cut(c.Value, ".")
-	if !ok {
+	payload, sig, valid := strings.Cut(cookie.Value, ".")
+	if !valid {
 		return 0, false
 	}
 	if !hmac.Equal([]byte(sig), []byte(m.sign(payload))) {
 		return 0, false
 	}
-	idStr, issuedStr, ok := strings.Cut(payload, "|")
-	if !ok {
+	idStr, issuedStr, valid := strings.Cut(payload, "|")
+	if !valid {
 		return 0, false
 	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
 		return 0, false
 	}
 	issuedUnix, err := strconv.ParseInt(issuedStr, 10, 64)
@@ -106,7 +113,7 @@ func (m *Manager) UserID(r *http.Request) (store.UserID, bool) {
 	if m.now().Sub(time.Unix(issuedUnix, 0)) > m.ttl {
 		return 0, false
 	}
-	return store.UserID(id), true
+	return store.UserID(userID), true
 }
 
 func (m *Manager) sign(payload string) string {

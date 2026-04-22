@@ -13,15 +13,24 @@ import (
 
 const argon2SaltLen = 16
 const argon2KeyLen = 32
+const argon2DefaultMemory = 64 * 1024
+const argon2DefaultIterations = 1
+const argon2DefaultParallelism = 4
 
+// Argon2Params configures Argon2 password hashing.
 type Argon2Params struct {
 	Memory      uint32
 	Iterations  uint32
 	Parallelism uint8
 }
 
+// DefaultArgon2Params returns the default password hashing parameters.
 func DefaultArgon2Params() Argon2Params {
-	return Argon2Params{Memory: 64 * 1024, Iterations: 1, Parallelism: 4}
+	return Argon2Params{
+		Memory:      argon2DefaultMemory,
+		Iterations:  argon2DefaultIterations,
+		Parallelism: argon2DefaultParallelism,
+	}
 }
 
 // dummyHashSentinel is a real argon2id hash of a random secret, used as a
@@ -38,15 +47,15 @@ func mustHash(password string, p Argon2Params) string {
 	return h
 }
 
-func hashPassword(password string, p Argon2Params) (string, error) {
+func hashPassword(password string, params Argon2Params) (string, error) {
 	salt := make([]byte, argon2SaltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	hash := argon2.IDKey([]byte(password), salt, p.Iterations, p.Memory, p.Parallelism, argon2KeyLen)
+	hash := argon2.IDKey([]byte(password), salt, params.Iterations, params.Memory, params.Parallelism, argon2KeyLen)
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version,
-		p.Memory, p.Iterations, p.Parallelism,
+		params.Memory, params.Iterations, params.Parallelism,
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(hash),
 	), nil
@@ -82,6 +91,13 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 		return false, fmt.Errorf("decode hash: %w", err)
 	}
 
-	computed := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(storedHash))) //nolint:gosec
+	computed := argon2.IDKey(
+		[]byte(password),
+		salt,
+		iterations,
+		memory,
+		parallelism,
+		uint32(len(storedHash)), //nolint:gosec
+	)
 	return subtle.ConstantTimeCompare(computed, storedHash) == 1, nil
 }
