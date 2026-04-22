@@ -377,7 +377,6 @@ func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetai
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})
 }
 
-
 func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_sidebar.html"})
 }
