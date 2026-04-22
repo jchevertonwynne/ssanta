@@ -31,10 +31,6 @@ linters:
     - noctx
     - rowserrcheck
   
-  settings:
-    staticcheck:
-      go: "1.25"
-  
   exclusions:
     rules:
       - path: '(.+)_test\.go'
