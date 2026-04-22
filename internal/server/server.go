@@ -411,6 +411,29 @@ func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context
 	})
 }
 
+func renderRoomSidebarWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:        "room_sidebar.html",
+		pgpKeyAttempted: attempted,
+		pgpKeyErr:       formErr,
+	})
+}
+
+func renderRoomSidebarWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:           "room_sidebar.html",
+		pgpVerifyAttempted: attempted,
+		pgpVerifyErr:       formErr,
+	})
+}
+
+func renderRoomSidebarWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, formErr string) {
+	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
+		template:     "room_sidebar.html",
+		pgpRemoveErr: formErr,
+	})
+}
+
 func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentViewService, data contentData) {
 	view, err := svc.GetContentView(ctx, data.CurrentUserID)
 	if err != nil {

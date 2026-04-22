@@ -740,13 +740,24 @@
         }
     }
 
-    async function swapRoomDynamic(html) {
-        const existing = document.getElementById('room-dynamic');
+    async function swapRoomSidebar(html) {
+        const existing = document.getElementById('room-sidebar');
         if (!existing) return;
         existing.outerHTML = html;
-        const next = document.getElementById('room-dynamic');
+        const next = document.getElementById('room-sidebar');
         if (next) {
             htmx.process(next);
+            // Restore private key inputs from storage (mirrors htmx:afterSwap logic)
+            const persist = localStorage.getItem(roomId + ':pgp_persist_across_sessions') === 'true';
+            const store = persist ? localStorage : sessionStorage;
+            const storedKey = store.getItem(roomId + ':pgp_armored_key');
+            const storedPass = store.getItem(roomId + ':pgp_passphrase') || '';
+            const keyInput = document.getElementById('pgp-private-key-input');
+            const passInput = document.getElementById('pgp-passphrase-input');
+            const persistEl = document.getElementById('pgp-persist-toggle');
+            if (keyInput) keyInput.value = storedKey || '';
+            if (passInput) passInput.value = storedPass;
+            if (persistEl) persistEl.checked = persist;
             applyPresenceIndicators();
         }
     }
@@ -762,12 +773,12 @@
             const body = new URLSearchParams();
             body.append('decrypted_challenge', result.plaintext);
             const resp = await fetch('/rooms/' + roomId + '/pgp-key/verify', {method: 'POST', headers: {'X-CSRF-Token': csrfToken}, body});
-            if (resp.ok) await swapRoomDynamic(await resp.text());
+            if (resp.ok) await swapRoomSidebar(await resp.text());
             return;
         }
 
         // State 1: no public key uploaded yet — derive and POST it directly
-        const allPGPForms = document.querySelectorAll('#room-dynamic form[hx-post$="/pgp-key"]');
+        const allPGPForms = document.querySelectorAll('#room-sidebar form[hx-post$="/pgp-key"]');
         const uploadForm = Array.from(allPGPForms).find(f => !f.closest('details'));
         if (uploadForm) {
             const armoredPublic = loadedPrivateKey.toPublic().armor();
@@ -775,7 +786,7 @@
             body.append('pgp_public_key', armoredPublic);
             const resp = await fetch('/rooms/' + roomId + '/pgp-key', {method: 'POST', headers: {'X-CSRF-Token': csrfToken}, body});
             if (resp.ok) {
-                await swapRoomDynamic(await resp.text());
+                await swapRoomSidebar(await resp.text());
                 await autoHandlePGPVerification(); // proceed to State 2
             }
         }

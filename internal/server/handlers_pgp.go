@@ -50,7 +50,7 @@ func handleSetRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hub H
 		case err != nil:
 			span.SetStatus(codes.Error, err.Error())
 			loggerFromContext(ctx).Error("set room pgp key", "err", err, "room_id", roomID)
-			renderRoomDynamicWithPGPKeyError(w, ctx, svc, currentID, roomID, attempted, err.Error())
+			renderRoomSidebarWithPGPKeyError(w, ctx, svc, currentID, roomID, attempted, err.Error())
 			return
 		}
 
@@ -61,7 +61,7 @@ func handleSetRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hub H
 		}
 
 		hub.NotifyRoomUpdate(roomID)
-		renderRoomDynamic(w, ctx, svc, currentID, roomID)
+		renderRoomSidebar(w, ctx, svc, currentID, roomID)
 	}
 }
 
@@ -91,12 +91,12 @@ func handleVerifyRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hu
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("verify room pgp key", "err", err)
-			renderRoomDynamicWithPGPVerifyError(w, r.Context(), svc, currentID, roomID, attempted, err.Error())
+			renderRoomSidebarWithPGPVerifyError(w, r.Context(), svc, currentID, roomID, attempted, err.Error())
 			return
 		}
 
 		hub.NotifyRoomUpdate(roomID)
-		renderRoomDynamic(w, r.Context(), svc, currentID, roomID)
+		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 	}
 }
 
@@ -122,12 +122,12 @@ func handleRemoveRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hu
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("remove room pgp key", "err", err)
-			renderRoomDynamicWithPGPRemoveError(w, r.Context(), svc, actingUserID, roomID, err.Error())
+			renderRoomSidebarWithPGPRemoveError(w, r.Context(), svc, actingUserID, roomID, err.Error())
 			return
 		}
 
 		hub.NotifyRoomUpdate(roomID)
-		renderRoomDynamic(w, r.Context(), svc, actingUserID, roomID)
+		renderRoomSidebar(w, r.Context(), svc, actingUserID, roomID)
 	}
 }
 
@@ -157,11 +157,11 @@ func handleRemoveMemberPGPKey(svc RoomHandlersService, sessions SessionManager, 
 			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("remove member pgp key", "err", err)
-			renderRoomDynamicWithPGPRemoveError(w, r.Context(), svc, actingUserID, roomID, err.Error())
+			renderRoomSidebarWithPGPRemoveError(w, r.Context(), svc, actingUserID, roomID, err.Error())
 			return
 		}
 
 		hub.NotifyRoomUpdate(roomID)
-		renderRoomDynamic(w, r.Context(), svc, actingUserID, roomID)
+		renderRoomSidebar(w, r.Context(), svc, actingUserID, roomID)
 	}
 }

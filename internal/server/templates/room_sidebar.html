@@ -104,17 +104,80 @@
     {{template "room_dynamic.html" .}}
 
     {{if .IsMember}}
-    <details id="pgp-key-section" style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-        <summary style="cursor: pointer; user-select: none; font-weight: bold;">PGP Private Key (for decryption)</summary>
-        <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-            <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical; width: 100%;"></textarea>
-            <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
-            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                <button type="button" id="pgp-load-key-btn">Load Key</button>
-                <button type="button" id="pgp-clear-key-btn">Clear Key</button>
-                <label style="cursor:pointer;user-select:none;font-size:0.85em;"><input type="checkbox" id="pgp-persist-toggle"> Remember across sessions</label>
+    <details id="pgp-keys-section" style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+        <summary style="cursor: pointer; user-select: none; font-weight: bold;">PGP Keys</summary>
+        <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+
+            <div>
+                <h4 style="margin: 0 0 0.5rem 0;">Your Public Key</h4>
+                {{if .PGPRemoveFormError}}
+                    <p class="error">{{.PGPRemoveFormError}}</p>
+                {{end}}
+
+                {{range .Members}}
+                    {{if eq .ID $.CurrentUserID}}
+                        {{if .PGPPublicKey}}
+                            <div style="margin-bottom: 0.5rem; font-size: 0.9em;">
+                                <strong>Status:</strong> {{if .PGPVerifiedAt}}verified{{else}}unverified{{end}}
+                                {{if .PGPFingerprint}}
+                                    <span> · <span id="pgp-fingerprint-self">{{.PGPFingerprint}}</span></span>
+                                    <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-self'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
+                                {{end}}
+                            </div>
+
+                            {{if .PGPChallengeCiphertext}}
+                                <p style="margin-top: 0.5rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>
+                                <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
+                                    <button type="button" onclick="(function(){var t=document.getElementById('pgp-challenge-ciphertext'); if(!t) return; var v=t.value||t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){t.focus();t.select();document.execCommand('copy');});} else {t.focus();t.select();document.execCommand('copy');}})()">Copy</button>
+                                </div>
+                                <textarea id="pgp-challenge-ciphertext" readonly rows="8" style="width: 100%; font-family: monospace;">{{.PGPChallengeCiphertext}}</textarea>
+
+                                <form hx-post="/rooms/{{$.Room.ID}}/pgp-key/verify" hx-target="#room-sidebar" hx-swap="outerHTML" style="margin-top: 0.5rem;">
+                                    <input name="decrypted_challenge" placeholder="Paste decrypted plaintext" style="width: 100%;" value="{{$.PGPVerifyAttempted}}" required>
+                                    <button type="submit">Verify</button>
+                                </form>
+                                {{if $.PGPVerifyFormError}}
+                                    <p class="error">{{$.PGPVerifyFormError}}</p>
+                                {{end}}
+                            {{end}}
+
+                            <details style="margin-top: 0.75rem;">
+                                <summary>Replace key</summary>
+                                <form hx-post="/rooms/{{$.Room.ID}}/pgp-key" hx-target="#room-sidebar" hx-swap="outerHTML" style="margin-top: 0.5rem;">
+                                    <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{$.PGPKeyFormAttempted}}</textarea>
+                                    <button type="submit">Upload public key &amp; get challenge</button>
+                                </form>
+                                {{if $.PGPKeyFormError}}
+                                    <p class="error">{{$.PGPKeyFormError}}</p>
+                                {{end}}
+                            </details>
+                        {{else}}
+                            <form hx-post="/rooms/{{$.Room.ID}}/pgp-key" hx-target="#room-sidebar" hx-swap="outerHTML">
+                                <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{$.PGPKeyFormAttempted}}</textarea>
+                                <button type="submit">Upload public key &amp; get challenge</button>
+                            </form>
+                            {{if $.PGPKeyFormError}}
+                                <p class="error">{{$.PGPKeyFormError}}</p>
+                            {{end}}
+                        {{end}}
+                    {{end}}
+                {{end}}
             </div>
-            <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
+
+            <div style="border-top: 1px solid #ddd; padding-top: 0.75rem;">
+                <h4 style="margin: 0 0 0.5rem 0;">Your Private Key (for decryption)</h4>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical; width: 100%;"></textarea>
+                    <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <button type="button" id="pgp-load-key-btn">Load Key</button>
+                        <button type="button" id="pgp-clear-key-btn">Clear Key</button>
+                        <label style="cursor:pointer;user-select:none;font-size:0.85em;"><input type="checkbox" id="pgp-persist-toggle"> Remember across sessions</label>
+                    </div>
+                    <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
+                </div>
+            </div>
+
         </div>
     </details>
     {{end}}

@@ -24,7 +24,7 @@
                         {{if or $isCreator (eq .ID $currentID)}}
                             <div style="margin-top: 0.25rem;">
                                 <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}/pgp-key"
-                                        hx-target="#room-dynamic"
+                                        hx-target="#room-sidebar"
                                         hx-swap="outerHTML"
                                         hx-confirm="{{if eq .ID $currentID}}Remove your PGP key for this room?{{else}}Remove {{.Username}}'s PGP key for this room?{{end}}">Remove PGP key</button>
                             </div>
@@ -48,63 +48,6 @@
         </ul>
     {{else}}
         <p>No members yet.</p>
-    {{end}}
-
-    {{if .IsMember}}
-    <h3>Your PGP key</h3>
-
-    {{if .PGPRemoveFormError}}
-        <p class="error">{{.PGPRemoveFormError}}</p>
-    {{end}}
-
-    {{range .Members}}
-        {{if eq .ID $.CurrentUserID}}
-            {{if .PGPPublicKey}}
-                <div style="margin-bottom: 0.5rem; font-size: 0.9em;">
-                    <strong>Status:</strong> {{if .PGPVerifiedAt}}verified{{else}}unverified{{end}}
-                    {{if .PGPFingerprint}}
-                        <span> · <span id="pgp-fingerprint-self">{{.PGPFingerprint}}</span></span>
-                        <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-self'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
-                    {{end}}
-                </div>
-
-                {{if .PGPChallengeCiphertext}}
-                    <p style="margin-top: 1rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>
-                    <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
-                        <button type="button" onclick="(function(){var t=document.getElementById('pgp-challenge-ciphertext'); if(!t) return; var v=t.value||t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){t.focus();t.select();document.execCommand('copy');});} else {t.focus();t.select();document.execCommand('copy');}})()">Copy</button>
-                    </div>
-                    <textarea id="pgp-challenge-ciphertext" readonly rows="8" style="width: 100%; font-family: monospace;">{{.PGPChallengeCiphertext}}</textarea>
-
-                    <form hx-post="/rooms/{{$.Room.ID}}/pgp-key/verify" hx-target="#room-dynamic" hx-swap="outerHTML" style="margin-top: 0.5rem;">
-                        <input name="decrypted_challenge" placeholder="Paste decrypted plaintext" style="width: 100%;" value="{{$.PGPVerifyAttempted}}" required>
-                        <button type="submit">Verify</button>
-                    </form>
-                    {{if $.PGPVerifyFormError}}
-                        <p class="error">{{$.PGPVerifyFormError}}</p>
-                    {{end}}
-                {{end}}
-
-                <details style="margin-top: 0.75rem;">
-                    <summary>Replace key</summary>
-                    <form hx-post="/rooms/{{$.Room.ID}}/pgp-key" hx-target="#room-dynamic" hx-swap="outerHTML" style="margin-top: 0.5rem;">
-                        <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{$.PGPKeyFormAttempted}}</textarea>
-                        <button type="submit">Upload public key &amp; get challenge</button>
-                    </form>
-                    {{if $.PGPKeyFormError}}
-                        <p class="error">{{$.PGPKeyFormError}}</p>
-                    {{end}}
-                </details>
-            {{else}}
-                <form hx-post="/rooms/{{$.Room.ID}}/pgp-key" hx-target="#room-dynamic" hx-swap="outerHTML">
-                    <textarea name="pgp_public_key" rows="8" style="width: 100%; font-family: monospace;" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required>{{$.PGPKeyFormAttempted}}</textarea>
-                    <button type="submit">Upload public key &amp; get challenge</button>
-                </form>
-                {{if $.PGPKeyFormError}}
-                    <p class="error">{{$.PGPKeyFormError}}</p>
-                {{end}}
-            {{end}}
-        {{end}}
-    {{end}}
     {{end}}
 
     {{if not .IsDMRoom}}
