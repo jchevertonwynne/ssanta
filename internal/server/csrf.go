@@ -26,6 +26,7 @@ func CSRF(secret []byte, secure bool) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id := readOrIssueCSRFID(w, r, secure)
 			ctx := context.WithValue(r.Context(), ctxKeyCSRFID, id)
+			ctx = context.WithValue(ctx, ctxKeyCSRFToken, computeCSRFToken(secret, id))
 			r = r.WithContext(ctx)
 
 			if isSafeMethod(r.Method) {
@@ -80,6 +81,11 @@ func newCSRFID() string {
 		return "csrf-randread-failed"
 	}
 	return base64.RawURLEncoding.EncodeToString(b[:])
+}
+
+func CSRFTokenFromContext(ctx context.Context) string {
+	token, _ := ctx.Value(ctxKeyCSRFToken).(string)
+	return token
 }
 
 func computeCSRFToken(secret []byte, csrfID string) string {

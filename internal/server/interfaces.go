@@ -129,6 +129,7 @@ type UserHandlersService interface {
 	LoginUserService
 	DeleteUserService
 	ChangePasswordService
+	VerifyPassword(ctx context.Context, userID store.UserID, password string) error
 }
 
 type RoomHandlersService interface {
@@ -187,6 +188,8 @@ type SessionManager interface {
 	Set(w http.ResponseWriter, userID store.UserID)
 	Clear(w http.ResponseWriter)
 	UserID(r *http.Request) (store.UserID, bool)
+	Secret() []byte
+	Secure() bool
 }
 
 type DMHandlersService interface {

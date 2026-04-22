@@ -19,6 +19,10 @@ type Config struct {
 	SessionSecret      string `env:"SESSION_SECRET"`
 
 	SecureCookies bool `env:"SECURE_COOKIES,true"`
+	MetricsSecret string `env:"METRICS_SECRET,"`
+
+	RateLimitAuthMax    int           `env:"RATE_LIMIT_AUTH_MAX,5"`
+	RateLimitAuthWindow time.Duration `env:"RATE_LIMIT_AUTH_WINDOW,1m"`
 
 	InviteMaxAge        time.Duration `env:"INVITE_MAX_AGE,24h"`
 	JanitorInterval     time.Duration `env:"JANITOR_INTERVAL,1m"`

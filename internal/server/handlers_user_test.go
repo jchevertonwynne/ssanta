@@ -141,12 +141,14 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	hub := servermocks.NewMockHub(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 7)
+	svc.EXPECT().VerifyPassword(gomock.Any(), store.UserID(7), "mypassword").Return(nil)
 	svc.EXPECT().DeleteUser(gomock.Any(), store.UserID(7)).Return(nil)
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 	hub.EXPECT().NotifyContentUpdate("users_updated")
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/7", nil)
+	r := newFormRequest(t, "/users/7", url.Values{"current_password": {"mypassword"}})
+	r.Method = http.MethodDelete
 	r.SetPathValue("id", "7")
 	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
@@ -250,6 +252,7 @@ func TestHandleChangePassword_Success(t *testing.T) {
 
 	expectLoggedIn(t, svc, sessions, 10)
 	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "oldpass12", "newpass12").Return(nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(10))
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, "/password", url.Values{

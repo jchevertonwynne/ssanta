@@ -55,7 +55,7 @@ func assertNoNonPresenceMessage(t *testing.T, conn *websocket.Conn, timeout time
 
 func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
-	if !upgrader.CheckOrigin(r) {
+	if !websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected empty origin to be allowed")
 	}
 }
@@ -63,7 +63,7 @@ func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
 func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://example.com")
-	if !upgrader.CheckOrigin(r) {
+	if !websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected same-host origin to be allowed")
 	}
 }
@@ -71,8 +71,15 @@ func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
 func TestUpgraderCheckOrigin_RejectsDifferentHost(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://evil.com")
-	if upgrader.CheckOrigin(r) {
+	if websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected different-host origin to be rejected")
+	}
+}
+
+func TestUpgraderCheckOrigin_RejectsEmptyOriginWhenSecure(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	if websocketUpgrader(true).CheckOrigin(r) {
+		t.Fatalf("expected empty origin to be rejected when secure")
 	}
 }
 
@@ -159,6 +166,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
@@ -224,6 +232,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	roomID := store.RoomID(10)
 	userA := store.UserID(2)
@@ -318,6 +327,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	roomID := store.RoomID(10)
 	userA := store.UserID(2)
@@ -402,6 +412,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
@@ -443,6 +454,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
@@ -547,6 +559,7 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	roomID := store.RoomID(10)
 	userA := store.UserID(2)
@@ -643,6 +656,7 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	sessions.EXPECT().Secure().Return(false).AnyTimes()
 
 	roomID := store.RoomID(10)
 	userA := store.UserID(2)

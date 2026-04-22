@@ -2,10 +2,14 @@
     {{if .CurrentUserID}}
         <span>Logged in as {{.CurrentUsername}}</span>
         <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
-        <button hx-delete="/users/{{.CurrentUserID}}"
-                hx-target="#content"
-                hx-swap="innerHTML"
-                hx-confirm="Delete your account? Rooms you created will also be removed.">Delete account</button>
+        <form hx-delete="/users/{{.CurrentUserID}}"
+              hx-target="#content"
+              hx-swap="innerHTML"
+              hx-confirm="Delete your account? Rooms you created will also be removed."
+              style="display:inline;">
+            <input name="current_password" type="password" placeholder="Password to confirm" required style="padding:0.25rem;">
+            <button type="submit">Delete account</button>
+        </form>
         <details style="width: 100%; margin-top: 0.5rem;">
             <summary style="cursor: pointer;">Change password</summary>
             <form hx-post="/password" hx-target="#content" hx-swap="innerHTML" style="margin-top: 0.5rem;">
@@ -121,10 +125,12 @@
 
                 const form = new URLSearchParams({partner_id: partnerID});
 
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 fetch('/dms', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-Token': csrfToken
                     },
                     body: form
                 }).then(async r => {

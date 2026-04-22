@@ -32,6 +32,7 @@ var (
 	ErrAlreadyInvited           = errors.New("user is already invited")
 	ErrCannotInviteSelf         = errors.New("cannot invite yourself")
 	ErrInviteNotFound           = errors.New("invite not found")
+	ErrInviteExpired            = errors.New("invite expired")
 	ErrNotAllowedToInvite       = errors.New("not allowed to invite to this room")
 	ErrNotAllowedToCancelInvite = errors.New("not allowed to cancel this invite")
 	ErrNotRoomMember            = errors.New("not a member of this room")

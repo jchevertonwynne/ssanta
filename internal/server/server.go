@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
@@ -22,6 +23,7 @@ var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 type indexData struct {
 	BootstrapURL string
+	CSRFToken    string
 }
 
 type contentData struct {
@@ -75,7 +77,7 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
-func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler) (http.Handler, func()) {
+func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
 	hubAPI := Hub(hub)
@@ -84,6 +86,9 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 
 	// Health & pages
 	mux.HandleFunc("GET /healthz", handleHealth(svc))
+	if metricsSecret != "" {
+		metricsHandler = metricsWithSecret(metricsHandler, metricsSecret)
+	}
 	mux.Handle("GET /metrics", metricsHandler)
 	mux.HandleFunc("GET /{$}", handleIndex)
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
@@ -91,12 +96,23 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
 	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
 
+	var authLimiter *rateLimiter
+	if rateLimitMax > 0 && rateLimitWindow > 0 {
+		authLimiter = newRateLimiter(rateLimitMax, rateLimitWindow)
+	}
+	limited := func(h http.HandlerFunc) http.HandlerFunc {
+		if authLimiter == nil {
+			return h
+		}
+		return RateLimit(authLimiter)(h).(http.HandlerFunc)
+	}
+
 	// Users
-	mux.HandleFunc("POST /users", handleCreateUser(svc, sessions, hubAPI))
-	mux.HandleFunc("DELETE /users/{id}", handleDeleteUser(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /login", handleLogin(svc, sessions))
+	mux.HandleFunc("POST /users", limited(handleCreateUser(svc, sessions, hubAPI)))
+	mux.HandleFunc("DELETE /users/{id}", limited(handleDeleteUser(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /login", limited(handleLogin(svc, sessions)))
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
-	mux.HandleFunc("POST /password", handleChangePassword(svc, sessions))
+	mux.HandleFunc("POST /password", limited(handleChangePassword(svc, sessions)))
 
 	// Rooms
 	mux.HandleFunc("POST /rooms", handleCreateRoom(svc, sessions))
@@ -131,12 +147,29 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	// Apply middleware stack (outermost first)
 	handler := Chain(mux,
 		RecoverPanic,
+		SecurityHeaders(sessions.Secure()),
+		MaxRequestBody,
 		TracingMiddleware(serviceName),
 		MetricsMiddleware,
+		CSRF(sessions.Secret(), sessions.Secure()),
 		WithRequestLogger(nil),
 	)
 
 	return handler, hub.Stop
+}
+
+func metricsWithSecret(next http.Handler, secret string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		provided := r.URL.Query().Get("secret")
+		if provided == "" {
+			provided = r.Header.Get("X-Metrics-Secret")
+		}
+		if provided != secret {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func handleHealth(svc HealthService) http.HandlerFunc {
@@ -150,7 +183,7 @@ func handleHealth(svc HealthService) http.HandlerFunc {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", indexData{})
+	render(w, "index.html", indexData{CSRFToken: CSRFTokenFromContext(r.Context())})
 }
 
 func handleContent(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {

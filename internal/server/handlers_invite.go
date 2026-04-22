@@ -101,6 +101,9 @@ func handleAcceptInvite(svc InviteHandlersService, sessions SessionManager, hub 
 		case errors.Is(err, store.ErrInviteNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
+		case errors.Is(err, store.ErrInviteExpired):
+			http.Error(w, err.Error(), http.StatusGone)
+			return
 		case err != nil:
 			loggerFromContext(r.Context()).Error("accept invite", "err", err)
 			http.Error(w, "failed to accept invite", http.StatusInternalServerError)

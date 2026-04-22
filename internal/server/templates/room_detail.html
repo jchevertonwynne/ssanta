@@ -79,6 +79,7 @@
     const currentUserID = String({{.CurrentUserID}});
     const currentUsername = "{{.CurrentUsername}}";
     const memberPGPKeys = {{.MemberPGPKeysJSON}};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     let loadedPrivateKey = null;
     const messageHistory = [];
@@ -760,7 +761,7 @@
             if (!result.ok) return;
             const body = new URLSearchParams();
             body.append('decrypted_challenge', result.plaintext);
-            const resp = await fetch('/rooms/' + roomId + '/pgp-key/verify', {method: 'POST', body});
+            const resp = await fetch('/rooms/' + roomId + '/pgp-key/verify', {method: 'POST', headers: {'X-CSRF-Token': csrfToken}, body});
             if (resp.ok) await swapRoomDynamic(await resp.text());
             return;
         }
@@ -772,7 +773,7 @@
             const armoredPublic = loadedPrivateKey.toPublic().armor();
             const body = new URLSearchParams();
             body.append('pgp_public_key', armoredPublic);
-            const resp = await fetch('/rooms/' + roomId + '/pgp-key', {method: 'POST', body});
+            const resp = await fetch('/rooms/' + roomId + '/pgp-key', {method: 'POST', headers: {'X-CSRF-Token': csrfToken}, body});
             if (resp.ok) {
                 await swapRoomDynamic(await resp.text());
                 await autoHandlePGPVerification(); // proceed to State 2

@@ -149,10 +149,11 @@ func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userI
 
 	var roomID RoomID
 	var inviteeID UserID
+	var expiresAt time.Time
 	err = tx.QueryRow(ctx,
-		`SELECT room_id, invitee_id FROM room_invites WHERE id = $1 FOR UPDATE`,
+		`SELECT room_id, invitee_id, expires_at FROM room_invites WHERE id = $1 FOR UPDATE`,
 		inviteID,
-	).Scan(&roomID, &inviteeID)
+	).Scan(&roomID, &inviteeID, &expiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrInviteNotFound
 	}
@@ -161,6 +162,9 @@ func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userI
 	}
 	if inviteeID != userID {
 		return 0, ErrInviteNotFound
+	}
+	if time.Now().After(expiresAt) {
+		return 0, ErrInviteExpired
 	}
 
 	_, err = tx.Exec(ctx,

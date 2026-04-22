@@ -224,7 +224,7 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 		if r.Header.Get("HX-Request") != "" {
 			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 		} else {
-			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID)})
+			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID), CSRFToken: CSRFTokenFromContext(r.Context())})
 		}
 	}
 }

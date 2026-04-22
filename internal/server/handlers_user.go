@@ -2,7 +2,9 @@ package server
 
 import (
 	"errors"
+	"io"
 	"net/http"
+	"net/url"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -80,18 +82,40 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			http.Error(w, "can only delete your own account", http.StatusForbidden)
 			return
 		}
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		password := r.FormValue("current_password")
+		if password == "" {
+			// Go's ParseForm does not parse request body for DELETE;
+			// read manually as a fallback for HTMX form submissions.
+			body, _ := io.ReadAll(r.Body)
+			if vals, err := url.ParseQuery(string(body)); err == nil {
+				password = vals.Get("current_password")
+			}
+		}
+		if err := svc.VerifyPassword(r.Context(), currentID, password); err != nil {
+			if errors.Is(err, store.ErrCurrentPasswordIncorrect) {
+				http.Error(w, err.Error(), http.StatusForbidden)
+				return
+			}
+			loggerFromContext(r.Context()).Error("verify password for delete", "err", err)
+			http.Error(w, "failed to verify password", http.StatusInternalServerError)
+			return
+		}
 		if err := svc.DeleteUser(r.Context(), id); err != nil {
 			loggerFromContext(r.Context()).Error("delete user", "err", err)
 			http.Error(w, "failed to delete user", http.StatusInternalServerError)
 			return
 		}
 		sessions.Clear(w)
-        // Notify websocket hub about account deletion if it supports the optional
-        // HandleAccountDeletion hook. We keep this optional to avoid forcing a
-        // signature change on the Hub interface and to make tests simpler.
-        if notifier, ok := hub.(interface{ HandleAccountDeletion(store.UserID) }); ok {
-            notifier.HandleAccountDeletion(id)
-        }
+		// Notify websocket hub about account deletion if it supports the optional
+		// HandleAccountDeletion hook. We keep this optional to avoid forcing a
+		// signature change on the Hub interface and to make tests simpler.
+		if notifier, ok := hub.(interface{ HandleAccountDeletion(store.UserID) }); ok {
+			notifier.HandleAccountDeletion(id)
+		}
 		renderContent(w, r.Context(), svc, 0)
 		hub.NotifyContentUpdate("users_updated")
 	}
@@ -187,6 +211,7 @@ func handleChangePassword(svc UserHandlersService, sessions SessionManager) http
 		}
 
 		loggerFromContext(ctx).Info("password changed", "user_id", currentID)
+		sessions.Set(w, currentID)
 		renderContentWithPasswordSuccess(w, ctx, svc, currentID)
 	}
 }

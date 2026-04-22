@@ -6,6 +6,17 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎅</text></svg>">
     <script src="https://unpkg.com/htmx.org@2.0.3"></script>
     <script src="https://cdn.jsdelivr.net/npm/openpgp@6/dist/openpgp.min.js"></script>
+    {{if .CSRFToken}}
+    <meta name="csrf-token" content="{{.CSRFToken}}">
+    <script>
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+        var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        if (token) {
+            evt.detail.headers['X-CSRF-Token'] = token;
+        }
+    });
+    </script>
+    {{end}}
     <style>
         body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
         table { border-collapse: collapse; width: 100%; }

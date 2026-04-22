@@ -360,6 +360,25 @@ func (s *Service) DeleteUser(ctx context.Context, id store.UserID) error {
 	return s.store.Users.DeleteUser(ctx, id)
 }
 
+func (s *Service) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.VerifyPassword")
+	defer span.End()
+	span.SetAttributes(attribute.Int64("user_id", userID.Int64()))
+
+	user, err := s.store.Users.GetUserWithPasswordByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("lookup user: %w", err)
+	}
+	ok, err := verifyPassword(password, user.PasswordHash)
+	if err != nil {
+		return fmt.Errorf("verify password: %w", err)
+	}
+	if !ok {
+		return store.ErrCurrentPasswordIncorrect
+	}
+	return nil
+}
+
 func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ChangePassword")
 	defer span.End()

@@ -233,3 +233,44 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 		t.Fatalf("expected invite to still exist, got %v", err)
 	}
 }
+
+func TestInviteStore_AcceptInvite_Expired(t *testing.T) {
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
+	if err != nil {
+		t.Fatalf("create creator: %v", err)
+	}
+	inviteeID, err := st.Users.CreateUser(ctx, "invitee", "testhash")
+	if err != nil {
+		t.Fatalf("create invitee: %v", err)
+	}
+
+	roomID, err := st.Rooms.CreateRoom(ctx, "room", creatorID, false)
+	if err != nil {
+		t.Fatalf("create room: %v", err)
+	}
+
+	// Create an invite that expired 1 second ago
+	if err := st.Invites.CreateInvite(ctx, roomID, creatorID, "invitee", time.Now().Add(-1*time.Second)); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+	invites, err := st.Invites.ListInvitesForRoom(ctx, roomID)
+	if err != nil {
+		t.Fatalf("list invites: %v", err)
+	}
+	inviteID := invites[0].InviteID
+
+	if _, err := st.Invites.AcceptInvite(ctx, inviteID, inviteeID); !errors.Is(err, ErrInviteExpired) {
+		t.Fatalf("expected ErrInviteExpired, got %v", err)
+	}
+
+	// Invite still exists (not auto-deleted)
+	if _, err := st.Invites.RoomIDForInvite(ctx, inviteID); err != nil {
+		t.Fatalf("expected invite to still exist, got %v", err)
+	}
+}

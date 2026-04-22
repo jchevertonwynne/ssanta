@@ -21,20 +21,22 @@ import (
 
 const maxMessageLength = 4096
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true
-		}
-		u, err := url.Parse(origin)
-		if err != nil {
-			return false
-		}
-		return u.Host == r.Host
-	},
+func websocketUpgrader(secure bool) *websocket.Upgrader {
+	return &websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return !secure
+			}
+			u, err := url.Parse(origin)
+			if err != nil {
+				return false
+			}
+			return u.Host == r.Host
+		},
+	}
 }
 
 type ChatHub struct {
@@ -859,7 +861,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			return
 		}
 
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 		if err != nil {
 			slog.Error("upgrade websocket", "err", err)
 			return
@@ -923,7 +925,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 			return
 		}
 
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 		if err != nil {
 			slog.Error("upgrade websocket", "err", err)
 			return

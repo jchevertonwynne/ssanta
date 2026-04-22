@@ -2112,6 +2112,44 @@ func (c *MockUserHandlersServiceUserExistsCall) DoAndReturn(f func(context.Conte
 	return c
 }
 
+// VerifyPassword mocks base method.
+func (m *MockUserHandlersService) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyPassword", ctx, userID, password)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VerifyPassword indicates an expected call of VerifyPassword.
+func (mr *MockUserHandlersServiceMockRecorder) VerifyPassword(ctx, userID, password any) *MockUserHandlersServiceVerifyPasswordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyPassword", reflect.TypeOf((*MockUserHandlersService)(nil).VerifyPassword), ctx, userID, password)
+	return &MockUserHandlersServiceVerifyPasswordCall{Call: call}
+}
+
+// MockUserHandlersServiceVerifyPasswordCall wrap *gomock.Call
+type MockUserHandlersServiceVerifyPasswordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserHandlersServiceVerifyPasswordCall) Return(arg0 error) *MockUserHandlersServiceVerifyPasswordCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserHandlersServiceVerifyPasswordCall) Do(f func(context.Context, store.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserHandlersServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, store.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockRoomHandlersService is a mock of RoomHandlersService interface.
 type MockRoomHandlersService struct {
 	ctrl     *gomock.Controller
@@ -4784,6 +4822,44 @@ func (c *MockServerServiceUserExistsCall) DoAndReturn(f func(context.Context, st
 	return c
 }
 
+// VerifyPassword mocks base method.
+func (m *MockServerService) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyPassword", ctx, userID, password)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VerifyPassword indicates an expected call of VerifyPassword.
+func (mr *MockServerServiceMockRecorder) VerifyPassword(ctx, userID, password any) *MockServerServiceVerifyPasswordCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyPassword", reflect.TypeOf((*MockServerService)(nil).VerifyPassword), ctx, userID, password)
+	return &MockServerServiceVerifyPasswordCall{Call: call}
+}
+
+// MockServerServiceVerifyPasswordCall wrap *gomock.Call
+type MockServerServiceVerifyPasswordCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceVerifyPasswordCall) Return(arg0 error) *MockServerServiceVerifyPasswordCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceVerifyPasswordCall) Do(f func(context.Context, store.UserID, string) error) *MockServerServiceVerifyPasswordCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, store.UserID, string) error) *MockServerServiceVerifyPasswordCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // VerifyRoomPGPKey mocks base method.
 func (m *MockServerService) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
 	m.ctrl.T.Helper()
@@ -4878,6 +4954,82 @@ func (c *MockSessionManagerClearCall) Do(f func(http.ResponseWriter)) *MockSessi
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockSessionManagerClearCall) DoAndReturn(f func(http.ResponseWriter)) *MockSessionManagerClearCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Secret mocks base method.
+func (m *MockSessionManager) Secret() []byte {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Secret")
+	ret0, _ := ret[0].([]byte)
+	return ret0
+}
+
+// Secret indicates an expected call of Secret.
+func (mr *MockSessionManagerMockRecorder) Secret() *MockSessionManagerSecretCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Secret", reflect.TypeOf((*MockSessionManager)(nil).Secret))
+	return &MockSessionManagerSecretCall{Call: call}
+}
+
+// MockSessionManagerSecretCall wrap *gomock.Call
+type MockSessionManagerSecretCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionManagerSecretCall) Return(arg0 []byte) *MockSessionManagerSecretCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionManagerSecretCall) Do(f func() []byte) *MockSessionManagerSecretCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionManagerSecretCall) DoAndReturn(f func() []byte) *MockSessionManagerSecretCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Secure mocks base method.
+func (m *MockSessionManager) Secure() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Secure")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Secure indicates an expected call of Secure.
+func (mr *MockSessionManagerMockRecorder) Secure() *MockSessionManagerSecureCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Secure", reflect.TypeOf((*MockSessionManager)(nil).Secure))
+	return &MockSessionManagerSecureCall{Call: call}
+}
+
+// MockSessionManagerSecureCall wrap *gomock.Call
+type MockSessionManagerSecureCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSessionManagerSecureCall) Return(arg0 bool) *MockSessionManagerSecureCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSessionManagerSecureCall) Do(f func() bool) *MockSessionManagerSecureCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSessionManagerSecureCall) DoAndReturn(f func() bool) *MockSessionManagerSecureCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

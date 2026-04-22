@@ -48,6 +48,9 @@ func (m *Manager) SetNowFn(fn func() time.Time) { m.now = fn }
 // need to derive cookie-bound tokens. Keep this internal-only.
 func (m *Manager) Secret() []byte { return m.secret }
 
+// Secure returns whether cookies should be marked Secure.
+func (m *Manager) Secure() bool { return m.secure }
+
 func (m *Manager) Set(w http.ResponseWriter, userID store.UserID) {
 	if userID == 0 {
 		return
