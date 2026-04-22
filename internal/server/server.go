@@ -121,6 +121,8 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/members-list", handleRoomMembersList(svc, sessions))
+	mux.HandleFunc("GET /rooms/{id}/messages", handleListMessages(svc, sessions))
+	mux.HandleFunc("GET /rooms/{id}/messages/search", handleSearchMessages(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
 	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))
@@ -370,7 +372,6 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail.html"})
 }
-
 
 func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})

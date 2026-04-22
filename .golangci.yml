@@ -33,7 +33,7 @@ linters:
   
   settings:
     staticcheck:
-      go: "1.22"
+      go: "1.25"
   
   exclusions:
     rules:

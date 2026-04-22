@@ -181,6 +181,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userID, "alice", gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -260,6 +261,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().CreateMessage(gomock.Any(), roomID, gomock.Any(), gomock.Any(), gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -591,6 +593,7 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
 	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userA, "alice", "secret", true, gomock.Any(), false).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()

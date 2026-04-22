@@ -77,7 +77,7 @@ type RoomDetailView struct {
 	CanInvite       bool
 	Members         []store.RoomMember
 	PendingInvites  []store.InviteForRoom
-	DMPartnerName   string      // non-empty only when IsDMRoom is true
+	DMPartnerName   string       // non-empty only when IsDMRoom is true
 	AllUsers        []store.User // all users in the system, for invite dropdown
 }
 
@@ -680,4 +680,37 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 	})
 
 	return dmRooms, nil
+}
+
+// Message operations
+
+func (s *Service) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateMessage")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("room_id", roomID.Int64()),
+		attribute.Int64("user_id", userID.Int64()),
+	)
+	return s.store.Chat.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
+}
+
+func (s *Service) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ListMessages")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("room_id", roomID.Int64()),
+		attribute.Int64("user_id", userID.Int64()),
+	)
+	return s.store.Chat.ListMessages(ctx, roomID, userID, beforeID, limit)
+}
+
+func (s *Service) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.SearchMessages")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("room_id", roomID.Int64()),
+		attribute.Int64("user_id", userID.Int64()),
+		attribute.String("query", query),
+	)
+	return s.store.Chat.SearchMessages(ctx, roomID, userID, query, limit)
 }

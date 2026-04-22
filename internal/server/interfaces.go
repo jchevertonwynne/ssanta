@@ -162,6 +162,22 @@ type MessageQueueService interface {
 	FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error)
 }
 
+type MessageHistoryService interface {
+	CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error)
+	ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error)
+	SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error)
+}
+
+type MessageRoomAccessService interface {
+	GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error)
+}
+
+type MessageListService interface {
+	UserExistsService
+	MessageHistoryService
+	MessageRoomAccessService
+}
+
 type WebSocketHandlersService interface {
 	UserExistsService
 	UsernameService
@@ -170,6 +186,7 @@ type WebSocketHandlersService interface {
 	IsRoomPGPRequiredService
 	RoomAccessService
 	MessageQueueService
+	MessageHistoryService
 }
 
 // ServerService is the full surface required to wire all routes.
@@ -181,6 +198,7 @@ type ServerService interface {
 	RoomHandlersService
 	InviteHandlersService
 	WebSocketHandlersService
+	MessageHistoryService
 	DMHandlersService
 }
 

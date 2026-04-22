@@ -76,14 +76,14 @@ type ChatClient struct {
 }
 
 type ChatMessagePayload struct {
-	Type          string       `json:"type"` // "message", "error"
-	Username      string       `json:"username,omitempty"`
-	Message       string       `json:"message,omitempty"`
-	CreatedAt     time.Time    `json:"created_at,omitempty"`
-	TargetUserID  store.UserID `json:"target_user_id,omitempty"`
-	Whisper       bool         `json:"whisper,omitempty"`
-	PreEncrypted  bool         `json:"pre_encrypted,omitempty"`
-	ClientMsgID   string       `json:"client_message_id,omitempty"`
+	Type         string       `json:"type"` // "message", "error"
+	Username     string       `json:"username,omitempty"`
+	Message      string       `json:"message,omitempty"`
+	CreatedAt    time.Time    `json:"created_at,omitempty"`
+	TargetUserID store.UserID `json:"target_user_id,omitempty"`
+	Whisper      bool         `json:"whisper,omitempty"`
+	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
+	ClientMsgID  string       `json:"client_message_id,omitempty"`
 }
 
 func NewChatHub() *ChatHub {
@@ -725,6 +725,11 @@ func (c *ChatClient) readPump() {
 						perUser[m.ID] = outBytes
 					}
 				}
+				var targetID *store.UserID
+				if isWhisper {
+					targetID = &targetUserID
+				}
+				go persistMessage(c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
 				enqueueOfflineMessages(c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 				if metrics := observability.GetMetrics(); metrics != nil {
@@ -763,6 +768,11 @@ func (c *ChatClient) readPump() {
 					perUser[m.ID] = outBytes
 				}
 			}
+			var targetID *store.UserID
+			if isWhisper {
+				targetID = &targetUserID
+			}
+			go persistMessage(c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
 			enqueueOfflineMessages(c, payload.Message, createdAt, false, isWhisper, perUser)
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 			if metrics := observability.GetMetrics(); metrics != nil {
@@ -775,6 +785,14 @@ func (c *ChatClient) readPump() {
 			slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 			span.End()
 		}
+	}
+}
+
+func persistMessage(svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted); err != nil {
+		slog.Error("persist message", "err", err, "room_id", roomID, "user_id", userID)
 	}
 }
 

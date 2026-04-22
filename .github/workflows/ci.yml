@@ -28,10 +28,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: v1.58.0
+      - name: Download modules
+        run: go mod download
 
       - name: Check formatting
         run: |
@@ -46,7 +44,9 @@ jobs:
         run: go vet ./...
 
       - name: Run golangci-lint
-        run: golangci-lint run ./...
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.1.0
 
       - name: Run tests
         run: |

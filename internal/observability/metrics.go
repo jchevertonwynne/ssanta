@@ -36,7 +36,7 @@ type Metrics struct {
 
 	// Business Metrics - PGP
 	PGPKeysUploaded metric.Int64Counter
-	PGPKeysDeleted metric.Int64Counter
+	PGPKeysDeleted  metric.Int64Counter
 }
 
 // InitMetrics initializes all metric instruments

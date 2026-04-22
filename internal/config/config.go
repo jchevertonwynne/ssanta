@@ -18,7 +18,7 @@ type Config struct {
 	MigrationsDir      string `env:"MIGRATIONS_DIR,migrations"`
 	SessionSecret      string `env:"SESSION_SECRET"`
 
-	SecureCookies bool `env:"SECURE_COOKIES,true"`
+	SecureCookies bool   `env:"SECURE_COOKIES,true"`
 	MetricsSecret string `env:"METRICS_SECRET,"`
 
 	RateLimitAuthMax    int           `env:"RATE_LIMIT_AUTH_MAX,5"`

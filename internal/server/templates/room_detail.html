@@ -85,6 +85,9 @@
     const messageHistory = [];
     let onlineUserIDs = new Set();
     const sentMessageIds = new Set();
+    let serverHistoryLoaded = false;
+    let loadingHistory = false;
+    let earliestMessageId = null;
 
     // --- Message grouping state ---
     let lastMsgUsername = null;
@@ -227,6 +230,9 @@
         }
 
         if (!persistEnabled || !persistKey) return;
+
+        // Skip local persistence if server history already loaded successfully.
+        if (serverHistoryLoaded) return;
 
         loadingPersistedMessages = true;
         try {
@@ -493,8 +499,84 @@
         };
     }
 
-    // Load persisted messages (if enabled and passphrase present), then connect.
-    loadPersistedMessagesIfNeeded().then(function() { connect(); });
+    async function loadServerHistory(beforeId) {
+        if (loadingHistory) return;
+        loadingHistory = true;
+        try {
+            const url = '/rooms/' + roomId + '/messages?limit=50' + (beforeId ? '&before_id=' + beforeId : '');
+            const resp = await fetch(url);
+            if (!resp.ok) return;
+            const messages = await resp.json();
+            if (!messages.length) return;
+
+            if (!beforeId) {
+                // Initial load: populate messageHistory chronologically and render all.
+                for (let i = messages.length - 1; i >= 0; i--) {
+                    const m = messages[i];
+                    const data = {
+                        type: 'message',
+                        username: m.username,
+                        message: m.message,
+                        created_at: m.created_at,
+                        whisper: m.whisper,
+                        pre_encrypted: m.pre_encrypted
+                    };
+                    messageHistory.push(data);
+                    updateSenderOptions(m.username);
+                }
+                earliestMessageId = messages[messages.length - 1].id;
+                await rerenderAllMessages();
+            } else {
+                // Scrollback: prepend older messages to the top of the chat.
+                const oldHeight = chatMessages.scrollHeight;
+                const oldScrollTop = chatMessages.scrollTop;
+                // Server returns newest first; prepend each to DOM in that order
+                // so the oldest ends up at the very top.
+                for (const m of messages) {
+                    const data = {
+                        type: 'message',
+                        username: m.username,
+                        message: m.message,
+                        created_at: m.created_at,
+                        whisper: m.whisper,
+                        pre_encrypted: m.pre_encrypted
+                    };
+                    messageHistory.unshift(data);
+                    updateSenderOptions(m.username);
+                    // Prepend to DOM without grouping (always show header)
+                    const savedLast = { username: lastMsgUsername, time: lastMsgTime };
+                    resetGroupingState();
+                    const el = await buildMessageElement(data);
+                    chatMessages.insertBefore(el, chatMessages.firstChild);
+                    lastMsgUsername = savedLast.username;
+                    lastMsgTime = savedLast.time;
+                }
+                earliestMessageId = messages[messages.length - 1].id;
+                // Preserve scroll position relative to existing content
+                const newHeight = chatMessages.scrollHeight;
+                chatMessages.scrollTop = oldScrollTop + (newHeight - oldHeight);
+            }
+        } catch (e) {
+            console.error('Failed to load server history', e);
+        } finally {
+            loadingHistory = false;
+            serverHistoryLoaded = true;
+        }
+    }
+
+    // Infinite scroll: load older messages when scrolling near the top
+    chatMessages.addEventListener('scroll', function() {
+        if (chatMessages.scrollTop < 100 && earliestMessageId && !loadingHistory) {
+            loadServerHistory(earliestMessageId);
+        }
+    });
+
+    // Load server history first, then persisted messages, then connect.
+    loadServerHistory(0).then(function() {
+        return loadPersistedMessagesIfNeeded();
+    }).then(function() {
+        connect();
+    });
 
     document.body.addEventListener('htmx:beforeSwap', function handler(evt) {
         if (evt.detail && evt.detail.target && evt.detail.target.id === 'content') {

@@ -62,6 +62,7 @@ type Store struct {
 	Rooms    *RoomStore
 	Invites  *InviteStore
 	Messages *MessageQueueStore
+	Chat     *MessageStore
 
 	pool *pgxpool.Pool // nil for tx-scoped stores; used for Ping/WithTx only
 }
@@ -76,6 +77,7 @@ func storeFromDB(db dbtx, pool *pgxpool.Pool) *Store {
 		Rooms:    &RoomStore{db: db},
 		Invites:  &InviteStore{db: db},
 		Messages: &MessageQueueStore{db: db},
+		Chat:     &MessageStore{db: db},
 		pool:     pool,
 	}
 }
@@ -123,6 +125,12 @@ type InviteID int64
 
 // Int64 returns the underlying int64 value.
 func (id InviteID) Int64() int64 { return int64(id) }
+
+// MessageID is a typed database identifier for a message.
+type MessageID int64
+
+// Int64 returns the underlying int64 value.
+func (id MessageID) Int64() int64 { return int64(id) }
 
 type User struct {
 	ID           UserID
