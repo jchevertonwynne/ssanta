@@ -33,6 +33,7 @@ func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.Ha
 				return
 			}
 		} else {
+			r.Body = http.MaxBytesReader(w, r.Body, 32*1024)
 			if err := r.ParseForm(); err != nil {
 				logger.Warn("dm parse form", "err", err, "content_type", contentType)
 				http.Error(w, "invalid form", http.StatusBadRequest)

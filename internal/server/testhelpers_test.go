@@ -47,11 +47,11 @@ func stubContentView(username string) *service.ContentView {
 	}
 }
 
-func stubRoomDetailView(roomID store.RoomID, currentUsername string) *service.RoomDetailView {
+func stubRoomDetailView(currentUsername string) *service.RoomDetailView {
 	return &service.RoomDetailView{
 		CurrentUsername: currentUsername,
 		Room: store.RoomDetail{
-			Room:            store.Room{ID: roomID, DisplayName: "room", CreatedAt: time.Time{}},
+			Room:            store.Room{ID: store.RoomID(10), DisplayName: "room", CreatedAt: time.Time{}},
 			CreatorID:       1,
 			CreatorUsername: "creator",
 		},

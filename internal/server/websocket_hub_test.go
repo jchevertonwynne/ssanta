@@ -198,11 +198,10 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	hdr.Set("Origin", srv.URL)
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+	if resp != nil {
+		defer resp.Body.Close() //nolint:errcheck
+	}
 	if err != nil {
-		if resp != nil {
-			t.Fatalf("dial websocket: %v (http %d)", err, resp.StatusCode)
-			_ = resp.Body.Close() //nolint:errcheck
-		}
 		t.Fatalf("dial websocket: %v", err)
 	}
 	defer conn.Close() //nolint:errcheck
@@ -280,11 +279,10 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 		hdr.Set("Origin", srv.URL)
 		hdr.Set("X-Test-User", userHeader)
 		conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+		if resp != nil {
+			defer resp.Body.Close() //nolint:errcheck
+		}
 		if err != nil {
-			if resp != nil {
-				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
-				_ = resp.Body.Close() //nolint:errcheck
-			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
 		return conn
@@ -374,11 +372,10 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 		hdr.Set("Origin", srv.URL)
 		hdr.Set("X-Test-User", userHeader)
 		conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+		if resp != nil {
+			defer resp.Body.Close() //nolint:errcheck
+		}
 		if err != nil {
-			if resp != nil {
-				t.Fatalf("dial websocket %s: %v (http %d)", userHeader, err, resp.StatusCode)
-				_ = resp.Body.Close() //nolint:errcheck
-			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
 		return conn
@@ -482,11 +479,10 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	hdr.Set("Origin", srv.URL)
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
+	if resp != nil {
+		defer resp.Body.Close() //nolint:errcheck
+	}
 	if err != nil {
-		if resp != nil {
-			t.Fatalf("dial websocket: %v (http %d)", err, resp.StatusCode)
-			_ = resp.Body.Close() //nolint:errcheck
-		}
 		t.Fatalf("dial websocket: %v", err)
 	}
 	defer conn.Close() //nolint:errcheck

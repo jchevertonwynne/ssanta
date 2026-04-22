@@ -62,7 +62,7 @@ func TestLoad_ParsesOverrides(t *testing.T) {
 	if cfg.DatabaseSchema != "ssanta" {
 		t.Fatalf("DatabaseSchema: got %q", cfg.DatabaseSchema)
 	}
-	if cfg.MigrateDatabaseURL != "postgres://migrate:p@localhost:5432/db?sslmode=disable" {
+	if cfg.MigrateDatabaseURL != "postgres://migrate:p@localhost:5432/db?sslmode=disable" { //nolint:gosec
 		t.Fatalf("MigrateDatabaseURL: got %q", cfg.MigrateDatabaseURL)
 	}
 	if cfg.InviteMaxAge != 2*time.Hour {

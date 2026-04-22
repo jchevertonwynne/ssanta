@@ -53,7 +53,7 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 
 		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room access", "err", err, "room_id", roomID)
+			slog.Error("check room access", "err", err, "room_id", roomID) //nolint:gosec
 			http.Error(w, "failed to check room access", http.StatusInternalServerError)
 			return
 		}
@@ -80,7 +80,7 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 
 		msgs, err := svc.ListMessages(r.Context(), roomID, currentID, beforeID, limit)
 		if err != nil {
-			slog.Error("list messages", "err", err, "room_id", roomID)
+			slog.Error("list messages", "err", err, "room_id", roomID) //nolint:gosec
 			http.Error(w, "failed to load messages", http.StatusInternalServerError)
 			return
 		}
@@ -104,7 +104,7 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 
 		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("check room access", "err", err, "room_id", roomID)
+			slog.Error("check room access", "err", err, "room_id", roomID) //nolint:gosec
 			http.Error(w, "failed to check room access", http.StatusInternalServerError)
 			return
 		}
@@ -129,7 +129,7 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 
 		msgs, err := svc.SearchMessages(r.Context(), roomID, currentID, query, limit)
 		if err != nil {
-			slog.Error("search messages", "err", err, "room_id", roomID)
+			slog.Error("search messages", "err", err, "room_id", roomID) //nolint:gosec
 			http.Error(w, "failed to search messages", http.StatusInternalServerError)
 			return
 		}

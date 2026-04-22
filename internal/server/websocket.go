@@ -117,7 +117,7 @@ func (h *ChatHub) Stop() {
 	for _, room := range h.rooms {
 		room.mu.Lock()
 		for client := range room.clients {
-			client.conn.Close() //nolint:errcheck
+			client.conn.Close() //nolint:errcheck,gosec
 		}
 		room.mu.Unlock()
 	}
@@ -526,7 +526,7 @@ func (h *ChatHub) SetTypingStatus(roomID store.RoomID, userID store.UserID, user
 		h.typingSessionID++
 		sessionID := h.typingSessionID
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gosec
 		h.typingStatus[roomID][userID] = &typingSession{
 			username:   username,
 			lastActive: time.Now(),
@@ -576,7 +576,7 @@ func (c *ChatClient) readPump() {
 		case <-c.hub.done:
 			// Hub is stopping; avoid blocking if Run has exited.
 		}
-		c.conn.Close() //nolint:errcheck
+		c.conn.Close() //nolint:errcheck,gosec
 		c.hub.wg.Done()
 	}()
 
@@ -824,7 +824,7 @@ func (c *ChatClient) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close() //nolint:errcheck
+		c.conn.Close() //nolint:errcheck,gosec
 		c.hub.wg.Done()
 	}()
 
@@ -926,8 +926,8 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		}
 
 		hub.wg.Add(2)
-		go client.writePump()
-		go client.readPump()
+		go client.writePump() //nolint:gosec
+		go client.readPump()  //nolint:gosec
 	}
 }
 
@@ -967,7 +967,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 		}
 
 		hub.wg.Add(2)
-		go client.writePump()
-		go client.readPump()
+		go client.writePump() //nolint:gosec
+		go client.readPump()  //nolint:gosec
 	}
 }

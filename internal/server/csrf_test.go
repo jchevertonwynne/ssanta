@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,7 +13,7 @@ func TestCSRF_BlocksRequestWithoutToken(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	r := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(""))
+	r := httptest.NewRequestWithContext(context.Background(),http.MethodPost, "/test", strings.NewReader(""))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 
@@ -28,7 +29,7 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 	}))
 
 	// First, make a GET request to obtain the csrf_id cookie
-	r1 := httptest.NewRequest(http.MethodGet, "/test", nil)
+	r1 := httptest.NewRequestWithContext(context.Background(),http.MethodGet, "/test", nil)
 	w1 := httptest.NewRecorder()
 	h.ServeHTTP(w1, r1)
 
@@ -48,7 +49,7 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 	token := computeCSRFToken(secret, csrfID)
 
 	// Now make a POST with the token header
-	r2 := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader(""))
+	r2 := httptest.NewRequestWithContext(context.Background(),http.MethodPost, "/test", strings.NewReader(""))
 	r2.Header.Set("X-CSRF-Token", token)
 	// Copy the cookie from the first response
 	for _, c := range cookies {

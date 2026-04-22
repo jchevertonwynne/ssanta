@@ -25,6 +25,7 @@ func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 		defer span.End()
 		span.SetAttributes(attribute.Int64("user_id", currentID.Int64()))
 
+		r.Body = http.MaxBytesReader(w, r.Body, 32*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return

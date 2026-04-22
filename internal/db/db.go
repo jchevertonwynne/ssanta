@@ -157,13 +157,14 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role,
 	// Create the role if it doesn't exist, otherwise rotate its password.
 	var one int
 	err = pool.QueryRow(ctx, "SELECT 1 FROM pg_roles WHERE rolname = $1", role).Scan(&one)
-	if errors.Is(err, pgx.ErrNoRows) {
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
 		if _, err := pool.Exec(ctx, "CREATE ROLE "+roleIdent+" WITH LOGIN PASSWORD "+quoteLiteral(password)); err != nil {
 			return fmt.Errorf("create role %q: %w", role, err)
 		}
-	} else if err != nil {
+	case err != nil:
 		return fmt.Errorf("check runtime role exists: %w", err)
-	} else if password != "" {
+	case password != "":
 		if _, err := pool.Exec(ctx, "ALTER ROLE "+roleIdent+" WITH PASSWORD "+quoteLiteral(password)); err != nil {
 			return fmt.Errorf("rotate password for role %q: %w", role, err)
 		}

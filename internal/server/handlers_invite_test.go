@@ -27,7 +27,7 @@ func TestHandleCreateInvite_NotAllowed_RendersInviteError(t *testing.T) {
 	userID := store.UserID(2)
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().CreateInvite(gomock.Any(), roomID, userID, "bob").Return(store.ErrNotAllowedToInvite)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "alice"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
 	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
 	r.SetPathValue("id", "10")
@@ -57,7 +57,7 @@ func TestHandleCreateInvite_Success_BroadcastsAndNotifiesInvitee(t *testing.T) {
 	hub.EXPECT().BroadcastSystemMessage(roomID, "alice invited bob")
 	svc.EXPECT().GetUserByUsername(gomock.Any(), "bob").Return(store.User{ID: 99, Username: "bob"}, nil)
 	hub.EXPECT().NotifyUser(store.UserID(99), "invite_received", "")
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "alice"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
 	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
 	r.SetPathValue("id", "10")
@@ -105,7 +105,7 @@ func TestHandleAcceptInvite_Success_NotifiesRoomAndRenders(t *testing.T) {
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
 	hub.EXPECT().BroadcastSystemMessage(roomID, "alice joined the room")
 	hub.EXPECT().NotifyRoomUpdate(roomID)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "alice"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/accept", nil)
 	r.SetPathValue("id", "123")

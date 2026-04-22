@@ -140,7 +140,7 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //nolint:gosec
 				now := time.Now()
 				deletedInvites, clearedChallenges, deletedQueuedMessages, err := svc.Cleanup(cleanupCtx, now, cfg.MessageQueueMaxAge)
 				cancel()

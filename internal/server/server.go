@@ -104,7 +104,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		if authLimiter == nil {
 			return h
 		}
-		return RateLimit(authLimiter)(h).(http.HandlerFunc)
+		return http.HandlerFunc(RateLimit(authLimiter)(h).ServeHTTP)
 	}
 
 	// Users
@@ -377,28 +377,6 @@ func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetai
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})
 }
 
-func renderRoomDynamicWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
-	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
-		template:        "room_dynamic.html",
-		pgpKeyAttempted: attempted,
-		pgpKeyErr:       formErr,
-	})
-}
-
-func renderRoomDynamicWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
-	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
-		template:           "room_dynamic.html",
-		pgpVerifyAttempted: attempted,
-		pgpVerifyErr:       formErr,
-	})
-}
-
-func renderRoomDynamicWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, formErr string) {
-	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
-		template:     "room_dynamic.html",
-		pgpRemoveErr: formErr,
-	})
-}
 
 func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_sidebar.html"})

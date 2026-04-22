@@ -93,7 +93,7 @@ func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T
 	hub.EXPECT().BroadcastSystemMessage(roomID, "alice joined the room")
 	hub.EXPECT().NotifyRoomUpdate(roomID)
 	hub.EXPECT().BroadcastRoomPresence(roomID)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "alice"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/join", nil)
 	r.SetPathValue("id", "10")
@@ -125,7 +125,7 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	hub.EXPECT().NotifyRoomUpdate(roomID)
 	hub.EXPECT().BroadcastRoomPresence(roomID)
 	hub.EXPECT().NotifyUser(userID, "membership_gained", "")
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView(roomID, "creator"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("creator"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/join", nil)
 	r.SetPathValue("id", "10")
@@ -259,7 +259,7 @@ func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
 	creatorID := store.UserID(1)
 	expectLoggedIn(t, svc, sessions, creatorID)
 	svc.EXPECT().SetRoomPGPRequired(gomock.Any(), roomID, creatorID, true).Return(nil)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView(roomID, "creator"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView("creator"), nil)
 
 	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
@@ -288,7 +288,7 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	hub.EXPECT().DisconnectUser(roomID, memberID)
 	hub.EXPECT().NotifyRoomUpdate(roomID)
 	hub.EXPECT().BroadcastRoomPresence(roomID)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView(roomID, "creator"), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView("creator"), nil)
 
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/rooms/10/members/2", nil)
 	r.SetPathValue("id", "10")

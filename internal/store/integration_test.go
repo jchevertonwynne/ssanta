@@ -24,10 +24,10 @@ func TestMain(m *testing.M) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
 
 	container, dsn, err := startPostgresContainer(ctx)
 	if err != nil {
+		cancel()
 		fmt.Fprintln(os.Stderr, "failed to start postgres container:", err)
 		os.Exit(1)
 	}
@@ -35,12 +35,14 @@ func TestMain(m *testing.M) {
 
 	migrationsDir, err := migrationsDir()
 	if err != nil {
+		cancel()
 		fmt.Fprintln(os.Stderr, "failed to locate migrations dir:", err)
 		_ = integrationContainer.Terminate(ctx)
 		os.Exit(1)
 	}
 
 	if err := db.Migrate(dsn, migrationsDir); err != nil {
+		cancel()
 		fmt.Fprintln(os.Stderr, "failed to run migrations:", err)
 		_ = integrationContainer.Terminate(ctx)
 		os.Exit(1)
@@ -48,6 +50,7 @@ func TestMain(m *testing.M) {
 
 	pool, err := db.Connect(ctx, dsn)
 	if err != nil {
+		cancel()
 		fmt.Fprintln(os.Stderr, "failed to connect to postgres:", err)
 		_ = integrationContainer.Terminate(ctx)
 		os.Exit(1)
@@ -56,6 +59,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
+	cancel()
 	integrationPool.Close()
 	_ = integrationContainer.Terminate(ctx)
 	os.Exit(code)

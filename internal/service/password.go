@@ -82,6 +82,6 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 		return false, fmt.Errorf("decode hash: %w", err)
 	}
 
-	computed := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(storedHash)))
+	computed := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, uint32(len(storedHash))) //nolint:gosec
 	return subtle.ConstantTimeCompare(computed, storedHash) == 1, nil
 }

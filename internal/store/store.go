@@ -16,7 +16,7 @@ var (
 	ErrRoomNameTaken          = errors.New("room name already taken")
 	ErrRoomNameEmpty          = errors.New("room name cannot be empty")
 	ErrRoomNameTooLong        = errors.New("room name too long")
-	ErrRoomNameReservedPrefix = errors.New("room name cannot start with dm:")
+	ErrRoomNameReservedPrefix = errors.New("room name cannot use the dm: prefix")
 	ErrRoomNotFound           = errors.New("room not found")
 
 	ErrUsernameTaken            = errors.New("username already taken")
