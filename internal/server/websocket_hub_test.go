@@ -54,14 +54,14 @@ func assertNoNonPresenceMessage(t *testing.T, conn *websocket.Conn, timeout time
 }
 
 func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	if !websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected empty origin to be allowed")
 	}
 }
 
 func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://example.com")
 	if !websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected same-host origin to be allowed")
@@ -69,7 +69,7 @@ func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
 }
 
 func TestUpgraderCheckOrigin_RejectsDifferentHost(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://evil.com")
 	if websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected different-host origin to be rejected")
@@ -77,7 +77,7 @@ func TestUpgraderCheckOrigin_RejectsDifferentHost(t *testing.T) {
 }
 
 func TestUpgraderCheckOrigin_RejectsEmptyOriginWhenSecure(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	if websocketUpgrader(true).CheckOrigin(r) {
 		t.Fatalf("expected empty origin to be rejected when secure")
 	}
@@ -436,12 +436,13 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 
 	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, hdr)
 	if err == nil {
-		conn.Close() //nolint:errcheck
+		_ = conn.Close() //nolint:errcheck
 		t.Fatalf("expected dial to fail")
 	}
 	if resp == nil {
 		t.Fatalf("expected HTTP response on failure")
 	}
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", resp.StatusCode)
 	}
@@ -614,6 +615,9 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		return conn
 	}
 
@@ -706,6 +710,9 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 			}
 			t.Fatalf("dial websocket %s: %v", userHeader, err)
 		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
 		return conn
 	}
 

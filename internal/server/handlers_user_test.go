@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -104,7 +103,7 @@ func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/1", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/1", nil)
 	r.SetPathValue("id", "1")
 	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
@@ -123,7 +122,7 @@ func TestHandleDeleteUser_CannotDeleteOtherUser_Returns403(t *testing.T) {
 
 	expectLoggedIn(t, svc, sessions, 1)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/2", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/2", nil)
 	r.SetPathValue("id", "2")
 	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 
@@ -213,7 +212,7 @@ func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/logout", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/logout", nil)
 	w := serve(t, handleLogout(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
@@ -234,7 +233,7 @@ func TestHandleDeleteUser_InvalidPathID_Returns400(t *testing.T) {
 
 	expectLoggedIn(t, svc, sessions, 7)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/users/abc", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/abc", nil)
 	r.SetPathValue("id", "abc")
 	w := serve(t, handleDeleteUser(svc, sessions, hub), r)
 

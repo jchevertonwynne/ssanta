@@ -277,6 +277,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		value := r.FormValue("value") == "true"
 		err := svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
 		switch {
@@ -306,6 +307,7 @@ func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http
 		if !ok {
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return

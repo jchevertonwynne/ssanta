@@ -12,7 +12,7 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -90,7 +90,7 @@ func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *tes
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -125,7 +125,7 @@ func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *te
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -163,7 +163,7 @@ func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -193,7 +193,7 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -238,7 +238,7 @@ func TestInviteStore_AcceptInvite_Expired(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")

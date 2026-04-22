@@ -892,7 +892,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		// messages are strictly ordered before new incoming messages.
 		queued, err := svc.FlushMessageQueue(r.Context(), roomID, currentID)
 		if err != nil {
-			slog.Error("flush message queue", "err", err, "room_id", roomID, "user_id", currentID)
+			slog.Error("flush message queue", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
 		}
 		for _, q := range queued {
 			msg := ChatMessagePayload{
@@ -904,8 +904,8 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 				PreEncrypted: q.PreEncrypted,
 			}
 			if err := conn.WriteJSON(msg); err != nil {
-				slog.Error("write queued message", "err", err, "room_id", roomID, "user_id", currentID)
-				conn.Close() //nolint:errcheck
+				slog.Error("write queued message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+				_ = conn.Close()                                                                        //nolint:errcheck
 				return
 			}
 		}
@@ -921,7 +921,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		}
 
 		if !hub.tryRegister(client) {
-			conn.Close() //nolint:errcheck
+			_ = conn.Close() //nolint:errcheck
 			return
 		}
 
@@ -962,7 +962,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 		}
 
 		if !hub.tryRegister(client) {
-			conn.Close() //nolint:errcheck
+			_ = conn.Close() //nolint:errcheck
 			return
 		}
 

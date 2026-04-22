@@ -77,6 +77,7 @@ func handleVerifyRoomPGPKey(svc RoomHandlersService, sessions SessionManager, hu
 		if !ok {
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return

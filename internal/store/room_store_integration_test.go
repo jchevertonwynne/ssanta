@@ -11,7 +11,7 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -69,7 +69,7 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -113,7 +113,7 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -155,7 +155,7 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -180,7 +180,7 @@ func TestRoomStore_SetPGPRequired_Success(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -220,7 +220,7 @@ func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -245,7 +245,7 @@ func TestRoomStore_CreateRoom_IsDM_Field(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -284,7 +284,7 @@ func TestRoomStore_LeaveRoom_DMDeletesOnLastLeave(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -329,7 +329,7 @@ func TestRoomStore_ListRoomsByMember_ExcludesDMs(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")

@@ -10,7 +10,7 @@ import (
 
 func testCtx(t *testing.T) (context.Context, context.CancelFunc) {
 	t.Helper()
-	return context.WithTimeout(context.Background(), 10*time.Second)
+	return context.WithTimeout(t.Context(), 10*time.Second)
 }
 
 func createUser(t *testing.T, pool *pgxpool.Pool, username string) UserID {

@@ -14,7 +14,7 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 	st := store.New(pool)
 	svc := New(st)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	creatorID, err := st.Users.CreateUser(ctx, "creator", "testhash")
@@ -85,7 +85,7 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 	st := store.New(pool)
 	svc := New(st)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	id, err := st.Users.CreateUser(ctx, "alice", "testhash")
@@ -130,7 +130,7 @@ func TestService_GetOrCreateDMRoom_AutoJoinsAndRejoins(t *testing.T) {
 	st := store.New(pool)
 	svc := New(st)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	userA, err := st.Users.CreateUser(ctx, "alice", "testhash")
@@ -191,7 +191,7 @@ func TestService_DMOperationsBlocked(t *testing.T) {
 	st := store.New(pool)
 	svc := New(st)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	userA, err := st.Users.CreateUser(ctx, "userablock", "testhash")
@@ -230,7 +230,7 @@ func TestService_GetContentView_ExcludesDMsFromRoomLists(t *testing.T) {
 	st := store.New(pool)
 	svc := New(st)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	userA, err := st.Users.CreateUser(ctx, "useraqq", "testhash")

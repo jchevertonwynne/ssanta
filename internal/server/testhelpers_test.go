@@ -19,7 +19,7 @@ import (
 func newFormRequest(t *testing.T, target string, values url.Values) *http.Request {
 	t.Helper()
 	body := values.Encode()
-	r := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, target, strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return r
 }

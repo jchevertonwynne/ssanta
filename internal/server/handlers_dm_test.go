@@ -86,7 +86,7 @@ func TestHandleCreateOrGetDM_Multipart_Redirects303(t *testing.T) {
 	_ = mw.WriteField("partner_id", "2")
 	_ = mw.Close()
 
-	r := httptest.NewRequest(http.MethodPost, "/dms", &body)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/dms", &body)
 	r.Header.Set("Content-Type", mw.FormDataContentType())
 
 	w := serve(t, handleCreateOrGetDM(svc, sessions), r)

@@ -23,7 +23,7 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 		t.Fatalf("expected 1 cookie, got %d", len(cookies))
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(cookies[0])
 
 	gotID, ok := m.UserID(req)
@@ -56,7 +56,7 @@ func TestManager_UserID_Expired(t *testing.T) {
 	// Move time forward past TTL.
 	m.SetNowFn(func() time.Time { return current.Add(2 * time.Minute) })
 
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(cookie)
 	if _, ok := m.UserID(req); ok {
 		t.Fatalf("expected expired session to be rejected")
@@ -92,7 +92,7 @@ func TestManager_Set_CookieAttributes(t *testing.T) {
 
 func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
 	m := NewManager("secret", false, testTTL)
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123|1700000000.bad"})
 
 	_, ok := m.UserID(req)
@@ -103,7 +103,7 @@ func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
 
 func TestManager_UserID_MalformedRejected(t *testing.T) {
 	m := NewManager("secret", false, testTTL)
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123"})
 
 	_, ok := m.UserID(req)
@@ -120,7 +120,7 @@ func TestManager_UserID_ZeroIDRejected(t *testing.T) {
 	// Hand-craft a cookie for userID=0; should be rejected even with a valid signature.
 	payload := "0|" + "1700000000"
 	sig := m.sign(payload)
-	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: payload + "." + sig})
 
 	if _, ok := m.UserID(req); ok {

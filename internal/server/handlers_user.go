@@ -19,6 +19,7 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "CreateUser")
 		defer span.End()
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
@@ -86,6 +87,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		password := r.FormValue("current_password")
 		if password == "" {
 			// Go's ParseForm does not parse request body for DELETE;
@@ -130,6 +132,7 @@ func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerF
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 		span.SetAttributes(attribute.String("username", username))
@@ -179,6 +182,7 @@ func handleChangePassword(svc UserHandlersService, sessions SessionManager) http
 		}
 		span.SetAttributes(attribute.Int64("user_id", currentID.Int64()))
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return

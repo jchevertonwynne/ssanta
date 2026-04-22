@@ -133,7 +133,7 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 	}
 
 	ticker := time.NewTicker(cfg.JanitorInterval)
-	go func() {
+	go func() { //nolint:gosec
 		defer ticker.Stop()
 		for {
 			select {

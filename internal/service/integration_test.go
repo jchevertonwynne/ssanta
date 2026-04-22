@@ -79,7 +79,7 @@ func requireIntegration(t *testing.T) *pgxpool.Pool {
 
 func resetDB(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	_, err := pool.Exec(ctx, `TRUNCATE room_invites, room_users, rooms, users RESTART IDENTITY CASCADE`)

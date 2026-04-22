@@ -37,6 +37,7 @@ func CSRF(secret []byte, secure bool) func(http.Handler) http.Handler {
 			expected := computeCSRFToken(secret, id)
 			provided := r.Header.Get(csrfHeaderName)
 			if provided == "" {
+				r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 				if err := r.ParseForm(); err == nil {
 					provided = r.Form.Get(csrfFormField)
 				}

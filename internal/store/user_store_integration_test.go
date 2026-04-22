@@ -11,7 +11,7 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 	pool := requireIntegration(t)
 	st := New(pool)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	id, err := st.Users.CreateUser(ctx, "alice", "testhash")

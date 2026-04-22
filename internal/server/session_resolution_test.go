@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,7 +22,7 @@ func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 	if ok {
@@ -46,7 +45,7 @@ func TestResolveSessionUser_SignedCookieForDeletedUser_ClearsCookie(t *testing.T
 	sessions.EXPECT().Clear(gomock.Any())
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 	if ok {

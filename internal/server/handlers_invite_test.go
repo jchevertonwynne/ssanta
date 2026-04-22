@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -80,7 +79,7 @@ func TestHandleAcceptInvite_NotFoundOnPreLookup_Returns404(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().AcceptInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), store.ErrInviteNotFound)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/accept", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/accept", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
 
@@ -107,7 +106,7 @@ func TestHandleAcceptInvite_Success_NotifiesRoomAndRenders(t *testing.T) {
 	hub.EXPECT().NotifyRoomUpdate(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/accept", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/accept", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
 
@@ -127,7 +126,7 @@ func TestHandleDeclineInvite_NotFound_Returns404(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().DeclineInvite(gomock.Any(), store.InviteID(123), userID).Return(store.ErrInviteNotFound)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/decline", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/decline", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleDeclineInvite(svc, sessions), r)
 
@@ -148,7 +147,7 @@ func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().CancelInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), store.UserID(0), store.ErrNotAllowedToCancelInvite)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/cancel", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/cancel", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleCancelInvite(svc, sessions, hub), r)
 
@@ -171,7 +170,7 @@ func TestHandleAcceptInvite_WrongUser_Returns404(t *testing.T) {
 	// store returns ErrInviteNotFound when the invite belongs to a different user
 	svc.EXPECT().AcceptInvite(gomock.Any(), inviteID, userID).Return(store.RoomID(0), store.ErrInviteNotFound)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/accept", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/accept", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
 
@@ -192,7 +191,7 @@ func TestHandleDeclineInvite_WrongUser_Returns404(t *testing.T) {
 	// store returns ErrInviteNotFound when invitee_id doesn't match
 	svc.EXPECT().DeclineInvite(gomock.Any(), store.InviteID(123), userID).Return(store.ErrInviteNotFound)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/decline", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/decline", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleDeclineInvite(svc, sessions), r)
 
@@ -213,7 +212,7 @@ func TestHandleDeclineInvite_Success_RendersContent(t *testing.T) {
 	svc.EXPECT().DeclineInvite(gomock.Any(), store.InviteID(123), userID).Return(nil)
 	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/invites/123/decline", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/decline", nil)
 	r.SetPathValue("id", "123")
 	w := serve(t, handleDeclineInvite(svc, sessions), r)
 

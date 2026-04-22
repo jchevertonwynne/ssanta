@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -95,7 +94,7 @@ func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T
 	hub.EXPECT().BroadcastRoomPresence(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/join", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
 
@@ -127,7 +126,7 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	hub.EXPECT().NotifyUser(userID, "membership_gained", "")
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("creator"), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/join", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
 
@@ -157,7 +156,7 @@ func TestHandleLeaveRoom_NotMember_Returns403(t *testing.T) {
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
 	svc.EXPECT().LeaveRoom(gomock.Any(), roomID, userID).Return(store.ErrNotRoomMember)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/rooms/10/leave", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
 
@@ -175,7 +174,7 @@ func TestHandleRoomDetail_LoggedOut_NonHTMX_RedirectsHome(t *testing.T) {
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/rooms/10", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleRoomDetail(svc, sessions), r)
 
@@ -196,7 +195,7 @@ func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/rooms/10", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
 	r.Header.Set("HX-Request", "true")
 	w := serve(t, handleRoomDetail(svc, sessions), r)
@@ -290,7 +289,7 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	hub.EXPECT().BroadcastRoomPresence(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView("creator"), nil)
 
-	r := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/rooms/10/members/2", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/2", nil)
 	r.SetPathValue("id", "10")
 	r.SetPathValue("memberid", "2")
 	w := serve(t, handleRemoveMember(svc, sessions, hub), r)
@@ -312,7 +311,7 @@ func TestHandleRoomMembersList_Unauthorized_Returns401(t *testing.T) {
 
 	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
 
-	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleRoomMembersList(svc, sessions), r)
 
@@ -336,7 +335,7 @@ func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
 		{ID: 3, Username: "charlie"},
 	}, nil)
 
-	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleRoomMembersList(svc, sessions), r)
 
@@ -362,7 +361,7 @@ func TestHandleRoomMembersList_Success_IncludesAllMembers(t *testing.T) {
 	}, nil)
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil)
 
-	r := httptest.NewRequest(http.MethodGet, "/rooms/10/members-list", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")
 	w := serve(t, handleRoomMembersList(svc, sessions), r)
 
