@@ -8,6 +8,7 @@ import (
 )
 
 func TestCSRF_BlocksRequestWithoutToken(t *testing.T) {
+	t.Parallel()
 	h := CSRF([]byte("test-secret"), false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -22,6 +23,7 @@ func TestCSRF_BlocksRequestWithoutToken(t *testing.T) {
 }
 
 func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
+	t.Parallel()
 	secret := []byte("test-secret")
 	h := CSRF(secret, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

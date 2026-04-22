@@ -13,6 +13,7 @@ import (
 )
 
 func TestHandleHealth_OK(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -39,6 +40,7 @@ func TestHandleHealth_OK(t *testing.T) {
 }
 
 func TestHandleHealth_DBUnavailable(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

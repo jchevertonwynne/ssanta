@@ -9,12 +9,13 @@ import (
 )
 
 func TestNewChallengeString_PrefixedAndURLSafe(t *testing.T) {
+	t.Parallel()
 	challenge, err := NewChallengeString(0)
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(challenge, VerificationChallengePrefix))
 
 	suffix := strings.TrimPrefix(challenge, VerificationChallengePrefix)
-	require.Equal(t, base64.RawURLEncoding.EncodedLen(DefaultChallengeSize), len(suffix))
+	require.Len(t, suffix, base64.RawURLEncoding.EncodedLen(DefaultChallengeSize))
 
 	for _, r := range suffix {
 		isUpper := r >= 'A' && r <= 'Z'
@@ -27,10 +28,11 @@ func TestNewChallengeString_PrefixedAndURLSafe(t *testing.T) {
 }
 
 func TestNewChallengeString_RespectsSize(t *testing.T) {
+	t.Parallel()
 	challenge, err := NewChallengeString(1)
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(challenge, VerificationChallengePrefix))
 
 	suffix := strings.TrimPrefix(challenge, VerificationChallengePrefix)
-	require.Equal(t, base64.RawURLEncoding.EncodedLen(1), len(suffix))
+	require.Len(t, suffix, base64.RawURLEncoding.EncodedLen(1))
 }

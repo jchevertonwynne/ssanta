@@ -54,6 +54,7 @@ func assertNoNonPresenceMessage(t *testing.T, conn *websocket.Conn, timeout time
 }
 
 func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	if !websocketUpgrader(false).CheckOrigin(r) {
 		t.Fatalf("expected empty origin to be allowed")
@@ -61,6 +62,7 @@ func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
 }
 
 func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://example.com")
 	if !websocketUpgrader(false).CheckOrigin(r) {
@@ -69,6 +71,7 @@ func TestUpgraderCheckOrigin_AllowsSameHost(t *testing.T) {
 }
 
 func TestUpgraderCheckOrigin_RejectsDifferentHost(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	r.Header.Set("Origin", "http://evil.com")
 	if websocketUpgrader(false).CheckOrigin(r) {
@@ -77,6 +80,7 @@ func TestUpgraderCheckOrigin_RejectsDifferentHost(t *testing.T) {
 }
 
 func TestUpgraderCheckOrigin_RejectsEmptyOriginWhenSecure(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	if websocketUpgrader(true).CheckOrigin(r) {
 		t.Fatalf("expected empty origin to be rejected when secure")
@@ -84,6 +88,7 @@ func TestUpgraderCheckOrigin_RejectsEmptyOriginWhenSecure(t *testing.T) {
 }
 
 func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
+	t.Parallel()
 	hub := NewChatHub()
 	go hub.Run()
 
@@ -161,6 +166,7 @@ func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 }
 
 func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -227,6 +233,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 }
 
 func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -322,6 +329,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 }
 
 func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -406,6 +414,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 }
 
 func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -449,6 +458,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 }
 
 func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -510,6 +520,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 }
 
 func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
+	t.Parallel()
 	hub := NewChatHub()
 	go hub.Run()
 	defer hub.Stop()
@@ -553,6 +564,7 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 }
 
 func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -654,6 +666,7 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 }
 
 func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

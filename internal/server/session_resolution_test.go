@@ -13,6 +13,7 @@ import (
 )
 
 func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -34,6 +35,7 @@ func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 }
 
 func TestResolveSessionUser_SignedCookieForDeletedUser_ClearsCookie(t *testing.T) {
+	t.Parallel()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

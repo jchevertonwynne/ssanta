@@ -8,6 +8,7 @@ import (
 )
 
 func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -66,6 +67,7 @@ func TestRoomStore_LeaveRoom_DeletesInvitesForNonCreator(t *testing.T) {
 }
 
 func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -110,6 +112,7 @@ func TestRoomStore_LeaveRoom_CreatorDoesNotDeleteOwnInvites(t *testing.T) {
 }
 
 func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -152,6 +155,7 @@ func TestRoomStore_JoinRoom_Idempotent(t *testing.T) {
 }
 
 func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -177,6 +181,7 @@ func TestRoomStore_SetMembersCanInvite_NonCreatorForbidden(t *testing.T) {
 }
 
 func TestRoomStore_SetPGPRequired_Success(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -217,6 +222,7 @@ func TestRoomStore_SetPGPRequired_Success(t *testing.T) {
 }
 
 func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -242,6 +248,7 @@ func TestRoomStore_SetPGPRequired_NonCreatorForbidden(t *testing.T) {
 }
 
 func TestRoomStore_CreateRoom_IsDM_Field(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -281,6 +288,7 @@ func TestRoomStore_CreateRoom_IsDM_Field(t *testing.T) {
 }
 
 func TestRoomStore_LeaveRoom_DMDeletesOnLastLeave(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -326,6 +334,7 @@ func TestRoomStore_LeaveRoom_DMDeletesOnLastLeave(t *testing.T) {
 }
 
 func TestRoomStore_ListRoomsByMember_ExcludesDMs(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 

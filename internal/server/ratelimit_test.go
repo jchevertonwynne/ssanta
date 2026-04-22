@@ -6,6 +6,7 @@ import (
 )
 
 func TestRateLimiter_AllowWithinLimit(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(3, time.Minute)
 	ip := "1.2.3.4"
 
@@ -17,6 +18,7 @@ func TestRateLimiter_AllowWithinLimit(t *testing.T) {
 }
 
 func TestRateLimiter_BlockOverLimit(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(2, time.Minute)
 	ip := "1.2.3.4"
 
@@ -32,6 +34,7 @@ func TestRateLimiter_BlockOverLimit(t *testing.T) {
 }
 
 func TestRateLimiter_ResetAfterWindow(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(1, 50*time.Millisecond)
 	ip := "1.2.3.4"
 
@@ -50,6 +53,7 @@ func TestRateLimiter_ResetAfterWindow(t *testing.T) {
 }
 
 func TestRateLimiter_DifferentIPsIndependent(t *testing.T) {
+	t.Parallel()
 	rl := newRateLimiter(1, time.Minute)
 
 	if !rl.Allow("1.2.3.4") {

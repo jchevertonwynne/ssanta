@@ -10,6 +10,7 @@ import (
 const testTTL = time.Hour
 
 func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 
 	rr := httptest.NewRecorder()
@@ -36,6 +37,7 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 }
 
 func TestManager_Set_RefusesZeroUserID(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 	rr := httptest.NewRecorder()
 	m.Set(rr, 0)
@@ -45,6 +47,7 @@ func TestManager_Set_RefusesZeroUserID(t *testing.T) {
 }
 
 func TestManager_UserID_Expired(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, time.Minute)
 	current := time.Unix(1_700_000_000, 0)
 	m.SetNowFn(func() time.Time { return current })
@@ -64,6 +67,7 @@ func TestManager_UserID_Expired(t *testing.T) {
 }
 
 func TestManager_Set_CookieAttributes(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", true, testTTL)
 	rr := httptest.NewRecorder()
 	m.Set(rr, 42)
@@ -91,6 +95,7 @@ func TestManager_Set_CookieAttributes(t *testing.T) {
 }
 
 func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123|1700000000.bad"})
@@ -102,6 +107,7 @@ func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
 }
 
 func TestManager_UserID_MalformedRejected(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123"})
@@ -113,6 +119,7 @@ func TestManager_UserID_MalformedRejected(t *testing.T) {
 }
 
 func TestManager_UserID_ZeroIDRejected(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 	current := time.Unix(1_700_000_000, 0)
 	m.SetNowFn(func() time.Time { return current })
@@ -129,6 +136,7 @@ func TestManager_UserID_ZeroIDRejected(t *testing.T) {
 }
 
 func TestManager_Clear_DeletesCookie(t *testing.T) {
+	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 
 	rr := httptest.NewRecorder()
