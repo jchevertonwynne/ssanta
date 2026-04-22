@@ -53,6 +53,7 @@ type roomDetailData struct {
 	Members             []store.RoomMember
 	PendingInvites      []store.InviteForRoom
 	DMPartnerName       string
+	InvitableUsers      []store.User
 	InviteFormError     string
 	InviteFormAttempted string
 	PGPKeyFormError     string
@@ -290,6 +291,25 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		return
 	}
 
+	memberIDs := make(map[store.UserID]struct{}, len(view.Members))
+	for _, m := range view.Members {
+		memberIDs[m.ID] = struct{}{}
+	}
+	pendingIDs := make(map[store.UserID]struct{}, len(view.PendingInvites))
+	for _, inv := range view.PendingInvites {
+		pendingIDs[inv.InviteeID] = struct{}{}
+	}
+	invitableUsers := make([]store.User, 0, len(view.AllUsers))
+	for _, u := range view.AllUsers {
+		if _, isMem := memberIDs[u.ID]; isMem {
+			continue
+		}
+		if _, isPend := pendingIDs[u.ID]; isPend {
+			continue
+		}
+		invitableUsers = append(invitableUsers, u)
+	}
+
 	w.Header().Set("HX-Push-Url", fmt.Sprintf("/rooms/%d", roomID))
 	render(w, opts.template, roomDetailData{
 		CurrentUserID:       currentID,
@@ -302,6 +322,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		Members:             view.Members,
 		PendingInvites:      view.PendingInvites,
 		DMPartnerName:       view.DMPartnerName,
+		InvitableUsers:      invitableUsers,
 		InviteFormAttempted: opts.inviteAttempted,
 		InviteFormError:     opts.inviteErr,
 		PGPKeyFormAttempted: opts.pgpKeyAttempted,

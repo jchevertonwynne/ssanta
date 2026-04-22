@@ -103,14 +103,37 @@
 
     {{template "room_dynamic.html" .}}
 
+    {{if .IsMember}}
+    <details id="pgp-key-section" style="margin-top: 1rem; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+        <summary style="cursor: pointer; user-select: none; font-weight: bold;">PGP Private Key (for decryption)</summary>
+        <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical; width: 100%;"></textarea>
+            <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="pgp-load-key-btn">Load Key</button>
+                <button type="button" id="pgp-clear-key-btn">Clear Key</button>
+                <label style="cursor:pointer;user-select:none;font-size:0.85em;"><input type="checkbox" id="pgp-persist-toggle"> Remember across sessions</label>
+            </div>
+            <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
+        </div>
+    </details>
+    {{end}}
+
     {{if .CanInvite}}
     <section style="margin-top: 2rem;">
         <h3>Invite a user</h3>
         <form hx-post="/rooms/{{.Room.ID}}/invites" hx-target="#room-sidebar" hx-swap="outerHTML">
-            <input name="invitee_username" placeholder="Username" required
-                   pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
-                   value="{{.InviteFormAttempted}}">
-            <button type="submit">Send invite</button>
+            {{if .InvitableUsers}}
+            <select name="invitee_username" required>
+                <option value="">-- Select user --</option>
+                {{range .InvitableUsers}}
+                <option value="{{.Username}}" {{if eq $.InviteFormAttempted .Username}}selected{{end}}>{{.Username}}</option>
+                {{end}}
+            </select>
+            {{else}}
+            <p style="font-style:italic;color:#666;font-size:0.9em;">No users available to invite.</p>
+            {{end}}
+            <button type="submit" {{if not .InvitableUsers}}disabled{{end}}>Send invite</button>
         </form>
         {{if .InviteFormError}}
             <p class="error">{{.InviteFormError}}</p>

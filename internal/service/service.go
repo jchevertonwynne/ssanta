@@ -77,7 +77,8 @@ type RoomDetailView struct {
 	CanInvite       bool
 	Members         []store.RoomMember
 	PendingInvites  []store.InviteForRoom
-	DMPartnerName   string // non-empty only when IsDMRoom is true
+	DMPartnerName   string      // non-empty only when IsDMRoom is true
+	AllUsers        []store.User // all users in the system, for invite dropdown
 }
 
 // GetContentView loads all data needed for the main content page
@@ -150,10 +151,11 @@ func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*Con
 // Auth guard checks creator or membership from the fetched members list.
 func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*RoomDetailView, error) {
 	var (
-		user    store.User
-		room    store.RoomDetail
-		members []store.RoomMember
-		invites []store.InviteForRoom
+		user     store.User
+		room     store.RoomDetail
+		members  []store.RoomMember
+		invites  []store.InviteForRoom
+		allUsers []store.User
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -175,6 +177,11 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 	g.Go(func() error {
 		var err error
 		invites, err = s.store.Invites.ListInvitesForRoom(gCtx, roomID)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		allUsers, err = s.store.Users.ListUsers(gCtx)
 		return err
 	})
 	if err := g.Wait(); err != nil {
@@ -216,6 +223,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 		Members:         members,
 		PendingInvites:  invites,
 		DMPartnerName:   dmPartnerName,
+		AllUsers:        allUsers,
 	}, nil
 }
 

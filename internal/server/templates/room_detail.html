@@ -13,6 +13,17 @@
             <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="sound-toggle"> Sound</label>
             <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="notif-toggle"> Browser notifications</label>
         </div>
+        <details id="search-bar-wrapper" style="margin-bottom:0.4rem;font-size:0.85em;">
+            <summary style="cursor:pointer;user-select:none;">Search</summary>
+            <div id="search-bar" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.25rem;">
+                <input id="search-input" type="search" placeholder="Search messages…" style="flex:1;min-width:0;">
+                <label style="cursor:pointer;user-select:none;white-space:nowrap;"><input type="checkbox" id="search-regex"> Regex</label>
+                <select id="search-sender" style="font-size:0.85em;">
+                    <option value="">All senders</option>
+                </select>
+                <button type="button" id="search-clear-btn" style="font-size:0.85em;">Clear</button>
+            </div>
+        </details>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
         <details id="persist-settings" style="margin-bottom:0.5rem;">
             <summary style="cursor:pointer;user-select:none;">Message persistence</summary>
@@ -32,19 +43,6 @@
                     <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-remember-passphrase"> Remember passphrase</label>
                     <button type="button" id="persist-save-btn">Save passphrase</button>
                 </div>
-            </div>
-        </details>
-        <details id="pgp-key-section" style="margin-bottom: 0.5rem;">
-            <summary style="cursor: pointer; user-select: none;">PGP Private Key (for decryption)</summary>
-            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                <textarea id="pgp-private-key-input" rows="4" placeholder="Paste armored private key here..." style="font-family: monospace; font-size: 0.8em; resize: vertical;"></textarea>
-                <input id="pgp-passphrase-input" type="password" placeholder="Passphrase (if key is protected)" style="font-family: monospace;">
-                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                    <button type="button" id="pgp-load-key-btn">Load Key</button>
-                    <button type="button" id="pgp-clear-key-btn">Clear Key</button>
-                    <label style="cursor:pointer;user-select:none;font-size:0.85em;"><input type="checkbox" id="pgp-persist-toggle"> Remember across sessions</label>
-                </div>
-                <div id="pgp-key-status" style="font-size: 0.85em; font-style: italic;"></div>
             </div>
         </details>
         <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: center;">
@@ -85,6 +83,72 @@
     let loadedPrivateKey = null;
     const messageHistory = [];
     let onlineUserIDs = new Set();
+
+    // --- Message grouping state ---
+    let lastMsgUsername = null;
+    let lastMsgTime = null;
+
+    function resetGroupingState() {
+        lastMsgUsername = null;
+        lastMsgTime = null;
+    }
+
+    // --- Search state ---
+    let searchActive = false;
+    const knownSenders = new Set();
+
+    function updateSenderOptions(username) {
+        if (!username || knownSenders.has(username)) return;
+        knownSenders.add(username);
+        const opt = document.createElement('option');
+        opt.value = username;
+        opt.textContent = username;
+        document.getElementById('search-sender').appendChild(opt);
+    }
+
+    function messageMatchesSearch(data) {
+        const rawText = document.getElementById('search-input').value;
+        const senderVal = document.getElementById('search-sender').value;
+        const regexMode = document.getElementById('search-regex').checked;
+
+        if (senderVal && data.username !== senderVal) return false;
+        if (!rawText) return true;
+
+        const haystack = data.message || '';
+        if (regexMode) {
+            try {
+                return new RegExp(rawText, 'i').test(haystack);
+            } catch (e) {
+                return false;
+            }
+        }
+        return haystack.toLowerCase().includes(rawText.toLowerCase());
+    }
+
+    async function applySearch() {
+        const rawText = document.getElementById('search-input').value;
+        const senderVal = document.getElementById('search-sender').value;
+        const hasFilter = rawText || senderVal;
+
+        if (!hasFilter) {
+            searchActive = false;
+            await rerenderAllMessages();
+            return;
+        }
+
+        searchActive = true;
+        chatMessages.innerHTML = '';
+        if (reconnectMsgEl) reconnectMsgEl = null;
+        resetGroupingState();
+
+        for (const data of messageHistory) {
+            if (messageMatchesSearch(data)) {
+                const el = await buildMessageElement(data);
+                chatMessages.appendChild(el);
+            }
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
     // --- Persistence state ---
     let persistEnabled = false;
@@ -172,8 +236,10 @@
                     const obj = JSON.parse(plain);
                     const data = { type: 'message', username: s.username, message: obj.message, created_at: s.created_at, whisper: s.whisper, pre_encrypted: s.pre_encrypted };
                     messageHistory.push(data);
+                    updateSenderOptions(s.username);
                 } catch (e) {
                     messageHistory.push({ type: 'message', username: s.username, message: '[encrypted message - passphrase required]', created_at: s.created_at, whisper: s.whisper, pre_encrypted: s.pre_encrypted });
+                    updateSenderOptions(s.username);
                 }
             }
             await rerenderAllMessages();
@@ -288,6 +354,19 @@
 
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail && evt.detail.target && evt.detail.target.id === 'room-dynamic') {
+            applyPresenceIndicators();
+        }
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'room-sidebar') {
+            const persist = localStorage.getItem(roomId + ':pgp_persist_across_sessions') === 'true';
+            const store = persist ? localStorage : sessionStorage;
+            const storedKey = store.getItem(roomId + ':pgp_armored_key');
+            const storedPass = store.getItem(roomId + ':pgp_passphrase') || '';
+            const keyInput = document.getElementById('pgp-private-key-input');
+            const passInput = document.getElementById('pgp-passphrase-input');
+            const persistEl = document.getElementById('pgp-persist-toggle');
+            if (keyInput) keyInput.value = storedKey || '';
+            if (passInput) passInput.value = storedPass;
+            if (persistEl) persistEl.checked = persist;
             applyPresenceIndicators();
         }
     });
@@ -424,6 +503,13 @@
         e.preventDefault();
         const message = chatInput.value.trim();
         if (!message || ws.readyState !== WebSocket.OPEN) return;
+
+        if (message.includes('-----BEGIN PGP PRIVATE KEY BLOCK-----')) {
+            chatInput.style.outline = '2px solid red';
+            setTimeout(function() { chatInput.style.outline = ''; }, 3000);
+            appendSystemMessage('Warning: your message looks like a PGP private key. Clear the input and use the sidebar to load your key.');
+            return;
+        }
 
         const payload = { type: 'message', message: message };
         if (chatTarget) {
@@ -696,9 +782,24 @@
 
     async function appendMessageAsync(data) {
         messageHistory.push(data);
-        const el = await buildMessageElement(data);
-        chatMessages.appendChild(el);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        updateSenderOptions(data.username);
+
+        if (searchActive) {
+            if (messageMatchesSearch(data)) {
+                // In search mode: always show header (results aren't contiguous)
+                const savedLast = { username: lastMsgUsername, time: lastMsgTime };
+                resetGroupingState();
+                const el = await buildMessageElement(data);
+                chatMessages.appendChild(el);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                lastMsgUsername = savedLast.username;
+                lastMsgTime = savedLast.time;
+            }
+        } else {
+            const el = await buildMessageElement(data);
+            chatMessages.appendChild(el);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
         // Persist message if persistence is enabled and a key is available.
         if (!loadingPersistedMessages && persistEnabled && persistKey) {
@@ -715,6 +816,8 @@
     async function rerenderAllMessages() {
         chatMessages.innerHTML = '';
         if (reconnectMsgEl) reconnectMsgEl = null;
+        resetGroupingState();
+        searchActive = false;
         for (const data of messageHistory) {
             const el = await buildMessageElement(data);
             chatMessages.appendChild(el);
@@ -724,40 +827,46 @@
 
     async function buildMessageElement(data) {
         const msgDiv = document.createElement('div');
-        msgDiv.style.marginBottom = '0.5rem';
+        msgDiv.style.marginBottom = '0.25rem';
         if (data.whisper) {
             msgDiv.style.color = '#6a1b9a';
             msgDiv.style.fontStyle = 'italic';
         }
 
         const time = new Date(data.created_at).toLocaleTimeString();
+        const msgTime = new Date(data.created_at);
 
-        const header = document.createElement('div');
+        // Group consecutive messages from the same sender within 10 minutes.
+        // Whispers always show a header to make the target visible.
+        const sameUser = lastMsgUsername === data.username;
+        const within10m = lastMsgTime !== null && (msgTime - lastMsgTime) <= 10 * 60 * 1000;
+        const grouped = sameUser && within10m && !data.whisper;
 
-        const nameEl = document.createElement('strong');
-        nameEl.textContent = data.username;
-        header.appendChild(nameEl);
+        lastMsgUsername = data.username;
+        lastMsgTime = msgTime;
 
-        header.appendChild(document.createTextNode(' '));
+        if (!grouped) {
+            msgDiv.style.marginTop = '0.5rem';
+            const header = document.createElement('div');
 
-        const timeEl = document.createElement('small');
-        timeEl.textContent = '(' + time + ')';
-        header.appendChild(timeEl);
+            const nameEl = document.createElement('strong');
+            nameEl.textContent = data.username;
+            header.appendChild(nameEl);
 
-        const copyBtn = document.createElement('button');
-        copyBtn.type = 'button';
-        copyBtn.textContent = 'Copy';
-        copyBtn.style.cssText = 'font-size:0.75em;padding:1px 4px;margin-left:0.4rem;cursor:pointer;vertical-align:middle;';
-        copyBtn.onclick = function() { copyText(pre.textContent || ''); };
-        header.appendChild(copyBtn);
+            header.appendChild(document.createTextNode(' '));
 
-        if (data.whisper) {
-            const whisperEl = document.createElement('em');
-            whisperEl.textContent = ' (whisper)';
-            header.appendChild(whisperEl);
+            const timeEl = document.createElement('small');
+            timeEl.textContent = '(' + time + ')';
+            header.appendChild(timeEl);
+
+            if (data.whisper) {
+                const whisperEl = document.createElement('em');
+                whisperEl.textContent = ' (whisper)';
+                header.appendChild(whisperEl);
+            }
+
+            msgDiv.appendChild(header);
         }
-
-        msgDiv.appendChild(header);
 
         let displayText = data.message;
         let decrypted = false;
@@ -779,10 +888,18 @@
         }
 
         const pre = document.createElement('pre');
-        pre.style.margin = '0.25rem 0 0 0';
+        pre.style.margin = '0.1rem 0 0 0';
         pre.style.whiteSpace = 'pre-wrap';
         pre.style.fontFamily = 'monospace';
+        pre.style.cursor = 'pointer';
+        pre.title = 'Click to copy';
         pre.textContent = displayText;
+        const capturedText = displayText;
+        pre.onclick = function() {
+            copyText(capturedText);
+            pre.style.opacity = '0.4';
+            setTimeout(function() { pre.style.opacity = '1'; }, 250);
+        };
 
         msgDiv.appendChild(pre);
         return msgDiv;
@@ -803,6 +920,24 @@
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // --- Search bar event wiring ---
+    (function() {
+        const searchInput = document.getElementById('search-input');
+        const searchRegexEl = document.getElementById('search-regex');
+        const searchSenderEl = document.getElementById('search-sender');
+        const searchClearBtn = document.getElementById('search-clear-btn');
+
+        searchInput.addEventListener('input', applySearch);
+        searchRegexEl.addEventListener('change', applySearch);
+        searchSenderEl.addEventListener('change', applySearch);
+        searchClearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchRegexEl.checked = false;
+            searchSenderEl.value = '';
+            applySearch();
+        });
+    })();
 
     function copyText(text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
