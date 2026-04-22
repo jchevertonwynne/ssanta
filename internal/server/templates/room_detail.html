@@ -84,6 +84,7 @@
     let loadedPrivateKey = null;
     const messageHistory = [];
     let onlineUserIDs = new Set();
+    const sentMessageIds = new Set();
 
     // --- Message grouping state ---
     let lastMsgUsername = null;
@@ -468,6 +469,10 @@
             }
 
             if (data.type === 'message') {
+                if (data.client_message_id && sentMessageIds.has(data.client_message_id)) {
+                    // This is our own echo; already displayed optimistically.
+                    return;
+                }
                 appendMessageAsync(data);
                 return;
             }
@@ -512,12 +517,26 @@
             return;
         }
 
-        const payload = { type: 'message', message: message };
-        if (chatTarget) {
-            const targetId = parseInt(chatTarget.value, 10);
-            if (targetId > 0) {
-                payload.target_user_id = targetId;
-            }
+        const isWhisper = !!(chatTarget && parseInt(chatTarget.value, 10) > 0);
+        const targetUserID = isWhisper ? parseInt(chatTarget.value, 10) : 0;
+
+        const clientMsgId = crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now().toString(36));
+        sentMessageIds.add(clientMsgId);
+
+        // Optimistically append to local UI immediately
+        appendMessageAsync({
+            type: 'message',
+            username: currentUsername,
+            message: message,
+            created_at: new Date().toISOString(),
+            whisper: isWhisper,
+            pre_encrypted: false,
+            client_message_id: clientMsgId
+        });
+
+        const payload = { type: 'message', message: message, client_message_id: clientMsgId };
+        if (isWhisper) {
+            payload.target_user_id = targetUserID;
         }
 
         if (roomPGPRequired) {

@@ -76,13 +76,14 @@ type ChatClient struct {
 }
 
 type ChatMessagePayload struct {
-	Type         string       `json:"type"` // "message", "error"
-	Username     string       `json:"username,omitempty"`
-	Message      string       `json:"message,omitempty"`
-	CreatedAt    time.Time    `json:"created_at,omitempty"`
-	TargetUserID store.UserID `json:"target_user_id,omitempty"`
-	Whisper      bool         `json:"whisper,omitempty"`
-	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
+	Type          string       `json:"type"` // "message", "error"
+	Username      string       `json:"username,omitempty"`
+	Message       string       `json:"message,omitempty"`
+	CreatedAt     time.Time    `json:"created_at,omitempty"`
+	TargetUserID  store.UserID `json:"target_user_id,omitempty"`
+	Whisper       bool         `json:"whisper,omitempty"`
+	PreEncrypted  bool         `json:"pre_encrypted,omitempty"`
+	ClientMsgID   string       `json:"client_message_id,omitempty"`
 }
 
 func NewChatHub() *ChatHub {
@@ -702,11 +703,12 @@ func (c *ChatClient) readPump() {
 					continue
 				}
 				out := ChatMessagePayload{
-					Type:      "message",
-					Username:  c.username,
-					Message:   plaintext,
-					CreatedAt: createdAt,
-					Whisper:   isWhisper,
+					Type:        "message",
+					Username:    c.username,
+					Message:     plaintext,
+					CreatedAt:   createdAt,
+					Whisper:     isWhisper,
+					ClientMsgID: payload.ClientMsgID,
 				}
 				outBytes, err := json.Marshal(out)
 				if err != nil {
@@ -740,11 +742,12 @@ func (c *ChatClient) readPump() {
 			// PGP optional: send plaintext to all members
 			perUser := make(map[store.UserID][]byte, len(members))
 			out := ChatMessagePayload{
-				Type:      "message",
-				Username:  c.username,
-				Message:   plaintext,
-				CreatedAt: createdAt,
-				Whisper:   isWhisper,
+				Type:        "message",
+				Username:    c.username,
+				Message:     plaintext,
+				CreatedAt:   createdAt,
+				Whisper:     isWhisper,
+				ClientMsgID: payload.ClientMsgID,
 			}
 			outBytes, err := json.Marshal(out)
 			if err != nil {
