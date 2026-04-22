@@ -4,32 +4,10 @@ run:
   timeout: 5m
 
 linters:
-  enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-    - misspell
-    - gocritic
-    - gosec
-    - bodyclose
-    - nilerr
-    - errorlint
-    - prealloc
-    - unconvert
-    - unparam
-    - wastedassign
-    - whitespace
-    - asasalint
-    - asciicheck
-    - bidichk
-    - copyloopvar
-    - durationcheck
-    - exhaustive
-    - forcetypeassert
-    - noctx
-    - rowserrcheck
+  default: all
+  disable:
+    - wsl
+    - wsl_v5
   
   exclusions:
     rules:
@@ -50,3 +28,40 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/jchevertonwynne/ssanta
+
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      case-max-lines: 0
+      cuddle-max-statements: 1
+      default: ~ # Can be `all`, `none`, `default` or empty
+      enable:
+        - append
+        - assign
+        - branch
+        - decl
+        - defer
+        - err
+        - expr
+        - for
+        - go
+        - if
+        - inc-dec
+        - label
+        - range
+        - return
+        - select
+        - send
+        - switch
+        - type-switch
+        - leading-whitespace
+        - trailing-whitespace
+      disable:
+        - after-block
+        - after-decl
+        - after-defer
+        - after-expr
+        - after-go
+        - assign-exclusive
+        - assign-expr
