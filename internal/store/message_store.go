@@ -84,6 +84,40 @@ func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID U
 	return messages, rows.Err()
 }
 
+func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, userID UserID, afterID MessageID, limit int) ([]Message, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+
+	rows, err := s.db.Query(ctx,
+		`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
+		 FROM messages
+		 WHERE room_id = $1
+		   AND deleted_at IS NULL
+		   AND (whisper = FALSE OR user_id = $2 OR target_user_id = $2)
+		   AND id > $3
+		 ORDER BY id ASC LIMIT $4`,
+		roomID, userID, afterID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var m Message
+		var targetUserID *UserID
+		err := rows.Scan(&m.ID, &m.RoomID, &m.UserID, &m.Username, &m.Message, &m.CreatedAt, &m.Whisper, &targetUserID, &m.PreEncrypted, &m.EditedAt, &m.DeletedAt)
+		if err != nil {
+			return nil, err
+		}
+		m.TargetUserID = targetUserID
+		messages = append(messages, m)
+	}
+	return messages, rows.Err()
+}
+
 func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID UserID, query string, limit int) ([]Message, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50

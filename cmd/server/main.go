@@ -90,7 +90,7 @@ func run() error {
 	st := store.New(pool)
 	svc := service.New(st)
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)
-	startJanitor(ctx, svc, cfg)
+	startJanitor(ctx, svc, cfg.JanitorInterval)
 
 	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler, cfg.MetricsSecret, cfg.RateLimitAuthMax, cfg.RateLimitAuthWindow)
 	defer closeHub()
@@ -128,12 +128,11 @@ func run() error {
 	return nil
 }
 
-func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) {
-	if cfg.JanitorInterval <= 0 {
+func startJanitor(ctx context.Context, svc *service.Service, interval time.Duration) {
+	if interval <= 0 {
 		return
 	}
-
-	ticker := time.NewTicker(cfg.JanitorInterval)
+	ticker := time.NewTicker(interval)
 	go func() {
 		defer ticker.Stop()
 		for {
@@ -143,17 +142,16 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 			case <-ticker.C:
 				cleanupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				now := time.Now()
-				deletedInvites, clearedChallenges, deletedQueuedMessages, err := svc.Cleanup(cleanupCtx, now, cfg.MessageQueueMaxAge)
+				deletedInvites, clearedChallenges, err := svc.Cleanup(cleanupCtx, now)
 				cancel()
 				if err != nil {
 					slog.Error("janitor cleanup failed", "err", err)
 					continue
 				}
-				if deletedInvites > 0 || clearedChallenges > 0 || deletedQueuedMessages > 0 {
+				if deletedInvites > 0 || clearedChallenges > 0 {
 					slog.Info("janitor cleanup",
 						"deleted_invites", deletedInvites,
 						"cleared_room_pgp_challenges", clearedChallenges,
-						"deleted_queued_messages", deletedQueuedMessages,
 					)
 				}
 			}

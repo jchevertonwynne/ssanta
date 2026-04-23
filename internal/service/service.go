@@ -247,36 +247,6 @@ func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomI
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
-// EnqueueMessages queues messages for later delivery.
-func (s *Service) EnqueueMessages(
-	ctx context.Context,
-	roomID store.RoomID,
-	senderUsername, message string,
-	createdAt time.Time,
-	preEncrypted, whisper bool,
-	recipientIDs []store.UserID,
-) error {
-	return s.store.Messages.Enqueue(
-		ctx,
-		roomID,
-		senderUsername,
-		message,
-		createdAt,
-		preEncrypted,
-		whisper,
-		recipientIDs,
-	)
-}
-
-// FlushMessageQueue returns queued messages for a user in a room.
-func (s *Service) FlushMessageQueue(
-	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
-) ([]store.QueuedMessage, error) {
-	return s.store.Messages.FlushForUser(ctx, roomID, userID)
-}
-
 // SetRoomPGPKey stores and challenges a room member's public key.
 func (s *Service) SetRoomPGPKey(
 	ctx context.Context,
@@ -815,6 +785,24 @@ func (s *Service) CreateMessage(
 		attribute.Int64("user_id", userID.Int64()),
 	)
 	return s.store.Chat.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
+}
+
+// ListMessagesAfterID returns messages newer than afterID for a room.
+func (s *Service) ListMessagesAfterID(
+	ctx context.Context,
+	roomID store.RoomID,
+	userID store.UserID,
+	afterID store.MessageID,
+	limit int,
+) ([]store.Message, error) {
+	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ListMessagesAfterID")
+	defer span.End()
+	span.SetAttributes(
+		attribute.Int64("room_id", roomID.Int64()),
+		attribute.Int64("user_id", userID.Int64()),
+		attribute.Int64("after_id", afterID.Int64()),
+	)
+	return s.store.Chat.ListMessagesAfterID(ctx, roomID, userID, afterID, limit)
 }
 
 // ListMessages returns messages for a room.

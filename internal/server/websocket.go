@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -76,14 +77,15 @@ type ChatClient struct {
 }
 
 type ChatMessagePayload struct {
-	Type         string       `json:"type"` // "message", "error"
-	Username     string       `json:"username,omitempty"`
-	Message      string       `json:"message,omitempty"`
-	CreatedAt    time.Time    `json:"created_at"`
-	TargetUserID store.UserID `json:"target_user_id,omitempty"`
-	Whisper      bool         `json:"whisper,omitempty"`
-	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
-	ClientMsgID  string       `json:"client_message_id,omitempty"`
+	Type         string          `json:"type"` // "message", "error"
+	ID           store.MessageID `json:"id,omitempty"`
+	Username     string          `json:"username,omitempty"`
+	Message      string          `json:"message,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
+	TargetUserID store.UserID    `json:"target_user_id,omitempty"`
+	Whisper      bool            `json:"whisper,omitempty"`
+	PreEncrypted bool            `json:"pre_encrypted,omitempty"`
+	ClientMsgID  string          `json:"client_message_id,omitempty"`
 }
 
 func NewChatHub() *ChatHub {
@@ -708,8 +710,18 @@ func (c *ChatClient) readPump(ctx context.Context) {
 					span.End()
 					continue
 				}
+				var targetID *store.UserID
+				if isWhisper {
+					targetID = &targetUserID
+				}
+				msgID, err := persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
+				if err != nil {
+					span.End()
+					continue
+				}
 				out := ChatMessagePayload{
 					Type:        "message",
+					ID:          msgID,
 					Username:    c.username,
 					Message:     plaintext,
 					CreatedAt:   createdAt,
@@ -731,12 +743,6 @@ func (c *ChatClient) readPump(ctx context.Context) {
 						perUser[m.ID] = outBytes
 					}
 				}
-				var targetID *store.UserID
-				if isWhisper {
-					targetID = &targetUserID
-				}
-				go persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
-				enqueueOfflineMessages(ctx, c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
@@ -751,9 +757,19 @@ func (c *ChatClient) readPump(ctx context.Context) {
 			}
 
 			// PGP optional: send plaintext to all members
+			var targetID *store.UserID
+			if isWhisper {
+				targetID = &targetUserID
+			}
+			msgID, err := persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
+			if err != nil {
+				span.End()
+				continue
+			}
 			perUser := make(map[store.UserID][]byte, len(members))
 			out := ChatMessagePayload{
 				Type:        "message",
+				ID:          msgID,
 				Username:    c.username,
 				Message:     plaintext,
 				CreatedAt:   createdAt,
@@ -774,12 +790,6 @@ func (c *ChatClient) readPump(ctx context.Context) {
 					perUser[m.ID] = outBytes
 				}
 			}
-			var targetID *store.UserID
-			if isWhisper {
-				targetID = &targetUserID
-			}
-			go persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
-			enqueueOfflineMessages(ctx, c, payload.Message, createdAt, false, isWhisper, perUser)
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
@@ -794,36 +804,14 @@ func (c *ChatClient) readPump(ctx context.Context) {
 	}
 }
 
-func persistMessage(ctx context.Context, svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) {
+func persistMessage(ctx context.Context, svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if _, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted); err != nil {
+	id, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
+	if err != nil {
 		slog.Error("persist message", "err", err, "room_id", roomID, "user_id", userID)
 	}
-}
-
-// enqueueOfflineMessages stores rawMessage in the queue for each recipient in
-// perUser that is not currently connected to the room. The sender (c.userID)
-// is always skipped — they already see their own message in their local UI.
-func enqueueOfflineMessages(ctx context.Context, c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
-	onlineUsers := c.hub.OnlineUsersInRoom(c.roomID)
-	var offlineIDs []store.UserID
-	for uid := range perUser {
-		if uid == c.userID {
-			continue
-		}
-		if !onlineUsers[uid] {
-			offlineIDs = append(offlineIDs, uid)
-		}
-	}
-	if len(offlineIDs) == 0 {
-		return
-	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := c.svc.EnqueueMessages(ctx, c.roomID, c.username, rawMessage, createdAt, preEncrypted, whisper, offlineIDs); err != nil {
-		slog.Error("enqueue offline messages", "err", err, "room_id", c.roomID)
-	}
+	return id, err
 }
 
 func (c *ChatClient) writePump() {
@@ -895,25 +883,31 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			return
 		}
 
-		// Flush any queued messages before joining the live room, so replayed
-		// messages are strictly ordered before new incoming messages.
-		queued, err := svc.FlushMessageQueue(r.Context(), roomID, currentID)
-		if err != nil {
-			slog.Error("flush message queue", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-		}
-		for _, q := range queued {
-			msg := ChatMessagePayload{
-				Type:         "message",
-				Username:     q.SenderUsername,
-				Message:      q.Message,
-				CreatedAt:    q.CreatedAt,
-				Whisper:      q.Whisper,
-				PreEncrypted: q.PreEncrypted,
-			}
-			if err := conn.WriteJSON(msg); err != nil {
-				slog.Error("write queued message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-				_ = conn.Close()
-				return
+		// Catch up on missed messages before joining the live room.
+		lastSeenStr := r.URL.Query().Get("last_seen_id")
+		if lastSeenStr != "" {
+			if parsed, err := strconv.ParseInt(lastSeenStr, 10, 64); err == nil && parsed > 0 {
+				lastSeenID := store.MessageID(parsed)
+				catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
+				if err != nil {
+					slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+				}
+				for _, m := range catchUp {
+					msg := ChatMessagePayload{
+						Type:         "message",
+						ID:           m.ID,
+						Username:     m.Username,
+						Message:      m.Message,
+						CreatedAt:    m.CreatedAt,
+						Whisper:      m.Whisper,
+						PreEncrypted: m.PreEncrypted,
+					}
+					if err := conn.WriteJSON(msg); err != nil {
+						slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+						_ = conn.Close()
+						return
+					}
+				}
 			}
 		}
 

@@ -196,7 +196,6 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 		{ID: userID, Username: usernameAlice, PGPPublicKey: "armoredkey", PGPVerifiedAt: &verifiedAt},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userID, usernameAlice, gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -278,7 +277,6 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 		{ID: userB, Username: usernameBob, PGPPublicKey: ""},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, gomock.Any(), gomock.Any(), gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -375,7 +373,6 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 		{ID: userB, Username: usernameBob},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -488,7 +485,6 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return(usernameAlice, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()
@@ -617,7 +613,6 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 		{ID: userC, Username: "charlie"},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userA, usernameAlice, "secret", true, gomock.Any(), false).Return(store.MessageID(1), nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -716,7 +711,6 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 		{ID: userB, Username: usernameBob},
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
-	svc.EXPECT().FlushMessageQueue(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 
 	hub := NewChatHub()
 	go hub.Run()

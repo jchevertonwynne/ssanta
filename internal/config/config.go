@@ -37,7 +37,6 @@ type Config struct {
 
 	InviteMaxAge        time.Duration `env:"INVITE_MAX_AGE,24h"`
 	JanitorInterval     time.Duration `env:"JANITOR_INTERVAL,5m"`
-	MessageQueueMaxAge  time.Duration `env:"MESSAGE_QUEUE_MAX_AGE,168h"`
 	SessionTTL          time.Duration `env:"SESSION_TTL,168h"`
 	RoomPGPChallengeTTL time.Duration `env:"ROOM_PGP_CHALLENGE_TTL,10m"`
 

@@ -5,7 +5,6 @@ package server
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
@@ -160,14 +159,10 @@ type InviteHandlersService interface {
 	InviteOpsService
 }
 
-type MessageQueueService interface {
-	EnqueueMessages(ctx context.Context, roomID store.RoomID, senderUsername, message string, createdAt time.Time, preEncrypted, whisper bool, recipientIDs []store.UserID) error
-	FlushMessageQueue(ctx context.Context, roomID store.RoomID, userID store.UserID) ([]store.QueuedMessage, error)
-}
-
 type MessageHistoryService interface {
 	CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error)
 	ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error)
+	ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error)
 	SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error)
 }
 
@@ -184,7 +179,6 @@ type WebSocketHandlersService interface {
 	RoomMembersWithPGPService
 	IsRoomPGPRequiredService
 	RoomAccessService
-	MessageQueueService
 	MessageHistoryService
 }
 

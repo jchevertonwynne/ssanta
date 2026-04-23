@@ -65,9 +65,11 @@
     const messageHistory = [];
     let onlineUserIDs = new Set();
     const sentMessageIds = new Set();
+    const seenMessageIds = new Set();
     let serverHistoryLoaded = false;
     let loadingHistory = false;
     let earliestMessageId = null;
+    let lastSeenMessageId = null;
 
     // Clean up legacy message persistence keys
     (function() {
@@ -269,7 +271,11 @@
     });
 
     function connect() {
-        ws = new WebSocket(protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws');
+        let wsUrl = protocol + '//' + window.location.host + '/rooms/' + roomId + '/ws';
+        if (lastSeenMessageId) {
+            wsUrl += '?last_seen_id=' + lastSeenMessageId;
+        }
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = function() {
             console.log('Connected to chat');
@@ -364,6 +370,15 @@
             }
 
             if (data.type === 'message') {
+                if (data.id) {
+                    if (seenMessageIds.has(data.id)) {
+                        return;
+                    }
+                    seenMessageIds.add(data.id);
+                    if (!lastSeenMessageId || data.id > lastSeenMessageId) {
+                        lastSeenMessageId = data.id;
+                    }
+                }
                 if (data.client_message_id && sentMessageIds.has(data.client_message_id)) {
                     // This is our own echo; already displayed optimistically.
                     return;
@@ -404,6 +419,7 @@
                     const m = messages[i];
                     const data = {
                         type: 'message',
+                        id: m.id,
                         username: m.username,
                         message: m.message,
                         created_at: m.created_at,
@@ -411,7 +427,11 @@
                         pre_encrypted: m.pre_encrypted
                     };
                     messageHistory.push(data);
+                    seenMessageIds.add(m.id);
                     updateSenderOptions(m.username);
+                    if (!lastSeenMessageId || m.id > lastSeenMessageId) {
+                        lastSeenMessageId = m.id;
+                    }
                 }
                 earliestMessageId = messages[messages.length - 1].id;
                 await rerenderAllMessages();
@@ -424,6 +444,7 @@
                 for (const m of messages) {
                     const data = {
                         type: 'message',
+                        id: m.id,
                         username: m.username,
                         message: m.message,
                         created_at: m.created_at,
@@ -431,6 +452,7 @@
                         pre_encrypted: m.pre_encrypted
                     };
                     messageHistory.unshift(data);
+                    seenMessageIds.add(m.id);
                     updateSenderOptions(m.username);
                     // Prepend to DOM without grouping (always show header)
                     const savedLast = { username: lastMsgUsername, time: lastMsgTime };
