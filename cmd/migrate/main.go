@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/jchevertonwynne/ssanta/internal/db"
 )
+
+var errDatabaseURLRequired = errors.New("MIGRATE_DATABASE_URL or DATABASE_URL is required")
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -32,7 +34,7 @@ func run() error {
 		dbURL = strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	}
 	if dbURL == "" {
-		return fmt.Errorf("MIGRATE_DATABASE_URL or DATABASE_URL is required")
+		return errDatabaseURLRequired
 	}
 
 	if databaseSchema != "" {

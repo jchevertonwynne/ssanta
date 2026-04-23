@@ -13,6 +13,9 @@ import (
 const MaxRoomNameLength = 64
 
 var (
+	errPingOnTxStore   = errors.New("store: Ping called on tx-scoped store")
+	errWithTxOnTxStore = errors.New("store: WithTx called on tx-scoped store")
+
 	ErrRoomNameTaken          = errors.New("room name already taken")
 	ErrRoomNameEmpty          = errors.New("room name cannot be empty")
 	ErrRoomNameTooLong        = errors.New("room name too long")
@@ -84,7 +87,7 @@ func storeFromDB(db dbtx, pool *pgxpool.Pool) *Store {
 
 func (s *Store) Ping(ctx context.Context) error {
 	if s.pool == nil {
-		return errors.New("store: Ping called on tx-scoped store")
+		return errPingOnTxStore
 	}
 	return s.pool.Ping(ctx)
 }
@@ -94,7 +97,7 @@ func (s *Store) Ping(ctx context.Context) error {
 // to the transaction — every store call inside it goes through the same tx.
 func (s *Store) WithTx(ctx context.Context, fn func(*Store) error) error {
 	if s.pool == nil {
-		return errors.New("store: WithTx called on tx-scoped store")
+		return errWithTxOnTxStore
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -161,6 +164,7 @@ type Room struct {
 
 type RoomDetail struct {
 	Room
+
 	CreatorID        UserID
 	CreatorUsername  string
 	MembersCanInvite bool

@@ -23,10 +23,10 @@ type clientLimit struct {
 	resetAt  time.Time
 }
 
-func newRateLimiter(max int, window time.Duration) *rateLimiter {
+func newRateLimiter(maxRequests int, window time.Duration) *rateLimiter {
 	return &rateLimiter{
 		clients: make(map[string]*clientLimit),
-		max:     max,
+		max:     maxRequests,
 		window:  window,
 	}
 }
@@ -83,8 +83,8 @@ func clientIP(r *http.Request) string {
 		}
 	}
 
-	if real := r.Header.Get("X-Real-Ip"); real != "" {
-		return real
+	if realIP := r.Header.Get("X-Real-Ip"); realIP != "" {
+		return realIP
 	}
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

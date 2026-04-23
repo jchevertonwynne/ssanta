@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+//nolint:funlen
 func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	t.Parallel()
 	pool := requireIntegration(t)
@@ -46,7 +47,7 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
 	wg.Add(2)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		go func() {
 			defer wg.Done()
 			<-start

@@ -68,6 +68,7 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 	}
 }
 
+//nolint:cyclop
 func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -115,7 +116,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 		// Notify websocket hub about account deletion if it supports the optional
 		// HandleAccountDeletion hook. We keep this optional to avoid forcing a
 		// signature change on the Hub interface and to make tests simpler.
-		if notifier, ok := hub.(interface{ HandleAccountDeletion(store.UserID) }); ok {
+		if notifier, ok := hub.(interface{ HandleAccountDeletion(userID store.UserID) }); ok {
 			notifier.HandleAccountDeletion(id)
 		}
 		renderContent(w, r.Context(), svc, 0)

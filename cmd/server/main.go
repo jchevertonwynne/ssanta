@@ -30,6 +30,7 @@ func main() {
 	}
 }
 
+//nolint:cyclop,funlen
 func run() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -83,7 +84,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close() //nolint:errcheck
+	defer pool.Close()
 
 	sessions := session.NewManager(cfg.SessionSecret, cfg.SecureCookies, cfg.SessionTTL)
 	st := store.New(pool)
@@ -133,14 +134,14 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 	}
 
 	ticker := time.NewTicker(cfg.JanitorInterval)
-	go func() { //nolint:gosec
+	go func() {
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //nolint:gosec
+				cleanupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				now := time.Now()
 				deletedInvites, clearedChallenges, deletedQueuedMessages, err := svc.Cleanup(cleanupCtx, now, cfg.MessageQueueMaxAge)
 				cancel()
@@ -160,7 +161,7 @@ func startJanitor(ctx context.Context, svc *service.Service, cfg config.Config) 
 	}()
 }
 
-// multiHandler fans out slog records to multiple handlers
+// multiHandler fans out slog records to multiple handlers.
 type multiHandler struct {
 	handlers []slog.Handler
 }

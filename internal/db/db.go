@@ -18,6 +18,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var errRuntimeRoleRequired = errors.New("runtime role is required")
+
 // WithSearchPath adds a PostgreSQL search_path query parameter when schema is set.
 func WithSearchPath(databaseURL, schema string) (string, error) {
 	schema = strings.TrimSpace(schema)
@@ -50,7 +52,7 @@ func CreateSchema(ctx context.Context, databaseURL, schema string) error {
 	if err != nil {
 		return err
 	}
-	defer pool.Close() //nolint:errcheck
+	defer pool.Close()
 
 	query := "CREATE SCHEMA IF NOT EXISTS " + quoteIdent(schema)
 	if _, err := pool.Exec(ctx, query); err != nil {
@@ -142,6 +144,8 @@ func Migrate(url, dir string) error {
 }
 
 // GrantRuntimePrivileges grants runtime access to the application role.
+//
+//nolint:cyclop,funlen
 func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role, password string) error {
 	schema = strings.TrimSpace(schema)
 	if schema == "" {
@@ -149,14 +153,14 @@ func GrantRuntimePrivileges(ctx context.Context, adminDatabaseURL, schema, role,
 	}
 	role = strings.TrimSpace(role)
 	if role == "" {
-		return errors.New("runtime role is required")
+		return errRuntimeRoleRequired
 	}
 
 	pool, err := Connect(ctx, adminDatabaseURL)
 	if err != nil {
 		return err
 	}
-	defer pool.Close() //nolint:errcheck
+	defer pool.Close()
 
 	roleIdent := quoteIdent(role)
 

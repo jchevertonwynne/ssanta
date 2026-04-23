@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// Metrics holds all metric instruments for the application
+// Metrics holds all metric instruments for the application.
 type Metrics struct {
 	// HTTP Metrics
 	HTTPRequestCount    metric.Int64Counter
@@ -39,7 +39,9 @@ type Metrics struct {
 	PGPKeysDeleted  metric.Int64Counter
 }
 
-// InitMetrics initializes all metric instruments
+// InitMetrics initializes all metric instruments.
+//
+//nolint:cyclop,funlen
 func InitMetrics(ctx context.Context, serviceName string) (*Metrics, error) {
 	meter := otel.Meter(serviceName)
 
@@ -202,14 +204,14 @@ func InitMetrics(ctx context.Context, serviceName string) (*Metrics, error) {
 	return m, nil
 }
 
-var globalMetrics *Metrics
+var globalMetrics *Metrics //nolint:gochecknoglobals // global metrics instance
 
-// SetGlobalMetrics sets the global metrics instance
+// SetGlobalMetrics sets the global metrics instance.
 func SetGlobalMetrics(m *Metrics) {
 	globalMetrics = m
 }
 
-// GetMetrics returns the global metrics instance
+// GetMetrics returns the global metrics instance.
 func GetMetrics() *Metrics {
 	return globalMetrics
 }

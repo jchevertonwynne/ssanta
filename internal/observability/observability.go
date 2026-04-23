@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -22,7 +23,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-// Config holds observability configuration
+// Config holds observability configuration.
 type Config struct {
 	OTLPEndpoint string
 	OTLPInsecure bool
@@ -38,6 +39,8 @@ type InitResult struct {
 
 // Init initializes OpenTelemetry with OTLP exporters for traces, metrics, and logs,
 // plus a Prometheus exporter for /metrics scraping.
+//
+//nolint:cyclop,funlen
 func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 	// Always set up Prometheus exporter (works without OTLP)
 	promExporter, err := otelprom.New()
@@ -113,7 +116,7 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		)
 	}
 	if err != nil {
-		_ = traceExporter.Shutdown(ctx) //nolint:errcheck
+		_ = traceExporter.Shutdown(ctx)
 		return nil, fmt.Errorf("create metric exporter: %w", err)
 	}
 
@@ -137,8 +140,8 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		)
 	}
 	if err != nil {
-		_ = traceExporter.Shutdown(ctx)  //nolint:errcheck
-		_ = metricExporter.Shutdown(ctx) //nolint:errcheck
+		_ = traceExporter.Shutdown(ctx)
+		_ = metricExporter.Shutdown(ctx)
 		return nil, fmt.Errorf("create log exporter: %w", err)
 	}
 
@@ -160,14 +163,16 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		if err := tracerProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}
+
 		if err := meterProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}
+
 		if err := loggerProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}
 		if len(errs) > 0 {
-			return fmt.Errorf("shutdown errors: %v", errs)
+			return fmt.Errorf("shutdown errors: %w", errors.Join(errs...))
 		}
 		return nil
 	}

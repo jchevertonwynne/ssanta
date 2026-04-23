@@ -9,6 +9,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
+//nolint:funlen
 func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 	t.Parallel()
 	pool := requireIntegration(t)

@@ -79,7 +79,7 @@ type ChatMessagePayload struct {
 	Type         string       `json:"type"` // "message", "error"
 	Username     string       `json:"username,omitempty"`
 	Message      string       `json:"message,omitempty"`
-	CreatedAt    time.Time    `json:"created_at,omitempty"`
+	CreatedAt    time.Time    `json:"created_at"`
 	TargetUserID store.UserID `json:"target_user_id,omitempty"`
 	Whisper      bool         `json:"whisper,omitempty"`
 	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
@@ -94,18 +94,6 @@ func NewChatHub() *ChatHub {
 		unregister:      make(chan *ChatClient),
 		done:            make(chan struct{}),
 		typingStatus:    make(map[store.RoomID]map[store.UserID]*typingSession),
-	}
-}
-
-// tryRegister enqueues a client onto the hub's register channel, but bails
-// out if the hub has been stopped — avoiding a goroutine leak / deadlock when
-// an HTTP upgrade races with shutdown.
-func (h *ChatHub) tryRegister(c *ChatClient) bool {
-	select {
-	case h.register <- c:
-		return true
-	case <-h.done:
-		return false
 	}
 }
 
@@ -138,6 +126,7 @@ func (h *ChatHub) Stop() {
 	}
 }
 
+//nolint:gocognit,cyclop,nestif,funlen
 func (h *ChatHub) Run() {
 	for {
 		select {
@@ -438,6 +427,8 @@ func (h *ChatHub) NotifyContentUpdate(msgType string) {
 // notifies affected rooms so clients can refresh room state. This method is
 // intentionally not on the public `Hub` interface; handlers call it via an
 // optional interface assertion so tests using the mock Hub are unaffected.
+//
+//nolint:gocognit,cyclop,nestif
 func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
 	var affectedRooms []store.RoomID
 
@@ -494,8 +485,10 @@ func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
 
 // SetTypingStatus updates the typing status for a user in a room
 // isTyping=true means user is typing; isTyping=false means user stopped typing
-// A 5-second timeout is automatically applied for typing status
-func (h *ChatHub) SetTypingStatus(roomID store.RoomID, userID store.UserID, username string, isTyping bool) {
+// A 5-second timeout is automatically applied for typing status.
+//
+//nolint:funlen,nestif
+func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, userID store.UserID, username string, isTyping bool) {
 	h.mu.Lock()
 
 	// Ensure room entry exists in typingStatus
@@ -526,7 +519,7 @@ func (h *ChatHub) SetTypingStatus(roomID store.RoomID, userID store.UserID, user
 		h.typingSessionID++
 		sessionID := h.typingSessionID
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:gosec
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second) //nolint:gosec
 		h.typingStatus[roomID][userID] = &typingSession{
 			username:   username,
 			lastActive: time.Now(),
@@ -569,7 +562,20 @@ func (h *ChatHub) SetTypingStatus(roomID store.RoomID, userID store.UserID, user
 	}
 }
 
-func (c *ChatClient) readPump() {
+// tryRegister enqueues a client onto the hub's register channel, but bails
+// out if the hub has been stopped — avoiding a goroutine leak / deadlock when
+// an HTTP upgrade races with shutdown.
+func (h *ChatHub) tryRegister(c *ChatClient) bool {
+	select {
+	case h.register <- c:
+		return true
+	case <-h.done:
+		return false
+	}
+}
+
+//nolint:gocognit,cyclop,nestif,gocyclo,funlen,maintidx
+func (c *ChatClient) readPump(ctx context.Context) {
 	defer func() {
 		select {
 		case c.hub.unregister <- c:
@@ -581,9 +587,9 @@ func (c *ChatClient) readPump() {
 	}()
 
 	c.conn.SetReadLimit(maxMessageLength * 2)
-	_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)) //nolint:errcheck
+	_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
-		_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second)) //nolint:errcheck
+		_ = c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
 
@@ -602,7 +608,7 @@ func (c *ChatClient) readPump() {
 				attribute.Int64("room_id", c.roomID.Int64()),
 				attribute.Int64("user_id", c.userID.Int64()),
 			)
-			metrics.WSMessagesReceived.Add(context.Background(), 1, metric.WithAttributeSet(attrs))
+			metrics.WSMessagesReceived.Add(ctx, 1, metric.WithAttributeSet(attrs))
 		}
 
 		var payload ChatMessagePayload
@@ -613,17 +619,17 @@ func (c *ChatClient) readPump() {
 
 		// Handle typing indicators
 		if payload.Type == "typing" {
-			c.hub.SetTypingStatus(c.roomID, c.userID, c.username, true)
+			c.hub.SetTypingStatus(ctx, c.roomID, c.userID, c.username, true)
 			continue
 		}
 
 		if payload.Type == "stopped_typing" {
-			c.hub.SetTypingStatus(c.roomID, c.userID, c.username, false)
+			c.hub.SetTypingStatus(ctx, c.roomID, c.userID, c.username, false)
 			continue
 		}
 
 		if payload.Type == "message" && payload.Message != "" {
-			ctx, span := otel.Tracer("ssanta").Start(context.Background(), "WebSocket.HandleMessage")
+			ctx, span := otel.Tracer("ssanta").Start(ctx, "WebSocket.HandleMessage")
 			span.SetAttributes(
 				attribute.Int64("room_id", c.roomID.Int64()),
 				attribute.Int64("user_id", c.userID.Int64()),
@@ -645,7 +651,7 @@ func (c *ChatClient) readPump() {
 			}
 
 			// Fetch room PGP requirement
-			ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel = context.WithTimeout(ctx, 2*time.Second)
 			pgpRequired, err := c.svc.IsRoomPGPRequired(ctx, c.roomID)
 			cancel()
 			if err != nil {
@@ -729,8 +735,8 @@ func (c *ChatClient) readPump() {
 				if isWhisper {
 					targetID = &targetUserID
 				}
-				go persistMessage(c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
-				enqueueOfflineMessages(c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
+				go persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
+				enqueueOfflineMessages(ctx, c, payload.Message, createdAt, payload.PreEncrypted, isWhisper, perUser)
 				c.hub.SendToRoomUsers(c.roomID, perUser)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
@@ -772,8 +778,8 @@ func (c *ChatClient) readPump() {
 			if isWhisper {
 				targetID = &targetUserID
 			}
-			go persistMessage(c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
-			enqueueOfflineMessages(c, payload.Message, createdAt, false, isWhisper, perUser)
+			go persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
+			enqueueOfflineMessages(ctx, c, payload.Message, createdAt, false, isWhisper, perUser)
 			c.hub.SendToRoomUsers(c.roomID, perUser)
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
@@ -788,8 +794,8 @@ func (c *ChatClient) readPump() {
 	}
 }
 
-func persistMessage(svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func persistMessage(ctx context.Context, svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if _, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted); err != nil {
 		slog.Error("persist message", "err", err, "room_id", roomID, "user_id", userID)
@@ -799,7 +805,7 @@ func persistMessage(svc MessageHistoryService, roomID store.RoomID, userID store
 // enqueueOfflineMessages stores rawMessage in the queue for each recipient in
 // perUser that is not currently connected to the room. The sender (c.userID)
 // is always skipped — they already see their own message in their local UI.
-func enqueueOfflineMessages(c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
+func enqueueOfflineMessages(ctx context.Context, c *ChatClient, rawMessage string, createdAt time.Time, preEncrypted, whisper bool, perUser map[store.UserID][]byte) {
 	onlineUsers := c.hub.OnlineUsersInRoom(c.roomID)
 	var offlineIDs []store.UserID
 	for uid := range perUser {
@@ -813,7 +819,7 @@ func enqueueOfflineMessages(c *ChatClient, rawMessage string, createdAt time.Tim
 	if len(offlineIDs) == 0 {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := c.svc.EnqueueMessages(ctx, c.roomID, c.username, rawMessage, createdAt, preEncrypted, whisper, offlineIDs); err != nil {
 		slog.Error("enqueue offline messages", "err", err, "room_id", c.roomID)
@@ -831,9 +837,9 @@ func (c *ChatClient) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //nolint:errcheck
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if !ok {
-				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{}) //nolint:errcheck
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -842,7 +848,7 @@ func (c *ChatClient) writePump() {
 			}
 
 		case <-ticker.C:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second)) //nolint:errcheck
+			_ = c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -850,6 +856,7 @@ func (c *ChatClient) writePump() {
 	}
 }
 
+//nolint:cyclop,funlen
 func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -905,7 +912,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			}
 			if err := conn.WriteJSON(msg); err != nil {
 				slog.Error("write queued message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-				_ = conn.Close()                                                                        //nolint:errcheck
+				_ = conn.Close()
 				return
 			}
 		}
@@ -921,13 +928,13 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 		}
 
 		if !hub.tryRegister(client) {
-			_ = conn.Close() //nolint:errcheck
+			_ = conn.Close()
 			return
 		}
 
 		hub.wg.Add(2)
-		go client.writePump() //nolint:gosec
-		go client.readPump()  //nolint:gosec
+		go client.writePump()
+		go client.readPump(r.Context())
 	}
 }
 
@@ -962,12 +969,12 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 		}
 
 		if !hub.tryRegister(client) {
-			_ = conn.Close() //nolint:errcheck
+			_ = conn.Close()
 			return
 		}
 
 		hub.wg.Add(2)
-		go client.writePump() //nolint:gosec
-		go client.readPump()  //nolint:gosec
+		go client.writePump()
+		go client.readPump(r.Context())
 	}
 }

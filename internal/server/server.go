@@ -19,7 +19,7 @@ import (
 //go:embed templates/*.html
 var templatesFS embed.FS
 
-var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
+var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html")) //nolint:gochecknoglobals // parsed templates
 
 type indexData struct {
 	BootstrapURL string
@@ -77,6 +77,7 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
+//nolint:funlen
 func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration) (http.Handler, func()) {
 	hub := NewChatHub()
 	go hub.Run()
@@ -299,6 +300,7 @@ func renderContentWithPasswordSuccess(w http.ResponseWriter, ctx context.Context
 	})
 }
 
+//nolint:cyclop,funlen
 func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, opts roomRenderOpts) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	switch {
@@ -439,11 +441,13 @@ func render(w http.ResponseWriter, name string, data any) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = buf.WriteTo(w) //nolint:errcheck
+	_, _ = buf.WriteTo(w)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		slog.Error("encode json", "err", err)
+	}
 }

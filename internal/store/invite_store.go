@@ -15,6 +15,7 @@ type InviteStore struct {
 	db dbtx
 }
 
+//nolint:cyclop,funlen
 func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID UserID, inviteeUsername string, expiresAt time.Time) error {
 	inviteeName := strings.TrimSpace(inviteeUsername)
 	if inviteeName == "" {

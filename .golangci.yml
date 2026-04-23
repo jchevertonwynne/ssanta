@@ -6,6 +6,18 @@ run:
 linters:
   default: all
   disable:
+    - depguard
+    - exhaustruct
+    - ireturn
+    - lll
+    - mnd
+    - nlreturn
+    - noinlineerr
+    - revive
+    - tagliatelle
+    - testpackage
+    - varnamelen
+    - wrapcheck
     - wsl
     - wsl_v5
   

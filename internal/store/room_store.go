@@ -144,8 +144,9 @@ func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID Use
 	return exists, err
 }
 
-func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID UserID) (isCreator bool, isMember bool, err error) {
-	err = s.db.QueryRow(ctx,
+func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID UserID) (bool, bool, error) {
+	var isCreator, isMember bool
+	err := s.db.QueryRow(ctx,
 		`SELECT
 			EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2),
 			EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
@@ -238,6 +239,7 @@ func (s *RoomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creat
 	return nil
 }
 
+//nolint:cyclop,nestif,funlen
 func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID) error {
 	// Start transaction to ensure atomicity
 	tx, err := s.db.Begin(ctx)

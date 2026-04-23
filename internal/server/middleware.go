@@ -23,6 +23,8 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
+var errHijackNotSupported = errors.New("hijack not supported")
+
 type contextKey int
 
 const (
@@ -110,9 +112,10 @@ func WithRequestLogger(base *slog.Logger) func(http.Handler) http.Handler {
 // RecoverPanic catches panics from downstream handlers and returns 500.
 func RecoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		defer func() {
 			if rec := recover(); rec != nil {
-				loggerFromContext(r.Context()).Error("handler panic", "panic", rec)
+				loggerFromContext(ctx).Error("handler panic", "panic", rec)
 				http.Error(w, "internal error", http.StatusInternalServerError)
 			}
 		}()
@@ -157,9 +160,10 @@ func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (store.In
 	return store.InviteID(v), ok
 }
 
-// responseWriter captures status code and response size
+// responseWriter captures status code and response size.
 type responseWriter struct {
 	http.ResponseWriter
+
 	statusCode int
 	written    int64
 }
@@ -175,16 +179,16 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// Hijack implements http.Hijacker for WebSocket upgrades
+// Hijack implements http.Hijacker for WebSocket upgrades.
 func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	h, ok := rw.ResponseWriter.(http.Hijacker)
 	if !ok {
-		return nil, nil, errors.New("hijack not supported")
+		return nil, nil, errHijackNotSupported
 	}
 	return h.Hijack()
 }
 
-// TracingMiddleware extracts trace context from headers and creates a root span for each request
+// TracingMiddleware extracts trace context from headers and creates a root span for each request.
 func TracingMiddleware(serviceName string) func(http.Handler) http.Handler {
 	tracer := otel.Tracer(serviceName)
 	propagator := otel.GetTextMapPropagator()
@@ -252,7 +256,7 @@ func MaxRequestBody(next http.Handler) http.Handler {
 	})
 }
 
-// MetricsMiddleware records HTTP metrics for each request
+// MetricsMiddleware records HTTP metrics for each request.
 func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		metrics := observability.GetMetrics()

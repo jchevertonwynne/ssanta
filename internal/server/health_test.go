@@ -45,7 +45,7 @@ func TestHandleHealth_DBUnavailable(t *testing.T) {
 	defer ctrl.Finish()
 
 	svc := servermocks.NewMockHealthService(ctrl)
-	svc.EXPECT().Ping(gomock.Any()).Return(errors.New("db down"))
+	svc.EXPECT().Ping(gomock.Any()).Return(errors.New("db down")) //nolint:err113 // test error
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)

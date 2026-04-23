@@ -13,6 +13,12 @@ import (
 
 const argon2SaltLen = 16
 const argon2KeyLen = 32
+
+var (
+	errInvalidHashFormat         = errors.New("invalid hash format")
+	errIncompatibleArgon2Version = errors.New("incompatible argon2 version")
+)
+
 const argon2DefaultMemory = 64 * 1024
 const argon2DefaultIterations = 1
 const argon2DefaultParallelism = 4
@@ -37,7 +43,7 @@ func DefaultArgon2Params() Argon2Params {
 // constant-cost target when the requested user does not exist. This keeps the
 // time taken by LoginUser approximately constant whether or not a username is
 // known, removing a trivial enumeration oracle.
-var dummyHashSentinel = mustHash("not-a-real-password", DefaultArgon2Params())
+var dummyHashSentinel = mustHash("not-a-real-password", DefaultArgon2Params()) //nolint:gochecknoglobals // constant-time sentinel
 
 func mustHash(password string, p Argon2Params) string {
 	h, err := hashPassword(password, p)
@@ -65,7 +71,7 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 	parts := strings.Split(encodedHash, "$")
 	// expected: ["", "argon2id", "v=19", "m=65536,t=1,p=4", "<salt>", "<hash>"]
 	if len(parts) != 6 || parts[1] != "argon2id" {
-		return false, errors.New("invalid hash format")
+		return false, errInvalidHashFormat
 	}
 
 	var version int
@@ -73,7 +79,7 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 		return false, fmt.Errorf("parse version: %w", err)
 	}
 	if version != argon2.Version {
-		return false, errors.New("incompatible argon2 version")
+		return false, errIncompatibleArgon2Version
 	}
 
 	var memory, iterations uint32

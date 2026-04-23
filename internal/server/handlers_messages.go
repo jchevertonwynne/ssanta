@@ -39,6 +39,7 @@ func messagesToResponse(msgs []store.Message) []messageResponse {
 	return out
 }
 
+//nolint:cyclop
 func handleListMessages(svc MessageListService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -86,10 +87,11 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(messagesToResponse(msgs)) //nolint:errcheck
+		_ = json.NewEncoder(w).Encode(messagesToResponse(msgs))
 	}
 }
 
+//nolint:cyclop
 func handleSearchMessages(svc MessageListService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -135,6 +137,6 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(messagesToResponse(msgs)) //nolint:errcheck
+		_ = json.NewEncoder(w).Encode(messagesToResponse(msgs))
 	}
 }

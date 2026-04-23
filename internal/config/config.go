@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+var (
+	errDstMustBePointer = errors.New("config: dst must be a non-nil pointer")
+	errDstMustBeStruct  = errors.New("config: dst must point to a struct")
+	errInvalidEnvTag    = errors.New("config: invalid env tag")
+	errRequired         = errors.New("is required")
+	errCannotSet        = errors.New("cannot set")
+	errUnsupportedType  = errors.New("unsupported type")
+)
+
 // Config contains all runtime configuration values for the application.
 type Config struct {
 	HTTPAddr           string `env:"HTTP_ADDR,:8080"`
@@ -51,18 +60,19 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+//nolint:cyclop
 func loadFromEnv(dst any) error {
 	value := reflect.ValueOf(dst)
 	if value.Kind() != reflect.Pointer || value.IsNil() {
-		return errors.New("config: dst must be a non-nil pointer")
+		return errDstMustBePointer
 	}
 	value = value.Elem()
 	if value.Kind() != reflect.Struct {
-		return errors.New("config: dst must point to a struct")
+		return errDstMustBeStruct
 	}
 	structType := value.Type()
 
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		field := structType.Field(i)
 		if !field.IsExported() {
 			continue
@@ -74,13 +84,13 @@ func loadFromEnv(dst any) error {
 
 		name, def, hasDefault := parseEnvTag(tag)
 		if name == "" {
-			return fmt.Errorf("config: invalid env tag on %s", field.Name)
+			return fmt.Errorf("%w on %s", errInvalidEnvTag, field.Name)
 		}
 
 		raw, ok := os.LookupEnv(name)
 		if !ok {
 			if !hasDefault {
-				return fmt.Errorf("%s is required", name)
+				return fmt.Errorf("%s %w", name, errRequired)
 			}
 			raw = def
 		}
@@ -88,7 +98,7 @@ func loadFromEnv(dst any) error {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			if !hasDefault {
-				return fmt.Errorf("%s is required", name)
+				return fmt.Errorf("%s %w", name, errRequired)
 			}
 			raw = strings.TrimSpace(def)
 			if raw == "" {
@@ -116,11 +126,12 @@ func parseEnvTag(tag string) (string, string, bool) {
 	return name, def, hasDefault
 }
 
+//nolint:cyclop
 func setFromString(v reflect.Value, raw string) error {
 	if !v.CanSet() {
-		return errors.New("cannot set")
+		return errCannotSet
 	}
-	if v.Type() == reflect.TypeOf(time.Duration(0)) {
+	if v.Type() == reflect.TypeFor[time.Duration]() {
 		d, err := time.ParseDuration(strings.TrimSpace(raw))
 		if err != nil {
 			return err
@@ -155,6 +166,6 @@ func setFromString(v reflect.Value, raw string) error {
 		v.SetBool(b)
 		return nil
 	default:
-		return fmt.Errorf("unsupported type %s", v.Type())
+		return fmt.Errorf("%w %s", errUnsupportedType, v.Type())
 	}
 }

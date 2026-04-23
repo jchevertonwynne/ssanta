@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,8 +16,8 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
-var integrationPool *pgxpool.Pool
-var integrationContainer testcontainers.Container
+var integrationPool *pgxpool.Pool                 //nolint:gochecknoglobals // test container pool
+var integrationContainer testcontainers.Container //nolint:gochecknoglobals // test container
 
 func TestMain(m *testing.M) {
 	if os.Getenv("SSANTA_INTEGRATION") != "1" {
@@ -135,6 +136,6 @@ func startPostgresContainer(ctx context.Context) (testcontainers.Container, stri
 		return nil, "", err
 	}
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", pgUser, pgPass, host, port.Port(), pgDB)
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", pgUser, pgPass, net.JoinHostPort(host, port.Port()), pgDB)
 	return container, dsn, nil
 }

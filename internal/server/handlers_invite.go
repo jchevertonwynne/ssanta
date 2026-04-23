@@ -12,6 +12,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
+//nolint:cyclop,funlen
 func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)

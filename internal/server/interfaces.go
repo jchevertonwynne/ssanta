@@ -132,6 +132,9 @@ type UserHandlersService interface {
 	VerifyPassword(ctx context.Context, userID store.UserID, password string) error
 }
 
+// RoomHandlersService aggregates all dependencies for room HTTP handlers.
+//
+//nolint:interfacebloat // composed of small single-method interfaces
 type RoomHandlersService interface {
 	UserExistsService
 	ContentViewService
@@ -168,14 +171,10 @@ type MessageHistoryService interface {
 	SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error)
 }
 
-type MessageRoomAccessService interface {
-	GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error)
-}
-
 type MessageListService interface {
 	UserExistsService
 	MessageHistoryService
-	MessageRoomAccessService
+	RoomAccessService
 }
 
 type WebSocketHandlersService interface {

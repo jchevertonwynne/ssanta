@@ -328,7 +328,8 @@ func TestHandleChangePassword_NewPasswordMismatch(t *testing.T) {
 	}
 }
 
-func TestHandleChangePassword_IncorrectCurrentPassword(t *testing.T) {
+func testChangePasswordError(t *testing.T, currentPass, newPass string, expectedErr error) {
+	t.Helper()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -336,46 +337,30 @@ func TestHandleChangePassword_IncorrectCurrentPassword(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	expectLoggedIn(t, svc, sessions, 10)
-	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "wrongpass", "newpass12").Return(store.ErrCurrentPasswordIncorrect)
+	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), currentPass, newPass).Return(expectedErr)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, "/password", url.Values{
-		"current_password":     {"wrongpass"},
-		"new_password":         {"newpass12"},
-		"new_password_confirm": {"newpass12"},
+		"current_password":     {currentPass},
+		"new_password":         {newPass},
+		"new_password_confirm": {newPass},
 	})
 	w := serve(t, handleChangePassword(svc, sessions), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), store.ErrCurrentPasswordIncorrect.Error()) {
-		t.Fatalf("expected incorrect password error in response")
+	if !strings.Contains(w.Body.String(), expectedErr.Error()) {
+		t.Fatalf("expected error in response")
 	}
 }
 
+func TestHandleChangePassword_IncorrectCurrentPassword(t *testing.T) {
+	t.Parallel()
+	testChangePasswordError(t, "wrongpass", "newpass12", store.ErrCurrentPasswordIncorrect)
+}
+
 func TestHandleChangePassword_PasswordTooShort(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-
-	expectLoggedIn(t, svc, sessions, 10)
-	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "oldpass12", "short").Return(store.ErrPasswordTooShort)
-	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
-
-	r := newFormRequest(t, "/password", url.Values{
-		"current_password":     {"oldpass12"},
-		"new_password":         {"short"},
-		"new_password_confirm": {"short"},
-	})
-	w := serve(t, handleChangePassword(svc, sessions), r)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), store.ErrPasswordTooShort.Error()) {
-		t.Fatalf("expected password too short error in response")
-	}
+	t.Parallel()
+	testChangePasswordError(t, "oldpass12", "short", store.ErrPasswordTooShort)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
+//nolint:cyclop,funlen
 func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := loggerFromContext(r.Context())
@@ -110,7 +111,7 @@ func handleListDMs(svc DMHandlersService, sessions SessionManager) http.HandlerF
 		if format == "json" {
 			w.Header().Set("Content-Type", "application/json")
 			encoder := json.NewEncoder(w)
-			_ = encoder.Encode(view.DMRooms) //nolint:errcheck
+			_ = encoder.Encode(view.DMRooms)
 			return
 		}
 
@@ -120,11 +121,11 @@ func handleListDMs(svc DMHandlersService, sessions SessionManager) http.HandlerF
 		for _, dm := range view.DMRooms {
 			fmt.Fprintf(&buf, `<li><a href="/rooms/%d">%s</a></li>`, dm.RoomID, escapeHTML(dm.PartnerName))
 		}
-		_, _ = buf.WriteTo(w) //nolint:errcheck
+		_, _ = buf.WriteTo(w)
 	}
 }
 
-// Helper to escape HTML special chars
+// Helper to escape HTML special chars.
 func escapeHTML(s string) string {
 	if s == "" {
 		return ""

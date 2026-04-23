@@ -115,7 +115,7 @@ func TestRoomPGPClearKey(t *testing.T) {
 	require.Nil(t, found.PGPChallengeExpiresAt)
 }
 
-func mustGenerateTestKeyPair(t *testing.T) (armoredPublicKey string, privateKey *crypto.Key) {
+func mustGenerateTestKeyPair(t *testing.T) (string, *crypto.Key) {
 	t.Helper()
 
 	pgpHandle := crypto.PGP()

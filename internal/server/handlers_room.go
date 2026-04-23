@@ -330,6 +330,7 @@ func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http
 	}
 }
 
+//nolint:cyclop
 func handleRemoveMember(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)

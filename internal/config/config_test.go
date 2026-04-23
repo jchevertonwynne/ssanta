@@ -38,7 +38,7 @@ func TestLoad_DefaultsApplied(t *testing.T) {
 	if cfg.InviteMaxAge != 24*time.Hour {
 		t.Fatalf("InviteMaxAge: got %v", cfg.InviteMaxAge)
 	}
-	if cfg.JanitorInterval != 1*time.Minute {
+	if cfg.JanitorInterval != 5*time.Minute {
 		t.Fatalf("JanitorInterval: got %v", cfg.JanitorInterval)
 	}
 }
