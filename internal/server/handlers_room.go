@@ -210,7 +210,7 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
 			// If not logged in and this is a direct page request, redirect to home
-			if r.Header.Get("HX-Request") == "" {
+			if r.Header.Get("Hx-Request") == "" {
 				http.Redirect(w, r, "/", http.StatusSeeOther)
 				return
 			}
@@ -222,7 +222,7 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 			return
 		}
 
-		if r.Header.Get("HX-Request") != "" {
+		if r.Header.Get("Hx-Request") != "" {
 			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 		} else {
 			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID), CSRFToken: CSRFTokenFromContext(r.Context())})

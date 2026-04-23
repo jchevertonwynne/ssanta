@@ -11,7 +11,7 @@ import (
 
 const (
 	csrfCookieName = "csrf_id"
-	csrfHeaderName = "X-CSRF-Token"
+	csrfHeaderName = "X-Csrf-Token"
 	csrfFormField  = "_csrf"
 )
 

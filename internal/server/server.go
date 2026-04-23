@@ -347,7 +347,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		invitableUsers = append(invitableUsers, u)
 	}
 
-	w.Header().Set("HX-Push-Url", fmt.Sprintf("/rooms/%d", roomID))
+	w.Header().Set("Hx-Push-Url", fmt.Sprintf("/rooms/%d", roomID))
 	render(w, opts.template, roomDetailData{
 		CurrentUserID:       currentID,
 		CurrentUsername:     view.CurrentUsername,
@@ -429,7 +429,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.DMRooms = view.DMRooms
 	data.Invites = view.Invites
 
-	w.Header().Set("HX-Push-Url", "/")
+	w.Header().Set("Hx-Push-Url", "/")
 	render(w, "content.html", data)
 }
 

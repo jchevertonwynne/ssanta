@@ -192,7 +192,7 @@ func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
-	r.Header.Set("HX-Request", "true")
+	r.Header.Set("Hx-Request", "true")
 	w := serve(t, handleRoomDetail(svc, sessions), r)
 
 	if w.Code != http.StatusUnauthorized {

@@ -51,7 +51,7 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 
 	// Now make a POST with the token header
 	r2 := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", strings.NewReader(""))
-	r2.Header.Set("X-CSRF-Token", token)
+	r2.Header.Set("X-Csrf-Token", token)
 	// Copy the cookie from the first response
 	for _, c := range cookies {
 		r2.AddCookie(c)
