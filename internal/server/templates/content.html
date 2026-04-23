@@ -115,7 +115,7 @@
                 </select>
                 <button type="button" onclick="createDM()">Start DM</button>
             </form>
-            <script nonce="{{.ScriptNonce}}">
+            <script>
             function createDM() {
                 const select = document.getElementById('dm-partner-select');
                 const partnerID = select.value;
@@ -165,7 +165,7 @@
 </div>
 
 {{if .CurrentUserID}}
-<script nonce="{{.ScriptNonce}}">
+<script>
 (function() {
     const currentUserID = {{.CurrentUserID}};
     
