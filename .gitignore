@@ -13,6 +13,7 @@
 /bin/
 /dist/
 /build/
+/.kilo/
 
 # Coverage / profiling
 *.coverprofile

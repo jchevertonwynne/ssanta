@@ -25,26 +25,6 @@
             </div>
         </details>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
-        <details id="persist-settings" style="margin-bottom:0.5rem;">
-            <summary style="cursor:pointer;user-select:none;">Message persistence</summary>
-            <div style="margin-top:0.5rem;display:flex;flex-direction:column;gap:0.5rem;">
-                <div style="display:flex;gap:1rem;align-items:center;font-size:0.85em;">
-                    <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-toggle"> Persist messages</label>
-                    <label style="cursor:pointer;user-select:none;">Storage:
-                        <select id="persist-storage" style="font-size:0.85em;">
-                            <option value="local">localStorage</option>
-                            <option value="session">sessionStorage</option>
-                        </select>
-                    </label>
-                    <button type="button" id="persist-clear-btn" style="font-size:0.85em;">Clear stored</button>
-                </div>
-                <div>
-                    <input id="persist-passphrase-input" type="password" placeholder="Storage passphrase" style="margin-right:0.5rem;">
-                    <label style="cursor:pointer;user-select:none;"><input type="checkbox" id="persist-remember-passphrase"> Remember passphrase</label>
-                    <button type="button" id="persist-save-btn">Save passphrase</button>
-                </div>
-            </div>
-        </details>
         <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: center;">
             {{if not .IsDMRoom}}
             <select id="chat-target" {{if not .IsMember}}disabled{{end}}>
@@ -88,6 +68,16 @@
     let serverHistoryLoaded = false;
     let loadingHistory = false;
     let earliestMessageId = null;
+
+    // Clean up legacy message persistence keys
+    (function() {
+        const prefix = roomId + ':messages';
+        const keys = [prefix, prefix + '_persist', prefix + '_storage', prefix + '_passphrase'];
+        keys.forEach(function(k) {
+            localStorage.removeItem(k);
+            sessionStorage.removeItem(k);
+        });
+    })();
 
     // --- Message grouping state ---
     let lastMsgUsername = null;
@@ -153,107 +143,6 @@
             }
         }
         chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    // --- Persistence state ---
-    let persistEnabled = false;
-    let persistStore = localStorage;
-    let persistKey = null; // CryptoKey for AES-GCM
-    let persistPassphrase = null;
-    let loadingPersistedMessages = false;
-
-    function arrayBufferToBase64(buf) {
-        const bytes = new Uint8Array(buf);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-        return btoa(binary);
-    }
-
-    function base64ToArrayBuffer(base64) {
-        const binary = atob(base64);
-        const len = binary.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-        return bytes.buffer;
-    }
-
-    async function deriveKeyFromPassphrase(pass) {
-        const enc = new TextEncoder();
-        const salt = enc.encode('ssanta:' + roomId);
-        const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(pass), {name: 'PBKDF2'}, false, ['deriveKey']);
-        const key = await window.crypto.subtle.deriveKey({name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256'}, keyMaterial, {name: 'AES-GCM', length: 256}, false, ['encrypt','decrypt']);
-        return key;
-    }
-
-    async function encryptStringForStorage(plain) {
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-        const enc = new TextEncoder();
-        const ct = await window.crypto.subtle.encrypt({name: 'AES-GCM', iv: iv}, persistKey, enc.encode(plain));
-        return { ciphertext: arrayBufferToBase64(ct), iv: arrayBufferToBase64(iv) };
-    }
-
-    async function decryptStringFromStorage(ciphertextBase64, ivBase64) {
-        const ctBuf = base64ToArrayBuffer(ciphertextBase64);
-        const ivBuf = base64ToArrayBuffer(ivBase64);
-        const dec = await window.crypto.subtle.decrypt({name: 'AES-GCM', iv: new Uint8Array(ivBuf)}, persistKey, ctBuf);
-        return new TextDecoder().decode(dec);
-    }
-
-    async function persistMessage(data) {
-        if (!persistEnabled || !persistKey) return;
-        try {
-            const plain = JSON.stringify({ message: data.message });
-            const enc = await encryptStringForStorage(plain);
-            const storeKey = roomId + ':messages';
-            const arr = JSON.parse(persistStore.getItem(storeKey) || '[]');
-            arr.push({ username: data.username, created_at: data.created_at, whisper: !!data.whisper, pre_encrypted: !!data.pre_encrypted, ciphertext: enc.ciphertext, iv: enc.iv });
-            persistStore.setItem(storeKey, JSON.stringify(arr));
-        } catch (e) {
-            console.error('persistMessage failed', e);
-        }
-    }
-
-    async function loadPersistedMessagesIfNeeded() {
-        const enabled = localStorage.getItem(roomId + ':messages_persist') === 'true';
-        const storageType = localStorage.getItem(roomId + ':messages_storage') || 'local';
-        persistEnabled = enabled;
-        persistStore = storageType === 'session' ? sessionStorage : localStorage;
-        const pass = sessionStorage.getItem(roomId + ':messages_passphrase') || localStorage.getItem(roomId + ':messages_passphrase') || '';
-        if (persistEnabled && pass) {
-            try {
-                persistPassphrase = pass;
-                persistKey = await deriveKeyFromPassphrase(pass);
-            } catch (e) {
-                console.warn('derive key failed', e);
-                persistKey = null;
-            }
-        }
-
-        if (!persistEnabled || !persistKey) return;
-
-        // Skip local persistence if server history already loaded successfully.
-        if (serverHistoryLoaded) return;
-
-        loadingPersistedMessages = true;
-        try {
-            const storeKey = roomId + ':messages';
-            const arr = JSON.parse(persistStore.getItem(storeKey) || '[]');
-            for (const s of arr) {
-                try {
-                    const plain = await decryptStringFromStorage(s.ciphertext, s.iv);
-                    const obj = JSON.parse(plain);
-                    const data = { type: 'message', username: s.username, message: obj.message, created_at: s.created_at, whisper: s.whisper, pre_encrypted: s.pre_encrypted };
-                    messageHistory.push(data);
-                    updateSenderOptions(s.username);
-                } catch (e) {
-                    messageHistory.push({ type: 'message', username: s.username, message: '[encrypted message - passphrase required]', created_at: s.created_at, whisper: s.whisper, pre_encrypted: s.pre_encrypted });
-                    updateSenderOptions(s.username);
-                }
-            }
-            await rerenderAllMessages();
-        } finally {
-            loadingPersistedMessages = false;
-        }
     }
 
     // --- Sound & browser notification controls ---
@@ -571,10 +460,8 @@
         }
     });
 
-    // Load server history first, then persisted messages, then connect.
+    // Load server history first, then connect.
     loadServerHistory(0).then(function() {
-        return loadPersistedMessagesIfNeeded();
-    }).then(function() {
         connect();
     });
 
@@ -751,76 +638,6 @@
         }
     })();
 
-    // --- Persistence UI hookup ---
-    (function() {
-        const persistToggleEl = document.getElementById('persist-toggle');
-        const persistStorageEl = document.getElementById('persist-storage');
-        const persistPassInput = document.getElementById('persist-passphrase-input');
-        const persistRememberEl = document.getElementById('persist-remember-passphrase');
-        const persistSaveBtn = document.getElementById('persist-save-btn');
-        const persistClearBtn = document.getElementById('persist-clear-btn');
-
-        if (!persistToggleEl || !persistStorageEl || !persistPassInput) return;
-
-        // Initialize
-        persistToggleEl.checked = localStorage.getItem(roomId + ':messages_persist') === 'true';
-        persistStorageEl.value = localStorage.getItem(roomId + ':messages_storage') || 'local';
-        const storedPass = localStorage.getItem(roomId + ':messages_passphrase') || sessionStorage.getItem(roomId + ':messages_passphrase') || '';
-        persistPassInput.value = storedPass;
-        persistRememberEl.checked = !!localStorage.getItem(roomId + ':messages_passphrase');
-
-        persistToggleEl.onchange = async function() {
-            localStorage.setItem(roomId + ':messages_persist', persistToggleEl.checked);
-            persistEnabled = persistToggleEl.checked;
-            if (persistEnabled && persistPassInput.value) {
-                persistPassphrase = persistPassInput.value;
-                try {
-                    persistKey = await deriveKeyFromPassphrase(persistPassphrase);
-                    persistStore = persistStorageEl.value === 'local' ? localStorage : sessionStorage;
-                    await loadPersistedMessagesIfNeeded();
-                } catch (e) {
-                    console.warn('derive key failed', e);
-                }
-            }
-        };
-
-        persistStorageEl.onchange = function() {
-            localStorage.setItem(roomId + ':messages_storage', persistStorageEl.value);
-            persistStore = persistStorageEl.value === 'local' ? localStorage : sessionStorage;
-        };
-
-        persistSaveBtn.onclick = async function() {
-            const pass = persistPassInput.value;
-            if (!pass) { alert('Enter passphrase to enable encrypted persistence'); return; }
-            try {
-                persistKey = await deriveKeyFromPassphrase(pass);
-                persistPassphrase = pass;
-                if (persistRememberEl.checked) {
-                    localStorage.setItem(roomId + ':messages_passphrase', pass);
-                    sessionStorage.removeItem(roomId + ':messages_passphrase');
-                } else {
-                    sessionStorage.setItem(roomId + ':messages_passphrase', pass);
-                    localStorage.removeItem(roomId + ':messages_passphrase');
-                }
-                persistStore = persistStorageEl.value === 'local' ? localStorage : sessionStorage;
-                localStorage.setItem(roomId + ':messages_storage', persistStorageEl.value);
-                localStorage.setItem(roomId + ':messages_persist', persistToggleEl.checked);
-                persistEnabled = persistToggleEl.checked;
-                await loadPersistedMessagesIfNeeded();
-                alert('Persistence settings saved');
-            } catch (e) {
-                alert('Failed to derive key: ' + e.message);
-            }
-        };
-
-        persistClearBtn.onclick = function() {
-            const storeKey = roomId + ':messages';
-            localStorage.removeItem(storeKey);
-            sessionStorage.removeItem(storeKey);
-            alert('Cleared stored messages');
-        };
-    })();
-
     // --- Message helpers ---
 
     function isPGPMessage(text) {
@@ -912,11 +729,6 @@
             const el = await buildMessageElement(data);
             chatMessages.appendChild(el);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Persist message if persistence is enabled and a key is available.
-        if (!loadingPersistedMessages && persistEnabled && persistKey) {
-            persistMessage(data).catch(function(e) { console.warn('persist failed', e); });
         }
 
         if (data.username !== currentUsername) {
