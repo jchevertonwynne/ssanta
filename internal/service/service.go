@@ -20,7 +20,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9]{3,32}$`)
+var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9_]{3,32}$`)
 
 const (
 	defaultInviteMaxAge        = 24 * time.Hour

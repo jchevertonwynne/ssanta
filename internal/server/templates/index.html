@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/openpgp@6/dist/openpgp.min.js"></script>
     {{if .CSRFToken}}
     <meta name="csrf-token" content="{{.CSRFToken}}">
-    <script>
+    <script nonce="{{.ScriptNonce}}">
     document.addEventListener('htmx:configRequest', function(evt) {
         var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (token) {

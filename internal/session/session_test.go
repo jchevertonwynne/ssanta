@@ -83,8 +83,8 @@ func TestManager_Set_CookieAttributes(t *testing.T) {
 	if !c.Secure {
 		t.Fatalf("expected Secure=true")
 	}
-	if c.SameSite != http.SameSiteLaxMode {
-		t.Fatalf("expected SameSite=Lax")
+	if c.SameSite != http.SameSiteStrictMode {
+		t.Fatalf("expected SameSite=Strict")
 	}
 	if c.MaxAge != int(testTTL.Seconds()) {
 		t.Fatalf("expected MaxAge=%d, got %d", int(testTTL.Seconds()), c.MaxAge)

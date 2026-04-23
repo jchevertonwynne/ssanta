@@ -24,7 +24,7 @@
     {{else}}
         <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" onsubmit="event.preventDefault();">
             <input name="username" placeholder="Username" required
-                   pattern="[a-zA-Z0-9]{3,32}" maxlength="32"
+                   pattern="[a-zA-Z0-9_]{3,32}" maxlength="32"
                    value="{{if .UserFormAttempted}}{{.UserFormAttempted}}{{else}}{{.LoginFormAttempted}}{{end}}">
             <input name="password" type="password" placeholder="Password" required
                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('login-btn').click(); }">
@@ -115,7 +115,7 @@
                 </select>
                 <button type="button" onclick="createDM()">Start DM</button>
             </form>
-            <script>
+            <script nonce="{{.ScriptNonce}}">
             function createDM() {
                 const select = document.getElementById('dm-partner-select');
                 const partnerID = select.value;
@@ -165,7 +165,7 @@
 </div>
 
 {{if .CurrentUserID}}
-<script>
+<script nonce="{{.ScriptNonce}}">
 (function() {
     const currentUserID = {{.CurrentUserID}};
     

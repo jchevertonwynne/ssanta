@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ var templates = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 type indexData struct {
 	BootstrapURL string
 	CSRFToken    string
+	ScriptNonce  string
 }
 
 type contentData struct {
@@ -42,6 +44,7 @@ type contentData struct {
 	LoginFormAttempted  string
 	PasswordFormError   string
 	PasswordFormSuccess bool
+	ScriptNonce         string
 }
 
 type roomDetailData struct {
@@ -63,7 +66,8 @@ type roomDetailData struct {
 	PGPVerifyFormError  string
 	PGPVerifyAttempted  string
 	PGPRemoveFormError  string
-	MemberPGPKeysJSON   template.JS
+	MemberPGPKeysBase64 string
+	ScriptNonce         string
 }
 
 type roomRenderOpts struct {
@@ -95,8 +99,6 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
 	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
-	mux.HandleFunc("GET /content/ws", handleContentWebSocket(hub, svc, sessions))
-
 	var authLimiter *rateLimiter
 	if rateLimitMax > 0 && rateLimitWindow > 0 {
 		authLimiter = newRateLimiter(rateLimitMax, rateLimitWindow)
@@ -108,6 +110,8 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		return http.HandlerFunc(RateLimit(authLimiter)(h).ServeHTTP)
 	}
 
+	mux.HandleFunc("GET /content/ws", limited(handleContentWebSocket(hub, svc, sessions)))
+
 	// Users
 	mux.HandleFunc("POST /users", limited(handleCreateUser(svc, sessions, hubAPI)))
 	mux.HandleFunc("DELETE /users/{id}", limited(handleDeleteUser(svc, sessions, hubAPI)))
@@ -116,7 +120,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("POST /password", limited(handleChangePassword(svc, sessions)))
 
 	// Rooms
-	mux.HandleFunc("POST /rooms", handleCreateRoom(svc, sessions))
+	mux.HandleFunc("POST /rooms", limited(handleCreateRoom(svc, sessions)))
 	mux.HandleFunc("GET /rooms/{id}", handleRoomDetail(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
@@ -124,9 +128,9 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /rooms/{id}/members-list", handleRoomMembersList(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/messages", handleListMessages(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/messages/search", handleSearchMessages(svc, sessions))
-	mux.HandleFunc("GET /rooms/{id}/ws", handleWebSocket(hub, svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/join", handleJoinRoom(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /rooms/{id}/leave", handleLeaveRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("GET /rooms/{id}/ws", limited(handleWebSocket(hub, svc, sessions)))
+	mux.HandleFunc("POST /rooms/{id}/join", limited(handleJoinRoom(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /rooms/{id}/leave", limited(handleLeaveRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/pgp-required", handleSetPGPRequired(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
@@ -138,18 +142,19 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}/pgp-key", handleRemoveMemberPGPKey(svc, sessions, hubAPI))
 
 	// Invites
-	mux.HandleFunc("POST /rooms/{id}/invites", handleCreateInvite(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /invites/{id}/accept", handleAcceptInvite(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /invites/{id}/decline", handleDeclineInvite(svc, sessions))
-	mux.HandleFunc("POST /invites/{id}/cancel", handleCancelInvite(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /rooms/{id}/invites", limited(handleCreateInvite(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /invites/{id}/accept", limited(handleAcceptInvite(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /invites/{id}/decline", limited(handleDeclineInvite(svc, sessions)))
+	mux.HandleFunc("POST /invites/{id}/cancel", limited(handleCancelInvite(svc, sessions, hubAPI)))
 
 	// Direct Messages
-	mux.HandleFunc("POST /dms", handleCreateOrGetDM(svc, sessions))
+	mux.HandleFunc("POST /dms", limited(handleCreateOrGetDM(svc, sessions)))
 	mux.HandleFunc("GET /dms", handleListDMs(svc, sessions))
 
 	// Apply middleware stack (outermost first)
 	handler := Chain(mux,
 		RecoverPanic,
+		WithScriptNonce,
 		SecurityHeaders(sessions.Secure()),
 		MaxRequestBody,
 		TracingMiddleware(serviceName),
@@ -186,7 +191,7 @@ func handleHealth(svc HealthService) http.HandlerFunc {
 }
 
 func handleIndex(w http.ResponseWriter, r *http.Request) {
-	render(w, "index.html", indexData{CSRFToken: CSRFTokenFromContext(r.Context())})
+	render(w, "index.html", indexData{CSRFToken: CSRFTokenFromContext(r.Context()), ScriptNonce: scriptNonceFromContext(r.Context())})
 }
 
 func handleContent(svc ContentHandlersService, sessions SessionManager) http.HandlerFunc {
@@ -248,6 +253,7 @@ func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc Conten
 	render(w, "content_invites.html", contentData{
 		CurrentUserID: currentID,
 		Invites:       view.Invites,
+		ScriptNonce:   scriptNonceFromContext(ctx),
 	})
 }
 
@@ -261,6 +267,7 @@ func renderContentUsers(w http.ResponseWriter, ctx context.Context, svc ContentV
 	render(w, "content_users.html", contentData{
 		CurrentUserID: currentID,
 		Users:         view.Users,
+		ScriptNonce:   scriptNonceFromContext(ctx),
 	})
 }
 
@@ -367,7 +374,8 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		PGPVerifyAttempted:  opts.pgpVerifyAttempted,
 		PGPVerifyFormError:  opts.pgpVerifyErr,
 		PGPRemoveFormError:  opts.pgpRemoveErr,
-		MemberPGPKeysJSON:   template.JS(keysJSON), //nolint:gosec // JSON-encoded map of public keys, safe for script context
+		MemberPGPKeysBase64: base64.StdEncoding.EncodeToString(keysJSON),
+		ScriptNonce:         scriptNonceFromContext(ctx),
 	})
 }
 
@@ -428,6 +436,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.MemberRooms = view.MemberRooms
 	data.DMRooms = view.DMRooms
 	data.Invites = view.Invites
+	data.ScriptNonce = scriptNonceFromContext(ctx)
 
 	w.Header().Set("Hx-Push-Url", "/")
 	render(w, "content.html", data)

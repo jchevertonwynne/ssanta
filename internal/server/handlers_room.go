@@ -225,7 +225,7 @@ func handleRoomDetail(svc RoomHandlersService, sessions SessionManager) http.Han
 		if r.Header.Get("Hx-Request") != "" {
 			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
 		} else {
-			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID), CSRFToken: CSRFTokenFromContext(r.Context())})
+			render(w, "index.html", indexData{BootstrapURL: fmt.Sprintf("/rooms/%d", roomID), CSRFToken: CSRFTokenFromContext(r.Context()), ScriptNonce: scriptNonceFromContext(r.Context())})
 		}
 	}
 }
@@ -262,6 +262,7 @@ func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.Ha
 	}
 }
 
+//nolint:dupl
 func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -273,11 +274,11 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 		if !ok {
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		value := r.FormValue("value") == "true"
 		err := svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
 		switch {
@@ -296,6 +297,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 	}
 }
 
+//nolint:dupl
 func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)

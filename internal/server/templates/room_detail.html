@@ -65,7 +65,7 @@
     </section>
 </div>
 
-<script>
+<script nonce="{{.ScriptNonce}}">
 (function() {
     const chatMessages = document.getElementById('chat-messages');
     const chatForm = document.getElementById('chat-form');
@@ -78,7 +78,7 @@
     let roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
     const currentUserID = String({{.CurrentUserID}});
     const currentUsername = "{{.CurrentUsername}}";
-    const memberPGPKeys = {{.MemberPGPKeysJSON}};
+    const memberPGPKeys = JSON.parse(atob('{{.MemberPGPKeysBase64}}'));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     let loadedPrivateKey = null;

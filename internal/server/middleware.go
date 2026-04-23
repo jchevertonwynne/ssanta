@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"log/slog"
@@ -33,6 +34,7 @@ const (
 	ctxKeyRequestID
 	ctxKeyCSRFID
 	ctxKeyCSRFToken
+	ctxKeyScriptNonce
 )
 
 // Chain wraps h with the given middlewares, with the *first* middleware as the
@@ -129,6 +131,31 @@ func newRequestID() string {
 		return strconv.FormatInt(time.Now().UnixNano(), 16)
 	}
 	return hex.EncodeToString(b[:])
+}
+
+func newScriptNonce() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(b[:])
+}
+
+func scriptNonceFromContext(ctx context.Context) string {
+	if nonce, ok := ctx.Value(ctxKeyScriptNonce).(string); ok {
+		return nonce
+	}
+	return ""
+}
+
+// WithScriptNonce generates a per-request CSP script nonce and injects it into
+// the request context so SecurityHeaders can reference it.
+func WithScriptNonce(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nonce := newScriptNonce()
+		ctx := context.WithValue(r.Context(), ctxKeyScriptNonce, nonce)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // pathInt64 parses a numeric path parameter and writes a 400 on failure.
@@ -235,9 +262,16 @@ func SecurityHeaders(secure bool) func(http.Handler) http.Handler {
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+			nonce := scriptNonceFromContext(r.Context())
+			scriptSrc := "script-src 'self' unpkg.com cdn.jsdelivr.net"
+			if nonce != "" {
+				scriptSrc += " 'nonce-" + nonce + "'"
+			}
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
-					"script-src 'self' 'unsafe-inline' unpkg.com cdn.jsdelivr.net; "+
+					scriptSrc+"; "+
+					"script-src-attr 'unsafe-inline'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"connect-src 'self' ws: wss:;")
 			if secure {

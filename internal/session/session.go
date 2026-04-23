@@ -67,7 +67,7 @@ func (m *Manager) Set(w http.ResponseWriter, userID store.UserID) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   m.secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(m.ttl.Seconds()),
 	})
 }
@@ -81,7 +81,7 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   m.secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 

@@ -84,11 +84,11 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			http.Error(w, "can only delete your own account", http.StatusForbidden)
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		password := r.FormValue("current_password")
 		if password == "" {
 			// Go's ParseForm does not parse request body for DELETE;
@@ -129,11 +129,11 @@ func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerF
 		ctx, span := otel.Tracer("ssanta").Start(r.Context(), "Login")
 		defer span.End()
 
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 		span.SetAttributes(attribute.String("username", username))
