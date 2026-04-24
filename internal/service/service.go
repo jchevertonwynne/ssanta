@@ -656,8 +656,6 @@ func (s *Service) GetUserByUsername(ctx context.Context, username string) (store
 // Direct Messages
 
 // GetOrCreateDMRoom gets or creates a DM room between two users.
-//
-//nolint:cyclop
 func (s *Service) GetOrCreateDMRoom(
 	ctx context.Context,
 	user1ID, user2ID store.UserID,

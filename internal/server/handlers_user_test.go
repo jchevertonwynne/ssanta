@@ -17,7 +17,6 @@ import (
 func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -47,7 +46,6 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 func TestHandleCreateUser_PasswordMismatch_RendersError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -73,7 +71,6 @@ func TestHandleCreateUser_PasswordMismatch_RendersError(t *testing.T) {
 func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -100,7 +97,6 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -120,7 +116,6 @@ func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 func TestHandleDeleteUser_CannotDeleteOtherUser_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -140,7 +135,6 @@ func TestHandleDeleteUser_CannotDeleteOtherUser_Returns403(t *testing.T) {
 func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -166,7 +160,6 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 func TestHandleLogin_InvalidCredentials_RendersError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -191,7 +184,6 @@ func TestHandleLogin_InvalidCredentials_RendersError(t *testing.T) {
 func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -215,7 +207,6 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -237,7 +228,6 @@ func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 func TestHandleDeleteUser_InvalidPathID_Returns400(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -257,7 +247,6 @@ func TestHandleDeleteUser_InvalidPathID_Returns400(t *testing.T) {
 func TestHandleChangePassword_Success(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -288,7 +277,6 @@ func TestHandleChangePassword_Success(t *testing.T) {
 func TestHandleChangePassword_Unauthorized(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -310,7 +298,6 @@ func TestHandleChangePassword_Unauthorized(t *testing.T) {
 func TestHandleChangePassword_NewPasswordMismatch(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -336,7 +323,6 @@ func TestHandleChangePassword_NewPasswordMismatch(t *testing.T) {
 func testChangePasswordError(t *testing.T, currentPass, newPass string, expectedErr error) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

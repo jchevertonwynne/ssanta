@@ -270,7 +270,6 @@ func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.Ha
 	}
 }
 
-//nolint:dupl
 func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -305,7 +304,6 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 	}
 }
 
-//nolint:dupl
 func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)

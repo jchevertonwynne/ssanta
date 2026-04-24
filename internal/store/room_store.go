@@ -72,14 +72,13 @@ func (s *RoomStore) GetOrCreateRoom(ctx context.Context, displayName string, cre
 			`SELECT id FROM rooms WHERE display_name = $1`,
 			displayName,
 		).Scan(&roomID)
-		return roomID, err	
+		return roomID, err
 	}
 	if err == nil {
 		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID, "room_id", roomID)
 	}
 	return roomID, err
 }
-
 
 func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
 	var roomID RoomID

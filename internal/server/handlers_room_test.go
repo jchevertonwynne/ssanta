@@ -17,7 +17,6 @@ import (
 func TestHandleCreateRoom_Unauthorized_Returns401(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -35,7 +34,6 @@ func TestHandleCreateRoom_Unauthorized_Returns401(t *testing.T) {
 func testCreateRoomError(t *testing.T, name string, expectedErr error) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -68,7 +66,6 @@ func TestHandleCreateRoom_ReservedDMPrefix_RendersError(t *testing.T) {
 func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -100,7 +97,6 @@ func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T
 func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -136,7 +132,6 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 func TestHandleLeaveRoom_NotMember_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -161,7 +156,6 @@ func TestHandleLeaveRoom_NotMember_Returns403(t *testing.T) {
 func TestHandleRoomDetail_LoggedOut_NonHTMX_RedirectsHome(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -183,7 +177,6 @@ func TestHandleRoomDetail_LoggedOut_NonHTMX_RedirectsHome(t *testing.T) {
 func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -203,7 +196,6 @@ func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 func TestHandleSetMembersCanInvite_NonCreator_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -225,7 +217,6 @@ func TestHandleSetMembersCanInvite_NonCreator_Returns403(t *testing.T) {
 func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -248,7 +239,6 @@ func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
 func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -273,7 +263,6 @@ func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
 func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -307,7 +296,6 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 func TestHandleRoomMembersList_Unauthorized_Returns401(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -326,7 +314,6 @@ func TestHandleRoomMembersList_Unauthorized_Returns401(t *testing.T) {
 func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -351,7 +338,6 @@ func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
 func TestHandleRoomMembersList_Success_IncludesAllMembers(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

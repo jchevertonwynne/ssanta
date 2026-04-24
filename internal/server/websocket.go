@@ -1066,6 +1066,6 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 
 		hub.wg.Add(2)
 		go client.writePump()
-		go client.readPump(hub.lifetimeCtx)
+		go client.readPump(context.WithValue(hub.lifetimeCtx, "ws_side", "readPump"))
 	}
 }

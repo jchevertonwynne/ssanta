@@ -19,7 +19,6 @@ import (
 func TestHandleCreateOrGetDM_MissingPartnerID_Returns400(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -42,7 +41,6 @@ func TestHandleCreateOrGetDM_MissingPartnerID_Returns400(t *testing.T) {
 func TestHandleCreateOrGetDM_URLEncoded_Redirects303(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -70,7 +68,6 @@ func TestHandleCreateOrGetDM_URLEncoded_Redirects303(t *testing.T) {
 func TestHandleCreateOrGetDM_Multipart_Redirects303(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

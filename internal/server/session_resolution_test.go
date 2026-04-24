@@ -15,7 +15,6 @@ import (
 func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -37,7 +36,6 @@ func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 func TestResolveSessionUser_SignedCookieForDeletedUser_ClearsCookie(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

@@ -242,7 +242,6 @@ func TestChatHub_DisconnectRoom_EvictsClientsAndEmitsRoomDeleted(t *testing.T) {
 func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -310,7 +309,6 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -408,7 +406,6 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -494,7 +491,6 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -538,7 +534,6 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -644,7 +639,6 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -748,7 +742,6 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

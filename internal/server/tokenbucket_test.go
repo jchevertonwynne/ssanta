@@ -13,7 +13,7 @@ func TestTokenBucket_BurstThenExhaust(t *testing.T) {
 	b.now = func() time.Time { return base }
 	b.last = base
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if !b.Take() {
 			t.Fatalf("take %d: expected allowed", i)
 		}

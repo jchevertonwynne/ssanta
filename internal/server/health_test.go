@@ -15,7 +15,6 @@ import (
 func TestHandleHealth_OK(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockHealthService(ctrl)
 	svc.EXPECT().Ping(gomock.Any()).Return(nil)
@@ -42,7 +41,6 @@ func TestHandleHealth_OK(t *testing.T) {
 func TestHandleHealth_DBUnavailable(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockHealthService(ctrl)
 	svc.EXPECT().Ping(gomock.Any()).Return(errors.New("db down")) //nolint:err113 // test error

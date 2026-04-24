@@ -17,7 +17,6 @@ import (
 func TestHandleCreateInvite_NotAllowed_RendersInviteError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -44,7 +43,6 @@ func TestHandleCreateInvite_NotAllowed_RendersInviteError(t *testing.T) {
 func TestHandleCreateInvite_Success_BroadcastsAndNotifiesInvitee(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -72,7 +70,6 @@ func TestHandleCreateInvite_Success_BroadcastsAndNotifiesInvitee(t *testing.T) {
 func TestHandleAcceptInvite_NotFoundOnPreLookup_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -94,7 +91,6 @@ func TestHandleAcceptInvite_NotFoundOnPreLookup_Returns404(t *testing.T) {
 func TestHandleAcceptInvite_Success_NotifiesRoomAndRenders(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -122,7 +118,6 @@ func TestHandleAcceptInvite_Success_NotifiesRoomAndRenders(t *testing.T) {
 func TestHandleDeclineInvite_NotFound_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -143,7 +138,6 @@ func TestHandleDeclineInvite_NotFound_Returns404(t *testing.T) {
 func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -165,7 +159,6 @@ func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 func TestHandleAcceptInvite_WrongUser_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -189,7 +182,6 @@ func TestHandleAcceptInvite_WrongUser_Returns404(t *testing.T) {
 func TestHandleDeclineInvite_WrongUser_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -211,7 +203,6 @@ func TestHandleDeclineInvite_WrongUser_Returns404(t *testing.T) {
 func TestHandleDeclineInvite_Success_RendersContent(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)

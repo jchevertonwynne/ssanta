@@ -70,7 +70,7 @@ func TestRateLimiter_DifferentIPsIndependent(t *testing.T) {
 
 func TestClientIP_TrustProxyFalse_IgnoresForwardedHeaders(t *testing.T) {
 	t.Parallel()
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), "GET", "/", nil)
 	r.RemoteAddr = "10.0.0.1:4444"
 	r.Header.Set("X-Forwarded-For", "1.1.1.1")
 	r.Header.Set("X-Real-Ip", "2.2.2.2")
@@ -82,7 +82,7 @@ func TestClientIP_TrustProxyFalse_IgnoresForwardedHeaders(t *testing.T) {
 
 func TestClientIP_TrustProxyTrue_UsesLeftmostXFF(t *testing.T) {
 	t.Parallel()
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequestWithContext(t.Context(), "GET", "/", nil)
 	r.RemoteAddr = "10.0.0.1:4444"
 	r.Header.Set("X-Forwarded-For", "203.0.113.5, 198.51.100.1")
 
