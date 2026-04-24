@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
 const cookieName = "session"
@@ -56,7 +56,7 @@ func (m *Manager) Secure() bool { return m.secure }
 // Set writes a signed session cookie for the given user and session version.
 // Bumping the server-side version invalidates all previously-issued cookies
 // for that user — used by ChangePassword and any future "logout everywhere".
-func (m *Manager) Set(w http.ResponseWriter, userID store.UserID, version int) {
+func (m *Manager) Set(w http.ResponseWriter, userID model.UserID, version int) {
 	if userID == 0 {
 		return
 	}
@@ -92,7 +92,7 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 // persisted server-side value before trusting the session.
 //
 //nolint:cyclop
-func (m *Manager) UserID(r *http.Request) (store.UserID, int, bool) {
+func (m *Manager) UserID(r *http.Request) (model.UserID, int, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return 0, 0, false
@@ -123,7 +123,7 @@ func (m *Manager) UserID(r *http.Request) (store.UserID, int, bool) {
 	if m.now().Sub(time.Unix(issuedUnix, 0)) > m.ttl {
 		return 0, 0, false
 	}
-	return store.UserID(userID), version, true
+	return model.UserID(userID), version, true
 }
 
 func (m *Manager) sign(payload string) string {

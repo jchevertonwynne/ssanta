@@ -14,8 +14,8 @@ import (
 	http "net/http"
 	reflect "reflect"
 
+	model "github.com/jchevertonwynne/ssanta/internal/model"
 	service "github.com/jchevertonwynne/ssanta/internal/service"
-	store "github.com/jchevertonwynne/ssanta/internal/store"
 	ws "github.com/jchevertonwynne/ssanta/internal/ws"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -107,7 +107,7 @@ func (m *MockContentViewService) EXPECT() *MockContentViewServiceMockRecorder {
 }
 
 // GetContentView mocks base method.
-func (m *MockContentViewService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockContentViewService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -134,13 +134,13 @@ func (c *MockContentViewServiceGetContentViewCall) Return(arg0 *service.ContentV
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockContentViewServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockContentViewServiceGetContentViewCall {
+func (c *MockContentViewServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockContentViewServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockContentViewServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockContentViewServiceGetContentViewCall {
+func (c *MockContentViewServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockContentViewServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -170,7 +170,7 @@ func (m *MockRoomDetailViewService) EXPECT() *MockRoomDetailViewServiceMockRecor
 }
 
 // GetRoomDetailView mocks base method.
-func (m *MockRoomDetailViewService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
+func (m *MockRoomDetailViewService) GetRoomDetailView(ctx context.Context, roomID model.RoomID, userID model.UserID) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
 	ret0, _ := ret[0].(*service.RoomDetailView)
@@ -197,13 +197,13 @@ func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) Return(arg0 *service.Ro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockRoomDetailViewServiceGetRoomDetailViewCall {
+func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) Do(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockRoomDetailViewServiceGetRoomDetailViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockRoomDetailViewServiceGetRoomDetailViewCall {
+func (c *MockRoomDetailViewServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockRoomDetailViewServiceGetRoomDetailViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -233,10 +233,10 @@ func (m *MockRoomMembersWithPGPService) EXPECT() *MockRoomMembersWithPGPServiceM
 }
 
 // ListRoomMembersWithPGP mocks base method.
-func (m *MockRoomMembersWithPGPService) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
+func (m *MockRoomMembersWithPGPService) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomID) ([]model.RoomMember, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
-	ret0, _ := ret[0].([]store.RoomMember)
+	ret0, _ := ret[0].([]model.RoomMember)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -254,19 +254,19 @@ type MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Return(arg0 []model.RoomMember, arg1 error) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Do(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) Do(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
+func (c *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockRoomMembersWithPGPServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -296,7 +296,7 @@ func (m *MockUserExistsService) EXPECT() *MockUserExistsServiceMockRecorder {
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockUserExistsService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockUserExistsService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -323,19 +323,19 @@ func (c *MockUserExistsServiceGetUserSessionVersionCall) Return(arg0 int, arg1 e
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserExistsServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
+func (c *MockUserExistsServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserExistsServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
+func (c *MockUserExistsServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockUserExistsService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockUserExistsService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -362,13 +362,13 @@ func (c *MockUserExistsServiceUserExistsCall) Return(arg0 bool, arg1 error) *Moc
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserExistsServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockUserExistsServiceUserExistsCall {
+func (c *MockUserExistsServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockUserExistsServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserExistsServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockUserExistsServiceUserExistsCall {
+func (c *MockUserExistsServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockUserExistsServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -398,10 +398,10 @@ func (m *MockCreateUserService) EXPECT() *MockCreateUserServiceMockRecorder {
 }
 
 // CreateUser mocks base method.
-func (m *MockCreateUserService) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockCreateUserService) CreateUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -419,19 +419,19 @@ type MockCreateUserServiceCreateUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCreateUserServiceCreateUserCall) Return(arg0 store.UserID, arg1 error) *MockCreateUserServiceCreateUserCall {
+func (c *MockCreateUserServiceCreateUserCall) Return(arg0 model.UserID, arg1 error) *MockCreateUserServiceCreateUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCreateUserServiceCreateUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockCreateUserServiceCreateUserCall {
+func (c *MockCreateUserServiceCreateUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockCreateUserServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCreateUserServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockCreateUserServiceCreateUserCall {
+func (c *MockCreateUserServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockCreateUserServiceCreateUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -461,10 +461,10 @@ func (m *MockLoginUserService) EXPECT() *MockLoginUserServiceMockRecorder {
 }
 
 // LoginUser mocks base method.
-func (m *MockLoginUserService) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockLoginUserService) LoginUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -482,19 +482,19 @@ type MockLoginUserServiceLoginUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockLoginUserServiceLoginUserCall) Return(arg0 store.UserID, arg1 error) *MockLoginUserServiceLoginUserCall {
+func (c *MockLoginUserServiceLoginUserCall) Return(arg0 model.UserID, arg1 error) *MockLoginUserServiceLoginUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLoginUserServiceLoginUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockLoginUserServiceLoginUserCall {
+func (c *MockLoginUserServiceLoginUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockLoginUserServiceLoginUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLoginUserServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockLoginUserServiceLoginUserCall {
+func (c *MockLoginUserServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockLoginUserServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -524,7 +524,7 @@ func (m *MockDeleteUserService) EXPECT() *MockDeleteUserServiceMockRecorder {
 }
 
 // DeleteUser mocks base method.
-func (m *MockDeleteUserService) DeleteUser(ctx context.Context, id store.UserID) error {
+func (m *MockDeleteUserService) DeleteUser(ctx context.Context, id model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
 	ret0, _ := ret[0].(error)
@@ -550,13 +550,13 @@ func (c *MockDeleteUserServiceDeleteUserCall) Return(arg0 error) *MockDeleteUser
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDeleteUserServiceDeleteUserCall) Do(f func(context.Context, store.UserID) error) *MockDeleteUserServiceDeleteUserCall {
+func (c *MockDeleteUserServiceDeleteUserCall) Do(f func(context.Context, model.UserID) error) *MockDeleteUserServiceDeleteUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDeleteUserServiceDeleteUserCall) DoAndReturn(f func(context.Context, store.UserID) error) *MockDeleteUserServiceDeleteUserCall {
+func (c *MockDeleteUserServiceDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID) error) *MockDeleteUserServiceDeleteUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -586,7 +586,7 @@ func (m *MockChangePasswordService) EXPECT() *MockChangePasswordServiceMockRecor
 }
 
 // ChangePassword mocks base method.
-func (m *MockChangePasswordService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+func (m *MockChangePasswordService) ChangePassword(ctx context.Context, userID model.UserID, currentPassword, newPassword string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
 	ret0, _ := ret[0].(error)
@@ -612,13 +612,13 @@ func (c *MockChangePasswordServiceChangePasswordCall) Return(arg0 error) *MockCh
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockChangePasswordServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
+func (c *MockChangePasswordServiceChangePasswordCall) Do(f func(context.Context, model.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockChangePasswordServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
+func (c *MockChangePasswordServiceChangePasswordCall) DoAndReturn(f func(context.Context, model.UserID, string, string) error) *MockChangePasswordServiceChangePasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -648,7 +648,7 @@ func (m *MockUsernameService) EXPECT() *MockUsernameServiceMockRecorder {
 }
 
 // GetUsername mocks base method.
-func (m *MockUsernameService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (m *MockUsernameService) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsername", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -675,13 +675,13 @@ func (c *MockUsernameServiceGetUsernameCall) Return(arg0 string, arg1 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUsernameServiceGetUsernameCall) Do(f func(context.Context, store.UserID) (string, error)) *MockUsernameServiceGetUsernameCall {
+func (c *MockUsernameServiceGetUsernameCall) Do(f func(context.Context, model.UserID) (string, error)) *MockUsernameServiceGetUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUsernameServiceGetUsernameCall) DoAndReturn(f func(context.Context, store.UserID) (string, error)) *MockUsernameServiceGetUsernameCall {
+func (c *MockUsernameServiceGetUsernameCall) DoAndReturn(f func(context.Context, model.UserID) (string, error)) *MockUsernameServiceGetUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -711,10 +711,10 @@ func (m *MockUserLookupService) EXPECT() *MockUserLookupServiceMockRecorder {
 }
 
 // GetUserByUsername mocks base method.
-func (m *MockUserLookupService) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
+func (m *MockUserLookupService) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByUsername", ctx, username)
-	ret0, _ := ret[0].(store.User)
+	ret0, _ := ret[0].(model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -732,19 +732,19 @@ type MockUserLookupServiceGetUserByUsernameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserLookupServiceGetUserByUsernameCall) Return(arg0 store.User, arg1 error) *MockUserLookupServiceGetUserByUsernameCall {
+func (c *MockUserLookupServiceGetUserByUsernameCall) Return(arg0 model.User, arg1 error) *MockUserLookupServiceGetUserByUsernameCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserLookupServiceGetUserByUsernameCall) Do(f func(context.Context, string) (store.User, error)) *MockUserLookupServiceGetUserByUsernameCall {
+func (c *MockUserLookupServiceGetUserByUsernameCall) Do(f func(context.Context, string) (model.User, error)) *MockUserLookupServiceGetUserByUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserLookupServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (store.User, error)) *MockUserLookupServiceGetUserByUsernameCall {
+func (c *MockUserLookupServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (model.User, error)) *MockUserLookupServiceGetUserByUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -774,10 +774,10 @@ func (m *MockCreateRoomService) EXPECT() *MockCreateRoomServiceMockRecorder {
 }
 
 // CreateRoom mocks base method.
-func (m *MockCreateRoomService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
+func (m *MockCreateRoomService) CreateRoom(ctx context.Context, displayName string, creatorID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -795,19 +795,19 @@ type MockCreateRoomServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockCreateRoomServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockCreateRoomServiceCreateRoomCall {
+func (c *MockCreateRoomServiceCreateRoomCall) Return(arg0 model.RoomID, arg1 error) *MockCreateRoomServiceCreateRoomCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockCreateRoomServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
+func (c *MockCreateRoomServiceCreateRoomCall) Do(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockCreateRoomServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
+func (c *MockCreateRoomServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockCreateRoomServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -837,7 +837,7 @@ func (m *MockDeleteRoomService) EXPECT() *MockDeleteRoomServiceMockRecorder {
 }
 
 // DeleteRoom mocks base method.
-func (m *MockDeleteRoomService) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
+func (m *MockDeleteRoomService) DeleteRoom(ctx context.Context, roomID model.RoomID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteRoom", ctx, roomID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -863,13 +863,13 @@ func (c *MockDeleteRoomServiceDeleteRoomCall) Return(arg0 error) *MockDeleteRoom
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDeleteRoomServiceDeleteRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockDeleteRoomServiceDeleteRoomCall {
+func (c *MockDeleteRoomServiceDeleteRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockDeleteRoomServiceDeleteRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDeleteRoomServiceDeleteRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockDeleteRoomServiceDeleteRoomCall {
+func (c *MockDeleteRoomServiceDeleteRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockDeleteRoomServiceDeleteRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -899,7 +899,7 @@ func (m *MockJoinRoomService) EXPECT() *MockJoinRoomServiceMockRecorder {
 }
 
 // JoinRoom mocks base method.
-func (m *MockJoinRoomService) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockJoinRoomService) JoinRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "JoinRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -925,13 +925,13 @@ func (c *MockJoinRoomServiceJoinRoomCall) Return(arg0 error) *MockJoinRoomServic
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockJoinRoomServiceJoinRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockJoinRoomServiceJoinRoomCall {
+func (c *MockJoinRoomServiceJoinRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockJoinRoomServiceJoinRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockJoinRoomServiceJoinRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockJoinRoomServiceJoinRoomCall {
+func (c *MockJoinRoomServiceJoinRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockJoinRoomServiceJoinRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -961,7 +961,7 @@ func (m *MockLeaveRoomService) EXPECT() *MockLeaveRoomServiceMockRecorder {
 }
 
 // LeaveRoom mocks base method.
-func (m *MockLeaveRoomService) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockLeaveRoomService) LeaveRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LeaveRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -987,13 +987,13 @@ func (c *MockLeaveRoomServiceLeaveRoomCall) Return(arg0 error) *MockLeaveRoomSer
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockLeaveRoomServiceLeaveRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockLeaveRoomServiceLeaveRoomCall {
+func (c *MockLeaveRoomServiceLeaveRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockLeaveRoomServiceLeaveRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockLeaveRoomServiceLeaveRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockLeaveRoomServiceLeaveRoomCall {
+func (c *MockLeaveRoomServiceLeaveRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockLeaveRoomServiceLeaveRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1023,7 +1023,7 @@ func (m *MockRemoveMemberService) EXPECT() *MockRemoveMemberServiceMockRecorder 
 }
 
 // RemoveMember mocks base method.
-func (m *MockRemoveMemberService) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
+func (m *MockRemoveMemberService) RemoveMember(ctx context.Context, roomID model.RoomID, memberID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveMember", ctx, roomID, memberID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -1049,13 +1049,13 @@ func (c *MockRemoveMemberServiceRemoveMemberCall) Return(arg0 error) *MockRemove
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRemoveMemberServiceRemoveMemberCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRemoveMemberServiceRemoveMemberCall {
+func (c *MockRemoveMemberServiceRemoveMemberCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRemoveMemberServiceRemoveMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRemoveMemberServiceRemoveMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRemoveMemberServiceRemoveMemberCall {
+func (c *MockRemoveMemberServiceRemoveMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRemoveMemberServiceRemoveMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1085,7 +1085,7 @@ func (m *MockIsRoomCreatorService) EXPECT() *MockIsRoomCreatorServiceMockRecorde
 }
 
 // IsRoomCreator mocks base method.
-func (m *MockIsRoomCreatorService) IsRoomCreator(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
+func (m *MockIsRoomCreatorService) IsRoomCreator(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomCreator", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -1112,13 +1112,13 @@ func (c *MockIsRoomCreatorServiceIsRoomCreatorCall) Return(arg0 bool, arg1 error
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockIsRoomCreatorServiceIsRoomCreatorCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockIsRoomCreatorServiceIsRoomCreatorCall {
+func (c *MockIsRoomCreatorServiceIsRoomCreatorCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockIsRoomCreatorServiceIsRoomCreatorCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockIsRoomCreatorServiceIsRoomCreatorCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockIsRoomCreatorServiceIsRoomCreatorCall {
+func (c *MockIsRoomCreatorServiceIsRoomCreatorCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockIsRoomCreatorServiceIsRoomCreatorCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1148,7 +1148,7 @@ func (m *MockIsRoomMemberService) EXPECT() *MockIsRoomMemberServiceMockRecorder 
 }
 
 // IsRoomMember mocks base method.
-func (m *MockIsRoomMemberService) IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
+func (m *MockIsRoomMemberService) IsRoomMember(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomMember", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -1175,13 +1175,13 @@ func (c *MockIsRoomMemberServiceIsRoomMemberCall) Return(arg0 bool, arg1 error) 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockIsRoomMemberServiceIsRoomMemberCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockIsRoomMemberServiceIsRoomMemberCall {
+func (c *MockIsRoomMemberServiceIsRoomMemberCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockIsRoomMemberServiceIsRoomMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockIsRoomMemberServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockIsRoomMemberServiceIsRoomMemberCall {
+func (c *MockIsRoomMemberServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockIsRoomMemberServiceIsRoomMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1211,7 +1211,7 @@ func (m *MockIsRoomPGPRequiredService) EXPECT() *MockIsRoomPGPRequiredServiceMoc
 }
 
 // IsRoomPGPRequired mocks base method.
-func (m *MockIsRoomPGPRequiredService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+func (m *MockIsRoomPGPRequiredService) IsRoomPGPRequired(ctx context.Context, roomID model.RoomID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
 	ret0, _ := ret[0].(bool)
@@ -1238,13 +1238,13 @@ func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) Return(arg0 bool, ar
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
+func (c *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID) (bool, error)) *MockIsRoomPGPRequiredServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1274,7 +1274,7 @@ func (m *MockRoomAccessService) EXPECT() *MockRoomAccessServiceMockRecorder {
 }
 
 // GetRoomAccess mocks base method.
-func (m *MockRoomAccessService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+func (m *MockRoomAccessService) GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -1302,13 +1302,13 @@ func (c *MockRoomAccessServiceGetRoomAccessCall) Return(isCreator, isMember bool
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomAccessServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
+func (c *MockRoomAccessServiceGetRoomAccessCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomAccessServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
+func (c *MockRoomAccessServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockRoomAccessServiceGetRoomAccessCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1338,7 +1338,7 @@ func (m *MockSetRoomMembersCanInviteService) EXPECT() *MockSetRoomMembersCanInvi
 }
 
 // SetRoomMembersCanInvite mocks base method.
-func (m *MockSetRoomMembersCanInviteService) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockSetRoomMembersCanInviteService) SetRoomMembersCanInvite(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomMembersCanInvite", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -1364,13 +1364,13 @@ func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) Return(a
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall {
+func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall {
+func (c *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockSetRoomMembersCanInviteServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1400,7 +1400,7 @@ func (m *MockSetRoomPGPRequiredService) EXPECT() *MockSetRoomPGPRequiredServiceM
 }
 
 // SetRoomPGPRequired mocks base method.
-func (m *MockSetRoomPGPRequiredService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockSetRoomPGPRequiredService) SetRoomPGPRequired(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -1426,13 +1426,13 @@ func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) Return(arg0 error)
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
+func (c *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockSetRoomPGPRequiredServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1462,7 +1462,7 @@ func (m *MockRoomPGPService) EXPECT() *MockRoomPGPServiceMockRecorder {
 }
 
 // RemoveRoomUserPGPKey mocks base method.
-func (m *MockRoomPGPService) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
+func (m *MockRoomPGPService) RemoveRoomUserPGPKey(ctx context.Context, roomID model.RoomID, targetUserID, actingUserID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
 	ret0, _ := ret[0].(error)
@@ -1488,19 +1488,19 @@ func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *MockRoo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
+func (c *MockRoomPGPServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomPGPServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomPGPKey mocks base method.
-func (m *MockRoomPGPService) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
+func (m *MockRoomPGPService) SetRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, armoredPublicKey string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPKey", ctx, roomID, userID, armoredPublicKey)
 	ret0, _ := ret[0].(error)
@@ -1526,19 +1526,19 @@ func (c *MockRoomPGPServiceSetRoomPGPKeyCall) Return(arg0 error) *MockRoomPGPSer
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomPGPServiceSetRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomPGPServiceSetRoomPGPKeyCall {
+func (c *MockRoomPGPServiceSetRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomPGPServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomPGPServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomPGPServiceSetRoomPGPKeyCall {
+func (c *MockRoomPGPServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomPGPServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // VerifyRoomPGPKey mocks base method.
-func (m *MockRoomPGPService) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
+func (m *MockRoomPGPService) VerifyRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, decryptedChallenge string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyRoomPGPKey", ctx, roomID, userID, decryptedChallenge)
 	ret0, _ := ret[0].(error)
@@ -1564,13 +1564,13 @@ func (c *MockRoomPGPServiceVerifyRoomPGPKeyCall) Return(arg0 error) *MockRoomPGP
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomPGPServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomPGPServiceVerifyRoomPGPKeyCall {
+func (c *MockRoomPGPServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomPGPServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomPGPServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomPGPServiceVerifyRoomPGPKeyCall {
+func (c *MockRoomPGPServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomPGPServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1600,10 +1600,10 @@ func (m *MockInviteOpsService) EXPECT() *MockInviteOpsServiceMockRecorder {
 }
 
 // AcceptInvite mocks base method.
-func (m *MockInviteOpsService) AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error) {
+func (m *MockInviteOpsService) AcceptInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AcceptInvite", ctx, inviteID, userID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1621,29 +1621,29 @@ type MockInviteOpsServiceAcceptInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteOpsServiceAcceptInviteCall) Return(arg0 store.RoomID, arg1 error) *MockInviteOpsServiceAcceptInviteCall {
+func (c *MockInviteOpsServiceAcceptInviteCall) Return(arg0 model.RoomID, arg1 error) *MockInviteOpsServiceAcceptInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceAcceptInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockInviteOpsServiceAcceptInviteCall {
+func (c *MockInviteOpsServiceAcceptInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockInviteOpsServiceAcceptInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceAcceptInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockInviteOpsServiceAcceptInviteCall {
+func (c *MockInviteOpsServiceAcceptInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockInviteOpsServiceAcceptInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CancelInvite mocks base method.
-func (m *MockInviteOpsService) CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error) {
+func (m *MockInviteOpsService) CancelInvite(ctx context.Context, inviteID model.InviteID, actingUserID model.UserID) (model.RoomID, model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(store.RoomID)
-	ret1, _ := ret[1].(store.UserID)
+	ret0, _ := ret[0].(model.RoomID)
+	ret1, _ := ret[1].(model.UserID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -1661,25 +1661,25 @@ type MockInviteOpsServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteOpsServiceCancelInviteCall) Return(arg0 store.RoomID, arg1 store.UserID, arg2 error) *MockInviteOpsServiceCancelInviteCall {
+func (c *MockInviteOpsServiceCancelInviteCall) Return(arg0 model.RoomID, arg1 model.UserID, arg2 error) *MockInviteOpsServiceCancelInviteCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceCancelInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockInviteOpsServiceCancelInviteCall {
+func (c *MockInviteOpsServiceCancelInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockInviteOpsServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceCancelInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockInviteOpsServiceCancelInviteCall {
+func (c *MockInviteOpsServiceCancelInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockInviteOpsServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateInvite mocks base method.
-func (m *MockInviteOpsService) CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error {
+func (m *MockInviteOpsService) CreateInvite(ctx context.Context, roomID model.RoomID, inviterID model.UserID, inviteeUsername string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateInvite", ctx, roomID, inviterID, inviteeUsername)
 	ret0, _ := ret[0].(error)
@@ -1705,19 +1705,19 @@ func (c *MockInviteOpsServiceCreateInviteCall) Return(arg0 error) *MockInviteOps
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceCreateInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockInviteOpsServiceCreateInviteCall {
+func (c *MockInviteOpsServiceCreateInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockInviteOpsServiceCreateInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceCreateInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockInviteOpsServiceCreateInviteCall {
+func (c *MockInviteOpsServiceCreateInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockInviteOpsServiceCreateInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeclineInvite mocks base method.
-func (m *MockInviteOpsService) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
+func (m *MockInviteOpsService) DeclineInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeclineInvite", ctx, inviteID, userID)
 	ret0, _ := ret[0].(error)
@@ -1743,22 +1743,22 @@ func (c *MockInviteOpsServiceDeclineInviteCall) Return(arg0 error) *MockInviteOp
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceDeclineInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) error) *MockInviteOpsServiceDeclineInviteCall {
+func (c *MockInviteOpsServiceDeclineInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) error) *MockInviteOpsServiceDeclineInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceDeclineInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) error) *MockInviteOpsServiceDeclineInviteCall {
+func (c *MockInviteOpsServiceDeclineInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) error) *MockInviteOpsServiceDeclineInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RoomIDForInvite mocks base method.
-func (m *MockInviteOpsService) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
+func (m *MockInviteOpsService) RoomIDForInvite(ctx context.Context, inviteID model.InviteID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RoomIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1776,19 +1776,19 @@ type MockInviteOpsServiceRoomIDForInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteOpsServiceRoomIDForInviteCall) Return(arg0 store.RoomID, arg1 error) *MockInviteOpsServiceRoomIDForInviteCall {
+func (c *MockInviteOpsServiceRoomIDForInviteCall) Return(arg0 model.RoomID, arg1 error) *MockInviteOpsServiceRoomIDForInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteOpsServiceRoomIDForInviteCall) Do(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockInviteOpsServiceRoomIDForInviteCall {
+func (c *MockInviteOpsServiceRoomIDForInviteCall) Do(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockInviteOpsServiceRoomIDForInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteOpsServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockInviteOpsServiceRoomIDForInviteCall {
+func (c *MockInviteOpsServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockInviteOpsServiceRoomIDForInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1818,7 +1818,7 @@ func (m *MockContentHandlersService) EXPECT() *MockContentHandlersServiceMockRec
 }
 
 // GetContentView mocks base method.
-func (m *MockContentHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockContentHandlersService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -1845,19 +1845,19 @@ func (c *MockContentHandlersServiceGetContentViewCall) Return(arg0 *service.Cont
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockContentHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockContentHandlersServiceGetContentViewCall {
+func (c *MockContentHandlersServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockContentHandlersServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockContentHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockContentHandlersServiceGetContentViewCall {
+func (c *MockContentHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockContentHandlersServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockContentHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockContentHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -1884,19 +1884,19 @@ func (c *MockContentHandlersServiceGetUserSessionVersionCall) Return(arg0 int, a
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockContentHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
+func (c *MockContentHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockContentHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
+func (c *MockContentHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockContentHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockContentHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -1923,13 +1923,13 @@ func (c *MockContentHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error)
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockContentHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockContentHandlersServiceUserExistsCall {
+func (c *MockContentHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockContentHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockContentHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockContentHandlersServiceUserExistsCall {
+func (c *MockContentHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockContentHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -1959,7 +1959,7 @@ func (m *MockUserHandlersService) EXPECT() *MockUserHandlersServiceMockRecorder 
 }
 
 // ChangePassword mocks base method.
-func (m *MockUserHandlersService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+func (m *MockUserHandlersService) ChangePassword(ctx context.Context, userID model.UserID, currentPassword, newPassword string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
 	ret0, _ := ret[0].(error)
@@ -1985,22 +1985,22 @@ func (c *MockUserHandlersServiceChangePasswordCall) Return(arg0 error) *MockUser
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
+func (c *MockUserHandlersServiceChangePasswordCall) Do(f func(context.Context, model.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
+func (c *MockUserHandlersServiceChangePasswordCall) DoAndReturn(f func(context.Context, model.UserID, string, string) error) *MockUserHandlersServiceChangePasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateUser mocks base method.
-func (m *MockUserHandlersService) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockUserHandlersService) CreateUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2018,25 +2018,25 @@ type MockUserHandlersServiceCreateUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserHandlersServiceCreateUserCall) Return(arg0 store.UserID, arg1 error) *MockUserHandlersServiceCreateUserCall {
+func (c *MockUserHandlersServiceCreateUserCall) Return(arg0 model.UserID, arg1 error) *MockUserHandlersServiceCreateUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceCreateUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockUserHandlersServiceCreateUserCall {
+func (c *MockUserHandlersServiceCreateUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockUserHandlersServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockUserHandlersServiceCreateUserCall {
+func (c *MockUserHandlersServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockUserHandlersServiceCreateUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteUser mocks base method.
-func (m *MockUserHandlersService) DeleteUser(ctx context.Context, id store.UserID) error {
+func (m *MockUserHandlersService) DeleteUser(ctx context.Context, id model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
 	ret0, _ := ret[0].(error)
@@ -2062,19 +2062,19 @@ func (c *MockUserHandlersServiceDeleteUserCall) Return(arg0 error) *MockUserHand
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceDeleteUserCall) Do(f func(context.Context, store.UserID) error) *MockUserHandlersServiceDeleteUserCall {
+func (c *MockUserHandlersServiceDeleteUserCall) Do(f func(context.Context, model.UserID) error) *MockUserHandlersServiceDeleteUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceDeleteUserCall) DoAndReturn(f func(context.Context, store.UserID) error) *MockUserHandlersServiceDeleteUserCall {
+func (c *MockUserHandlersServiceDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID) error) *MockUserHandlersServiceDeleteUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetContentView mocks base method.
-func (m *MockUserHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockUserHandlersService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -2101,19 +2101,19 @@ func (c *MockUserHandlersServiceGetContentViewCall) Return(arg0 *service.Content
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
+func (c *MockUserHandlersServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
+func (c *MockUserHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockUserHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockUserHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -2140,22 +2140,22 @@ func (c *MockUserHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
+func (c *MockUserHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
+func (c *MockUserHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // LoginUser mocks base method.
-func (m *MockUserHandlersService) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockUserHandlersService) LoginUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2173,25 +2173,25 @@ type MockUserHandlersServiceLoginUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockUserHandlersServiceLoginUserCall) Return(arg0 store.UserID, arg1 error) *MockUserHandlersServiceLoginUserCall {
+func (c *MockUserHandlersServiceLoginUserCall) Return(arg0 model.UserID, arg1 error) *MockUserHandlersServiceLoginUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceLoginUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockUserHandlersServiceLoginUserCall {
+func (c *MockUserHandlersServiceLoginUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockUserHandlersServiceLoginUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockUserHandlersServiceLoginUserCall {
+func (c *MockUserHandlersServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockUserHandlersServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockUserHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockUserHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -2218,19 +2218,19 @@ func (c *MockUserHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) *M
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockUserHandlersServiceUserExistsCall {
+func (c *MockUserHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockUserHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockUserHandlersServiceUserExistsCall {
+func (c *MockUserHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockUserHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // VerifyPassword mocks base method.
-func (m *MockUserHandlersService) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+func (m *MockUserHandlersService) VerifyPassword(ctx context.Context, userID model.UserID, password string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyPassword", ctx, userID, password)
 	ret0, _ := ret[0].(error)
@@ -2256,13 +2256,13 @@ func (c *MockUserHandlersServiceVerifyPasswordCall) Return(arg0 error) *MockUser
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockUserHandlersServiceVerifyPasswordCall) Do(f func(context.Context, store.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
+func (c *MockUserHandlersServiceVerifyPasswordCall) Do(f func(context.Context, model.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockUserHandlersServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, store.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
+func (c *MockUserHandlersServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, model.UserID, string) error) *MockUserHandlersServiceVerifyPasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2292,10 +2292,10 @@ func (m *MockRoomHandlersService) EXPECT() *MockRoomHandlersServiceMockRecorder 
 }
 
 // CreateRoom mocks base method.
-func (m *MockRoomHandlersService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
+func (m *MockRoomHandlersService) CreateRoom(ctx context.Context, displayName string, creatorID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2313,25 +2313,25 @@ type MockRoomHandlersServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockRoomHandlersServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockRoomHandlersServiceCreateRoomCall {
+func (c *MockRoomHandlersServiceCreateRoomCall) Return(arg0 model.RoomID, arg1 error) *MockRoomHandlersServiceCreateRoomCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
+func (c *MockRoomHandlersServiceCreateRoomCall) Do(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
+func (c *MockRoomHandlersServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockRoomHandlersServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteRoom mocks base method.
-func (m *MockRoomHandlersService) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
+func (m *MockRoomHandlersService) DeleteRoom(ctx context.Context, roomID model.RoomID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteRoom", ctx, roomID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -2357,19 +2357,19 @@ func (c *MockRoomHandlersServiceDeleteRoomCall) Return(arg0 error) *MockRoomHand
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceDeleteRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceDeleteRoomCall {
+func (c *MockRoomHandlersServiceDeleteRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceDeleteRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceDeleteRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceDeleteRoomCall {
+func (c *MockRoomHandlersServiceDeleteRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceDeleteRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetContentView mocks base method.
-func (m *MockRoomHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockRoomHandlersService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -2396,19 +2396,19 @@ func (c *MockRoomHandlersServiceGetContentViewCall) Return(arg0 *service.Content
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockRoomHandlersServiceGetContentViewCall {
+func (c *MockRoomHandlersServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockRoomHandlersServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockRoomHandlersServiceGetContentViewCall {
+func (c *MockRoomHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockRoomHandlersServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomAccess mocks base method.
-func (m *MockRoomHandlersService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+func (m *MockRoomHandlersService) GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -2436,19 +2436,19 @@ func (c *MockRoomHandlersServiceGetRoomAccessCall) Return(isCreator, isMember bo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
+func (c *MockRoomHandlersServiceGetRoomAccessCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
+func (c *MockRoomHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockRoomHandlersServiceGetRoomAccessCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomDetailView mocks base method.
-func (m *MockRoomHandlersService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
+func (m *MockRoomHandlersService) GetRoomDetailView(ctx context.Context, roomID model.RoomID, userID model.UserID) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
 	ret0, _ := ret[0].(*service.RoomDetailView)
@@ -2475,19 +2475,19 @@ func (c *MockRoomHandlersServiceGetRoomDetailViewCall) Return(arg0 *service.Room
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockRoomHandlersServiceGetRoomDetailViewCall {
+func (c *MockRoomHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockRoomHandlersServiceGetRoomDetailViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockRoomHandlersServiceGetRoomDetailViewCall {
+func (c *MockRoomHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockRoomHandlersServiceGetRoomDetailViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockRoomHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockRoomHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -2514,19 +2514,19 @@ func (c *MockRoomHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
+func (c *MockRoomHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
+func (c *MockRoomHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUsername mocks base method.
-func (m *MockRoomHandlersService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (m *MockRoomHandlersService) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsername", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -2553,19 +2553,19 @@ func (c *MockRoomHandlersServiceGetUsernameCall) Return(arg0 string, arg1 error)
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceGetUsernameCall) Do(f func(context.Context, store.UserID) (string, error)) *MockRoomHandlersServiceGetUsernameCall {
+func (c *MockRoomHandlersServiceGetUsernameCall) Do(f func(context.Context, model.UserID) (string, error)) *MockRoomHandlersServiceGetUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, store.UserID) (string, error)) *MockRoomHandlersServiceGetUsernameCall {
+func (c *MockRoomHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, model.UserID) (string, error)) *MockRoomHandlersServiceGetUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // JoinRoom mocks base method.
-func (m *MockRoomHandlersService) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockRoomHandlersService) JoinRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "JoinRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -2591,19 +2591,19 @@ func (c *MockRoomHandlersServiceJoinRoomCall) Return(arg0 error) *MockRoomHandle
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceJoinRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceJoinRoomCall {
+func (c *MockRoomHandlersServiceJoinRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceJoinRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceJoinRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceJoinRoomCall {
+func (c *MockRoomHandlersServiceJoinRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceJoinRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // LeaveRoom mocks base method.
-func (m *MockRoomHandlersService) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockRoomHandlersService) LeaveRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LeaveRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -2629,19 +2629,19 @@ func (c *MockRoomHandlersServiceLeaveRoomCall) Return(arg0 error) *MockRoomHandl
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceLeaveRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceLeaveRoomCall {
+func (c *MockRoomHandlersServiceLeaveRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceLeaveRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceLeaveRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockRoomHandlersServiceLeaveRoomCall {
+func (c *MockRoomHandlersServiceLeaveRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockRoomHandlersServiceLeaveRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RemoveMember mocks base method.
-func (m *MockRoomHandlersService) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
+func (m *MockRoomHandlersService) RemoveMember(ctx context.Context, roomID model.RoomID, memberID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveMember", ctx, roomID, memberID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -2667,19 +2667,19 @@ func (c *MockRoomHandlersServiceRemoveMemberCall) Return(arg0 error) *MockRoomHa
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceRemoveMemberCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomHandlersServiceRemoveMemberCall {
+func (c *MockRoomHandlersServiceRemoveMemberCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomHandlersServiceRemoveMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceRemoveMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomHandlersServiceRemoveMemberCall {
+func (c *MockRoomHandlersServiceRemoveMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomHandlersServiceRemoveMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RemoveRoomUserPGPKey mocks base method.
-func (m *MockRoomHandlersService) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
+func (m *MockRoomHandlersService) RemoveRoomUserPGPKey(ctx context.Context, roomID model.RoomID, targetUserID, actingUserID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
 	ret0, _ := ret[0].(error)
@@ -2705,19 +2705,19 @@ func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
+func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
+func (c *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockRoomHandlersServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomMembersCanInvite mocks base method.
-func (m *MockRoomHandlersService) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockRoomHandlersService) SetRoomMembersCanInvite(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomMembersCanInvite", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -2743,19 +2743,19 @@ func (c *MockRoomHandlersServiceSetRoomMembersCanInviteCall) Return(arg0 error) 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomMembersCanInviteCall {
+func (c *MockRoomHandlersServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockRoomHandlersServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomMembersCanInviteCall {
+func (c *MockRoomHandlersServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockRoomHandlersServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomPGPKey mocks base method.
-func (m *MockRoomHandlersService) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
+func (m *MockRoomHandlersService) SetRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, armoredPublicKey string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPKey", ctx, roomID, userID, armoredPublicKey)
 	ret0, _ := ret[0].(error)
@@ -2781,19 +2781,19 @@ func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) Return(arg0 error) *MockRoomH
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomHandlersServiceSetRoomPGPKeyCall {
+func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomHandlersServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomHandlersServiceSetRoomPGPKeyCall {
+func (c *MockRoomHandlersServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomHandlersServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomPGPRequired mocks base method.
-func (m *MockRoomHandlersService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockRoomHandlersService) SetRoomPGPRequired(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -2819,19 +2819,19 @@ func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) Return(arg0 error) *Mock
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
+func (c *MockRoomHandlersServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockRoomHandlersServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockRoomHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockRoomHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -2858,19 +2858,19 @@ func (c *MockRoomHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) *M
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockRoomHandlersServiceUserExistsCall {
+func (c *MockRoomHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockRoomHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockRoomHandlersServiceUserExistsCall {
+func (c *MockRoomHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockRoomHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // VerifyRoomPGPKey mocks base method.
-func (m *MockRoomHandlersService) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
+func (m *MockRoomHandlersService) VerifyRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, decryptedChallenge string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyRoomPGPKey", ctx, roomID, userID, decryptedChallenge)
 	ret0, _ := ret[0].(error)
@@ -2896,13 +2896,13 @@ func (c *MockRoomHandlersServiceVerifyRoomPGPKeyCall) Return(arg0 error) *MockRo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockRoomHandlersServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomHandlersServiceVerifyRoomPGPKeyCall {
+func (c *MockRoomHandlersServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomHandlersServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockRoomHandlersServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockRoomHandlersServiceVerifyRoomPGPKeyCall {
+func (c *MockRoomHandlersServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockRoomHandlersServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2932,10 +2932,10 @@ func (m *MockInviteHandlersService) EXPECT() *MockInviteHandlersServiceMockRecor
 }
 
 // AcceptInvite mocks base method.
-func (m *MockInviteHandlersService) AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error) {
+func (m *MockInviteHandlersService) AcceptInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AcceptInvite", ctx, inviteID, userID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2953,29 +2953,29 @@ type MockInviteHandlersServiceAcceptInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceAcceptInviteCall) Return(arg0 store.RoomID, arg1 error) *MockInviteHandlersServiceAcceptInviteCall {
+func (c *MockInviteHandlersServiceAcceptInviteCall) Return(arg0 model.RoomID, arg1 error) *MockInviteHandlersServiceAcceptInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceAcceptInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockInviteHandlersServiceAcceptInviteCall {
+func (c *MockInviteHandlersServiceAcceptInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockInviteHandlersServiceAcceptInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceAcceptInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockInviteHandlersServiceAcceptInviteCall {
+func (c *MockInviteHandlersServiceAcceptInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockInviteHandlersServiceAcceptInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CancelInvite mocks base method.
-func (m *MockInviteHandlersService) CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error) {
+func (m *MockInviteHandlersService) CancelInvite(ctx context.Context, inviteID model.InviteID, actingUserID model.UserID) (model.RoomID, model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(store.RoomID)
-	ret1, _ := ret[1].(store.UserID)
+	ret0, _ := ret[0].(model.RoomID)
+	ret1, _ := ret[1].(model.UserID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -2993,25 +2993,25 @@ type MockInviteHandlersServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceCancelInviteCall) Return(arg0 store.RoomID, arg1 store.UserID, arg2 error) *MockInviteHandlersServiceCancelInviteCall {
+func (c *MockInviteHandlersServiceCancelInviteCall) Return(arg0 model.RoomID, arg1 model.UserID, arg2 error) *MockInviteHandlersServiceCancelInviteCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceCancelInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockInviteHandlersServiceCancelInviteCall {
+func (c *MockInviteHandlersServiceCancelInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockInviteHandlersServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceCancelInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockInviteHandlersServiceCancelInviteCall {
+func (c *MockInviteHandlersServiceCancelInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockInviteHandlersServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateInvite mocks base method.
-func (m *MockInviteHandlersService) CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error {
+func (m *MockInviteHandlersService) CreateInvite(ctx context.Context, roomID model.RoomID, inviterID model.UserID, inviteeUsername string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateInvite", ctx, roomID, inviterID, inviteeUsername)
 	ret0, _ := ret[0].(error)
@@ -3037,19 +3037,19 @@ func (c *MockInviteHandlersServiceCreateInviteCall) Return(arg0 error) *MockInvi
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceCreateInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockInviteHandlersServiceCreateInviteCall {
+func (c *MockInviteHandlersServiceCreateInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockInviteHandlersServiceCreateInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceCreateInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockInviteHandlersServiceCreateInviteCall {
+func (c *MockInviteHandlersServiceCreateInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockInviteHandlersServiceCreateInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeclineInvite mocks base method.
-func (m *MockInviteHandlersService) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
+func (m *MockInviteHandlersService) DeclineInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeclineInvite", ctx, inviteID, userID)
 	ret0, _ := ret[0].(error)
@@ -3075,19 +3075,19 @@ func (c *MockInviteHandlersServiceDeclineInviteCall) Return(arg0 error) *MockInv
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceDeclineInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) error) *MockInviteHandlersServiceDeclineInviteCall {
+func (c *MockInviteHandlersServiceDeclineInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) error) *MockInviteHandlersServiceDeclineInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceDeclineInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) error) *MockInviteHandlersServiceDeclineInviteCall {
+func (c *MockInviteHandlersServiceDeclineInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) error) *MockInviteHandlersServiceDeclineInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetContentView mocks base method.
-func (m *MockInviteHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockInviteHandlersService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -3114,19 +3114,19 @@ func (c *MockInviteHandlersServiceGetContentViewCall) Return(arg0 *service.Conte
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockInviteHandlersServiceGetContentViewCall {
+func (c *MockInviteHandlersServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockInviteHandlersServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockInviteHandlersServiceGetContentViewCall {
+func (c *MockInviteHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockInviteHandlersServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomDetailView mocks base method.
-func (m *MockInviteHandlersService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
+func (m *MockInviteHandlersService) GetRoomDetailView(ctx context.Context, roomID model.RoomID, userID model.UserID) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
 	ret0, _ := ret[0].(*service.RoomDetailView)
@@ -3153,22 +3153,22 @@ func (c *MockInviteHandlersServiceGetRoomDetailViewCall) Return(arg0 *service.Ro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockInviteHandlersServiceGetRoomDetailViewCall {
+func (c *MockInviteHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockInviteHandlersServiceGetRoomDetailViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockInviteHandlersServiceGetRoomDetailViewCall {
+func (c *MockInviteHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockInviteHandlersServiceGetRoomDetailViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserByUsername mocks base method.
-func (m *MockInviteHandlersService) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
+func (m *MockInviteHandlersService) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByUsername", ctx, username)
-	ret0, _ := ret[0].(store.User)
+	ret0, _ := ret[0].(model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3186,25 +3186,25 @@ type MockInviteHandlersServiceGetUserByUsernameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceGetUserByUsernameCall) Return(arg0 store.User, arg1 error) *MockInviteHandlersServiceGetUserByUsernameCall {
+func (c *MockInviteHandlersServiceGetUserByUsernameCall) Return(arg0 model.User, arg1 error) *MockInviteHandlersServiceGetUserByUsernameCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceGetUserByUsernameCall) Do(f func(context.Context, string) (store.User, error)) *MockInviteHandlersServiceGetUserByUsernameCall {
+func (c *MockInviteHandlersServiceGetUserByUsernameCall) Do(f func(context.Context, string) (model.User, error)) *MockInviteHandlersServiceGetUserByUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (store.User, error)) *MockInviteHandlersServiceGetUserByUsernameCall {
+func (c *MockInviteHandlersServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (model.User, error)) *MockInviteHandlersServiceGetUserByUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockInviteHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockInviteHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -3231,19 +3231,19 @@ func (c *MockInviteHandlersServiceGetUserSessionVersionCall) Return(arg0 int, ar
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
+func (c *MockInviteHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
+func (c *MockInviteHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUsername mocks base method.
-func (m *MockInviteHandlersService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (m *MockInviteHandlersService) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsername", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -3270,22 +3270,22 @@ func (c *MockInviteHandlersServiceGetUsernameCall) Return(arg0 string, arg1 erro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceGetUsernameCall) Do(f func(context.Context, store.UserID) (string, error)) *MockInviteHandlersServiceGetUsernameCall {
+func (c *MockInviteHandlersServiceGetUsernameCall) Do(f func(context.Context, model.UserID) (string, error)) *MockInviteHandlersServiceGetUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, store.UserID) (string, error)) *MockInviteHandlersServiceGetUsernameCall {
+func (c *MockInviteHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, model.UserID) (string, error)) *MockInviteHandlersServiceGetUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RoomIDForInvite mocks base method.
-func (m *MockInviteHandlersService) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
+func (m *MockInviteHandlersService) RoomIDForInvite(ctx context.Context, inviteID model.InviteID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RoomIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3303,25 +3303,25 @@ type MockInviteHandlersServiceRoomIDForInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInviteHandlersServiceRoomIDForInviteCall) Return(arg0 store.RoomID, arg1 error) *MockInviteHandlersServiceRoomIDForInviteCall {
+func (c *MockInviteHandlersServiceRoomIDForInviteCall) Return(arg0 model.RoomID, arg1 error) *MockInviteHandlersServiceRoomIDForInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceRoomIDForInviteCall) Do(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockInviteHandlersServiceRoomIDForInviteCall {
+func (c *MockInviteHandlersServiceRoomIDForInviteCall) Do(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockInviteHandlersServiceRoomIDForInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockInviteHandlersServiceRoomIDForInviteCall {
+func (c *MockInviteHandlersServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockInviteHandlersServiceRoomIDForInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockInviteHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockInviteHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -3348,13 +3348,13 @@ func (c *MockInviteHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInviteHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockInviteHandlersServiceUserExistsCall {
+func (c *MockInviteHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockInviteHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInviteHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockInviteHandlersServiceUserExistsCall {
+func (c *MockInviteHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockInviteHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3384,10 +3384,10 @@ func (m *MockMessageHistoryService) EXPECT() *MockMessageHistoryServiceMockRecor
 }
 
 // CreateMessage mocks base method.
-func (m *MockMessageHistoryService) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func (m *MockMessageHistoryService) CreateMessage(ctx context.Context, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessage", ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
-	ret0, _ := ret[0].(store.MessageID)
+	ret0, _ := ret[0].(model.MessageID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3405,28 +3405,28 @@ type MockMessageHistoryServiceCreateMessageCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageHistoryServiceCreateMessageCall) Return(arg0 store.MessageID, arg1 error) *MockMessageHistoryServiceCreateMessageCall {
+func (c *MockMessageHistoryServiceCreateMessageCall) Return(arg0 model.MessageID, arg1 error) *MockMessageHistoryServiceCreateMessageCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageHistoryServiceCreateMessageCall) Do(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockMessageHistoryServiceCreateMessageCall {
+func (c *MockMessageHistoryServiceCreateMessageCall) Do(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockMessageHistoryServiceCreateMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageHistoryServiceCreateMessageCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockMessageHistoryServiceCreateMessageCall {
+func (c *MockMessageHistoryServiceCreateMessageCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockMessageHistoryServiceCreateMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessages mocks base method.
-func (m *MockMessageHistoryService) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockMessageHistoryService) ListMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, beforeID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessages", ctx, roomID, userID, beforeID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3444,28 +3444,28 @@ type MockMessageHistoryServiceListMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageHistoryServiceListMessagesCall) Return(arg0 []store.Message, arg1 error) *MockMessageHistoryServiceListMessagesCall {
+func (c *MockMessageHistoryServiceListMessagesCall) Return(arg0 []model.Message, arg1 error) *MockMessageHistoryServiceListMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageHistoryServiceListMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageHistoryServiceListMessagesCall {
+func (c *MockMessageHistoryServiceListMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageHistoryServiceListMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageHistoryServiceListMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageHistoryServiceListMessagesCall {
+func (c *MockMessageHistoryServiceListMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageHistoryServiceListMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessagesAfterID mocks base method.
-func (m *MockMessageHistoryService) ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockMessageHistoryService) ListMessagesAfterID(ctx context.Context, roomID model.RoomID, userID model.UserID, afterID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessagesAfterID", ctx, roomID, userID, afterID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3483,28 +3483,28 @@ type MockMessageHistoryServiceListMessagesAfterIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageHistoryServiceListMessagesAfterIDCall) Return(arg0 []store.Message, arg1 error) *MockMessageHistoryServiceListMessagesAfterIDCall {
+func (c *MockMessageHistoryServiceListMessagesAfterIDCall) Return(arg0 []model.Message, arg1 error) *MockMessageHistoryServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageHistoryServiceListMessagesAfterIDCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageHistoryServiceListMessagesAfterIDCall {
+func (c *MockMessageHistoryServiceListMessagesAfterIDCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageHistoryServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageHistoryServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageHistoryServiceListMessagesAfterIDCall {
+func (c *MockMessageHistoryServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageHistoryServiceListMessagesAfterIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SearchMessages mocks base method.
-func (m *MockMessageHistoryService) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
+func (m *MockMessageHistoryService) SearchMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, query string, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchMessages", ctx, roomID, userID, query, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3522,19 +3522,19 @@ type MockMessageHistoryServiceSearchMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageHistoryServiceSearchMessagesCall) Return(arg0 []store.Message, arg1 error) *MockMessageHistoryServiceSearchMessagesCall {
+func (c *MockMessageHistoryServiceSearchMessagesCall) Return(arg0 []model.Message, arg1 error) *MockMessageHistoryServiceSearchMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageHistoryServiceSearchMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockMessageHistoryServiceSearchMessagesCall {
+func (c *MockMessageHistoryServiceSearchMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockMessageHistoryServiceSearchMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageHistoryServiceSearchMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockMessageHistoryServiceSearchMessagesCall {
+func (c *MockMessageHistoryServiceSearchMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockMessageHistoryServiceSearchMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3564,10 +3564,10 @@ func (m *MockMessageListService) EXPECT() *MockMessageListServiceMockRecorder {
 }
 
 // CreateMessage mocks base method.
-func (m *MockMessageListService) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func (m *MockMessageListService) CreateMessage(ctx context.Context, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessage", ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
-	ret0, _ := ret[0].(store.MessageID)
+	ret0, _ := ret[0].(model.MessageID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3585,25 +3585,25 @@ type MockMessageListServiceCreateMessageCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageListServiceCreateMessageCall) Return(arg0 store.MessageID, arg1 error) *MockMessageListServiceCreateMessageCall {
+func (c *MockMessageListServiceCreateMessageCall) Return(arg0 model.MessageID, arg1 error) *MockMessageListServiceCreateMessageCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceCreateMessageCall) Do(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockMessageListServiceCreateMessageCall {
+func (c *MockMessageListServiceCreateMessageCall) Do(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockMessageListServiceCreateMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceCreateMessageCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockMessageListServiceCreateMessageCall {
+func (c *MockMessageListServiceCreateMessageCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockMessageListServiceCreateMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomAccess mocks base method.
-func (m *MockMessageListService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+func (m *MockMessageListService) GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -3631,19 +3631,19 @@ func (c *MockMessageListServiceGetRoomAccessCall) Return(isCreator, isMember boo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockMessageListServiceGetRoomAccessCall {
+func (c *MockMessageListServiceGetRoomAccessCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockMessageListServiceGetRoomAccessCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockMessageListServiceGetRoomAccessCall {
+func (c *MockMessageListServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockMessageListServiceGetRoomAccessCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockMessageListService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockMessageListService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -3670,22 +3670,22 @@ func (c *MockMessageListServiceGetUserSessionVersionCall) Return(arg0 int, arg1 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
+func (c *MockMessageListServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
+func (c *MockMessageListServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessages mocks base method.
-func (m *MockMessageListService) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockMessageListService) ListMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, beforeID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessages", ctx, roomID, userID, beforeID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3703,28 +3703,28 @@ type MockMessageListServiceListMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageListServiceListMessagesCall) Return(arg0 []store.Message, arg1 error) *MockMessageListServiceListMessagesCall {
+func (c *MockMessageListServiceListMessagesCall) Return(arg0 []model.Message, arg1 error) *MockMessageListServiceListMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceListMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageListServiceListMessagesCall {
+func (c *MockMessageListServiceListMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageListServiceListMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceListMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageListServiceListMessagesCall {
+func (c *MockMessageListServiceListMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageListServiceListMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessagesAfterID mocks base method.
-func (m *MockMessageListService) ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockMessageListService) ListMessagesAfterID(ctx context.Context, roomID model.RoomID, userID model.UserID, afterID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessagesAfterID", ctx, roomID, userID, afterID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3742,28 +3742,28 @@ type MockMessageListServiceListMessagesAfterIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageListServiceListMessagesAfterIDCall) Return(arg0 []store.Message, arg1 error) *MockMessageListServiceListMessagesAfterIDCall {
+func (c *MockMessageListServiceListMessagesAfterIDCall) Return(arg0 []model.Message, arg1 error) *MockMessageListServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceListMessagesAfterIDCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageListServiceListMessagesAfterIDCall {
+func (c *MockMessageListServiceListMessagesAfterIDCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageListServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockMessageListServiceListMessagesAfterIDCall {
+func (c *MockMessageListServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockMessageListServiceListMessagesAfterIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SearchMessages mocks base method.
-func (m *MockMessageListService) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
+func (m *MockMessageListService) SearchMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, query string, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchMessages", ctx, roomID, userID, query, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3781,25 +3781,25 @@ type MockMessageListServiceSearchMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockMessageListServiceSearchMessagesCall) Return(arg0 []store.Message, arg1 error) *MockMessageListServiceSearchMessagesCall {
+func (c *MockMessageListServiceSearchMessagesCall) Return(arg0 []model.Message, arg1 error) *MockMessageListServiceSearchMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceSearchMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockMessageListServiceSearchMessagesCall {
+func (c *MockMessageListServiceSearchMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockMessageListServiceSearchMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceSearchMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockMessageListServiceSearchMessagesCall {
+func (c *MockMessageListServiceSearchMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockMessageListServiceSearchMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockMessageListService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockMessageListService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -3826,13 +3826,13 @@ func (c *MockMessageListServiceUserExistsCall) Return(arg0 bool, arg1 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockMessageListServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockMessageListServiceUserExistsCall {
+func (c *MockMessageListServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockMessageListServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockMessageListServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockMessageListServiceUserExistsCall {
+func (c *MockMessageListServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockMessageListServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3862,10 +3862,10 @@ func (m *MockWebSocketHandlersService) EXPECT() *MockWebSocketHandlersServiceMoc
 }
 
 // CreateMessage mocks base method.
-func (m *MockWebSocketHandlersService) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func (m *MockWebSocketHandlersService) CreateMessage(ctx context.Context, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessage", ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
-	ret0, _ := ret[0].(store.MessageID)
+	ret0, _ := ret[0].(model.MessageID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3883,25 +3883,25 @@ type MockWebSocketHandlersServiceCreateMessageCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceCreateMessageCall) Return(arg0 store.MessageID, arg1 error) *MockWebSocketHandlersServiceCreateMessageCall {
+func (c *MockWebSocketHandlersServiceCreateMessageCall) Return(arg0 model.MessageID, arg1 error) *MockWebSocketHandlersServiceCreateMessageCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceCreateMessageCall) Do(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockWebSocketHandlersServiceCreateMessageCall {
+func (c *MockWebSocketHandlersServiceCreateMessageCall) Do(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockWebSocketHandlersServiceCreateMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceCreateMessageCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockWebSocketHandlersServiceCreateMessageCall {
+func (c *MockWebSocketHandlersServiceCreateMessageCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockWebSocketHandlersServiceCreateMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomAccess mocks base method.
-func (m *MockWebSocketHandlersService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+func (m *MockWebSocketHandlersService) GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -3929,19 +3929,19 @@ func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Return(isCreator, isMemb
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
+func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
+func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockWebSocketHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockWebSocketHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -3968,19 +3968,19 @@ func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) Return(arg0 int,
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
+func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
+func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUsername mocks base method.
-func (m *MockWebSocketHandlersService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (m *MockWebSocketHandlersService) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsername", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -4007,19 +4007,19 @@ func (c *MockWebSocketHandlersServiceGetUsernameCall) Return(arg0 string, arg1 e
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceGetUsernameCall) Do(f func(context.Context, store.UserID) (string, error)) *MockWebSocketHandlersServiceGetUsernameCall {
+func (c *MockWebSocketHandlersServiceGetUsernameCall) Do(f func(context.Context, model.UserID) (string, error)) *MockWebSocketHandlersServiceGetUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, store.UserID) (string, error)) *MockWebSocketHandlersServiceGetUsernameCall {
+func (c *MockWebSocketHandlersServiceGetUsernameCall) DoAndReturn(f func(context.Context, model.UserID) (string, error)) *MockWebSocketHandlersServiceGetUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // IsRoomMember mocks base method.
-func (m *MockWebSocketHandlersService) IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
+func (m *MockWebSocketHandlersService) IsRoomMember(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomMember", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -4046,19 +4046,19 @@ func (c *MockWebSocketHandlersServiceIsRoomMemberCall) Return(arg0 bool, arg1 er
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceIsRoomMemberCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockWebSocketHandlersServiceIsRoomMemberCall {
+func (c *MockWebSocketHandlersServiceIsRoomMemberCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockWebSocketHandlersServiceIsRoomMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockWebSocketHandlersServiceIsRoomMemberCall {
+func (c *MockWebSocketHandlersServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockWebSocketHandlersServiceIsRoomMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // IsRoomPGPRequired mocks base method.
-func (m *MockWebSocketHandlersService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+func (m *MockWebSocketHandlersService) IsRoomPGPRequired(ctx context.Context, roomID model.RoomID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
 	ret0, _ := ret[0].(bool)
@@ -4085,22 +4085,22 @@ func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) Return(arg0 bool, ar
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
+func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
+func (c *MockWebSocketHandlersServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessages mocks base method.
-func (m *MockWebSocketHandlersService) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockWebSocketHandlersService) ListMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, beforeID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessages", ctx, roomID, userID, beforeID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4118,28 +4118,28 @@ type MockWebSocketHandlersServiceListMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceListMessagesCall) Return(arg0 []store.Message, arg1 error) *MockWebSocketHandlersServiceListMessagesCall {
+func (c *MockWebSocketHandlersServiceListMessagesCall) Return(arg0 []model.Message, arg1 error) *MockWebSocketHandlersServiceListMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceListMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockWebSocketHandlersServiceListMessagesCall {
+func (c *MockWebSocketHandlersServiceListMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockWebSocketHandlersServiceListMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceListMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockWebSocketHandlersServiceListMessagesCall {
+func (c *MockWebSocketHandlersServiceListMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockWebSocketHandlersServiceListMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessagesAfterID mocks base method.
-func (m *MockWebSocketHandlersService) ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockWebSocketHandlersService) ListMessagesAfterID(ctx context.Context, roomID model.RoomID, userID model.UserID, afterID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessagesAfterID", ctx, roomID, userID, afterID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4157,28 +4157,28 @@ type MockWebSocketHandlersServiceListMessagesAfterIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) Return(arg0 []store.Message, arg1 error) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
+func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) Return(arg0 []model.Message, arg1 error) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
+func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
+func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListRoomMembersWithPGP mocks base method.
-func (m *MockWebSocketHandlersService) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
+func (m *MockWebSocketHandlersService) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomID) ([]model.RoomMember, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
-	ret0, _ := ret[0].([]store.RoomMember)
+	ret0, _ := ret[0].([]model.RoomMember)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4196,28 +4196,28 @@ type MockWebSocketHandlersServiceListRoomMembersWithPGPCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Return(arg0 []model.RoomMember, arg1 error) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Do(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) Do(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
+func (c *MockWebSocketHandlersServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockWebSocketHandlersServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SearchMessages mocks base method.
-func (m *MockWebSocketHandlersService) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
+func (m *MockWebSocketHandlersService) SearchMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, query string, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchMessages", ctx, roomID, userID, query, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4235,25 +4235,25 @@ type MockWebSocketHandlersServiceSearchMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockWebSocketHandlersServiceSearchMessagesCall) Return(arg0 []store.Message, arg1 error) *MockWebSocketHandlersServiceSearchMessagesCall {
+func (c *MockWebSocketHandlersServiceSearchMessagesCall) Return(arg0 []model.Message, arg1 error) *MockWebSocketHandlersServiceSearchMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceSearchMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockWebSocketHandlersServiceSearchMessagesCall {
+func (c *MockWebSocketHandlersServiceSearchMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockWebSocketHandlersServiceSearchMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceSearchMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockWebSocketHandlersServiceSearchMessagesCall {
+func (c *MockWebSocketHandlersServiceSearchMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockWebSocketHandlersServiceSearchMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockWebSocketHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockWebSocketHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -4280,13 +4280,13 @@ func (c *MockWebSocketHandlersServiceUserExistsCall) Return(arg0 bool, arg1 erro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockWebSocketHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockWebSocketHandlersServiceUserExistsCall {
+func (c *MockWebSocketHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockWebSocketHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockWebSocketHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockWebSocketHandlersServiceUserExistsCall {
+func (c *MockWebSocketHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockWebSocketHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4316,10 +4316,10 @@ func (m *MockServerService) EXPECT() *MockServerServiceMockRecorder {
 }
 
 // AcceptInvite mocks base method.
-func (m *MockServerService) AcceptInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) (store.RoomID, error) {
+func (m *MockServerService) AcceptInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AcceptInvite", ctx, inviteID, userID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4337,29 +4337,29 @@ type MockServerServiceAcceptInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceAcceptInviteCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceAcceptInviteCall {
+func (c *MockServerServiceAcceptInviteCall) Return(arg0 model.RoomID, arg1 error) *MockServerServiceAcceptInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceAcceptInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockServerServiceAcceptInviteCall {
+func (c *MockServerServiceAcceptInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockServerServiceAcceptInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceAcceptInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, error)) *MockServerServiceAcceptInviteCall {
+func (c *MockServerServiceAcceptInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, error)) *MockServerServiceAcceptInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CancelInvite mocks base method.
-func (m *MockServerService) CancelInvite(ctx context.Context, inviteID store.InviteID, actingUserID store.UserID) (store.RoomID, store.UserID, error) {
+func (m *MockServerService) CancelInvite(ctx context.Context, inviteID model.InviteID, actingUserID model.UserID) (model.RoomID, model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelInvite", ctx, inviteID, actingUserID)
-	ret0, _ := ret[0].(store.RoomID)
-	ret1, _ := ret[1].(store.UserID)
+	ret0, _ := ret[0].(model.RoomID)
+	ret1, _ := ret[1].(model.UserID)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -4377,25 +4377,25 @@ type MockServerServiceCancelInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCancelInviteCall) Return(arg0 store.RoomID, arg1 store.UserID, arg2 error) *MockServerServiceCancelInviteCall {
+func (c *MockServerServiceCancelInviteCall) Return(arg0 model.RoomID, arg1 model.UserID, arg2 error) *MockServerServiceCancelInviteCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCancelInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockServerServiceCancelInviteCall {
+func (c *MockServerServiceCancelInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockServerServiceCancelInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCancelInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) (store.RoomID, store.UserID, error)) *MockServerServiceCancelInviteCall {
+func (c *MockServerServiceCancelInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) (model.RoomID, model.UserID, error)) *MockServerServiceCancelInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ChangePassword mocks base method.
-func (m *MockServerService) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+func (m *MockServerService) ChangePassword(ctx context.Context, userID model.UserID, currentPassword, newPassword string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChangePassword", ctx, userID, currentPassword, newPassword)
 	ret0, _ := ret[0].(error)
@@ -4421,19 +4421,19 @@ func (c *MockServerServiceChangePasswordCall) Return(arg0 error) *MockServerServ
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceChangePasswordCall) Do(f func(context.Context, store.UserID, string, string) error) *MockServerServiceChangePasswordCall {
+func (c *MockServerServiceChangePasswordCall) Do(f func(context.Context, model.UserID, string, string) error) *MockServerServiceChangePasswordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceChangePasswordCall) DoAndReturn(f func(context.Context, store.UserID, string, string) error) *MockServerServiceChangePasswordCall {
+func (c *MockServerServiceChangePasswordCall) DoAndReturn(f func(context.Context, model.UserID, string, string) error) *MockServerServiceChangePasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateInvite mocks base method.
-func (m *MockServerService) CreateInvite(ctx context.Context, roomID store.RoomID, inviterID store.UserID, inviteeUsername string) error {
+func (m *MockServerService) CreateInvite(ctx context.Context, roomID model.RoomID, inviterID model.UserID, inviteeUsername string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateInvite", ctx, roomID, inviterID, inviteeUsername)
 	ret0, _ := ret[0].(error)
@@ -4459,22 +4459,22 @@ func (c *MockServerServiceCreateInviteCall) Return(arg0 error) *MockServerServic
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceCreateInviteCall {
+func (c *MockServerServiceCreateInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceCreateInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceCreateInviteCall {
+func (c *MockServerServiceCreateInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceCreateInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateMessage mocks base method.
-func (m *MockServerService) CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func (m *MockServerService) CreateMessage(ctx context.Context, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessage", ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
-	ret0, _ := ret[0].(store.MessageID)
+	ret0, _ := ret[0].(model.MessageID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4492,28 +4492,28 @@ type MockServerServiceCreateMessageCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCreateMessageCall) Return(arg0 store.MessageID, arg1 error) *MockServerServiceCreateMessageCall {
+func (c *MockServerServiceCreateMessageCall) Return(arg0 model.MessageID, arg1 error) *MockServerServiceCreateMessageCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateMessageCall) Do(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockServerServiceCreateMessageCall {
+func (c *MockServerServiceCreateMessageCall) Do(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockServerServiceCreateMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateMessageCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, string, bool, *store.UserID, bool) (store.MessageID, error)) *MockServerServiceCreateMessageCall {
+func (c *MockServerServiceCreateMessageCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, string, bool, *model.UserID, bool) (model.MessageID, error)) *MockServerServiceCreateMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateRoom mocks base method.
-func (m *MockServerService) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
+func (m *MockServerService) CreateRoom(ctx context.Context, displayName string, creatorID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRoom", ctx, displayName, creatorID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4531,28 +4531,28 @@ type MockServerServiceCreateRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCreateRoomCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceCreateRoomCall {
+func (c *MockServerServiceCreateRoomCall) Return(arg0 model.RoomID, arg1 error) *MockServerServiceCreateRoomCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateRoomCall) Do(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockServerServiceCreateRoomCall {
+func (c *MockServerServiceCreateRoomCall) Do(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockServerServiceCreateRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, store.UserID) (store.RoomID, error)) *MockServerServiceCreateRoomCall {
+func (c *MockServerServiceCreateRoomCall) DoAndReturn(f func(context.Context, string, model.UserID) (model.RoomID, error)) *MockServerServiceCreateRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // CreateUser mocks base method.
-func (m *MockServerService) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockServerService) CreateUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4570,25 +4570,25 @@ type MockServerServiceCreateUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceCreateUserCall) Return(arg0 store.UserID, arg1 error) *MockServerServiceCreateUserCall {
+func (c *MockServerServiceCreateUserCall) Return(arg0 model.UserID, arg1 error) *MockServerServiceCreateUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceCreateUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockServerServiceCreateUserCall {
+func (c *MockServerServiceCreateUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockServerServiceCreateUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockServerServiceCreateUserCall {
+func (c *MockServerServiceCreateUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockServerServiceCreateUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeclineInvite mocks base method.
-func (m *MockServerService) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
+func (m *MockServerService) DeclineInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeclineInvite", ctx, inviteID, userID)
 	ret0, _ := ret[0].(error)
@@ -4614,19 +4614,19 @@ func (c *MockServerServiceDeclineInviteCall) Return(arg0 error) *MockServerServi
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceDeclineInviteCall) Do(f func(context.Context, store.InviteID, store.UserID) error) *MockServerServiceDeclineInviteCall {
+func (c *MockServerServiceDeclineInviteCall) Do(f func(context.Context, model.InviteID, model.UserID) error) *MockServerServiceDeclineInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceDeclineInviteCall) DoAndReturn(f func(context.Context, store.InviteID, store.UserID) error) *MockServerServiceDeclineInviteCall {
+func (c *MockServerServiceDeclineInviteCall) DoAndReturn(f func(context.Context, model.InviteID, model.UserID) error) *MockServerServiceDeclineInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteRoom mocks base method.
-func (m *MockServerService) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
+func (m *MockServerService) DeleteRoom(ctx context.Context, roomID model.RoomID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteRoom", ctx, roomID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -4652,19 +4652,19 @@ func (c *MockServerServiceDeleteRoomCall) Return(arg0 error) *MockServerServiceD
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceDeleteRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceDeleteRoomCall {
+func (c *MockServerServiceDeleteRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceDeleteRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceDeleteRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceDeleteRoomCall {
+func (c *MockServerServiceDeleteRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceDeleteRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DeleteUser mocks base method.
-func (m *MockServerService) DeleteUser(ctx context.Context, id store.UserID) error {
+func (m *MockServerService) DeleteUser(ctx context.Context, id model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
 	ret0, _ := ret[0].(error)
@@ -4690,19 +4690,19 @@ func (c *MockServerServiceDeleteUserCall) Return(arg0 error) *MockServerServiceD
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceDeleteUserCall) Do(f func(context.Context, store.UserID) error) *MockServerServiceDeleteUserCall {
+func (c *MockServerServiceDeleteUserCall) Do(f func(context.Context, model.UserID) error) *MockServerServiceDeleteUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceDeleteUserCall) DoAndReturn(f func(context.Context, store.UserID) error) *MockServerServiceDeleteUserCall {
+func (c *MockServerServiceDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID) error) *MockServerServiceDeleteUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetContentView mocks base method.
-func (m *MockServerService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockServerService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -4729,22 +4729,22 @@ func (c *MockServerServiceGetContentViewCall) Return(arg0 *service.ContentView, 
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockServerServiceGetContentViewCall {
+func (c *MockServerServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockServerServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockServerServiceGetContentViewCall {
+func (c *MockServerServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockServerServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetOrCreateDMRoom mocks base method.
-func (m *MockServerService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
+func (m *MockServerService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrCreateDMRoom", ctx, user1ID, user2ID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4762,25 +4762,25 @@ type MockServerServiceGetOrCreateDMRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceGetOrCreateDMRoomCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceGetOrCreateDMRoomCall {
+func (c *MockServerServiceGetOrCreateDMRoomCall) Return(arg0 model.RoomID, arg1 error) *MockServerServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetOrCreateDMRoomCall) Do(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
+func (c *MockServerServiceGetOrCreateDMRoomCall) Do(f func(context.Context, model.UserID, model.UserID) (model.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
+func (c *MockServerServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID) (model.RoomID, error)) *MockServerServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomAccess mocks base method.
-func (m *MockServerService) GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, bool, error) {
+func (m *MockServerService) GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomAccess", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -4808,19 +4808,19 @@ func (c *MockServerServiceGetRoomAccessCall) Return(isCreator, isMember bool, er
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetRoomAccessCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
+func (c *MockServerServiceGetRoomAccessCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
+func (c *MockServerServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, bool, error)) *MockServerServiceGetRoomAccessCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetRoomDetailView mocks base method.
-func (m *MockServerService) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*service.RoomDetailView, error) {
+func (m *MockServerService) GetRoomDetailView(ctx context.Context, roomID model.RoomID, userID model.UserID) (*service.RoomDetailView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetRoomDetailView", ctx, roomID, userID)
 	ret0, _ := ret[0].(*service.RoomDetailView)
@@ -4847,22 +4847,22 @@ func (c *MockServerServiceGetRoomDetailViewCall) Return(arg0 *service.RoomDetail
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetRoomDetailViewCall) Do(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockServerServiceGetRoomDetailViewCall {
+func (c *MockServerServiceGetRoomDetailViewCall) Do(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockServerServiceGetRoomDetailViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockServerServiceGetRoomDetailViewCall {
+func (c *MockServerServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (*service.RoomDetailView, error)) *MockServerServiceGetRoomDetailViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserByUsername mocks base method.
-func (m *MockServerService) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
+func (m *MockServerService) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByUsername", ctx, username)
-	ret0, _ := ret[0].(store.User)
+	ret0, _ := ret[0].(model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4880,25 +4880,25 @@ type MockServerServiceGetUserByUsernameCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceGetUserByUsernameCall) Return(arg0 store.User, arg1 error) *MockServerServiceGetUserByUsernameCall {
+func (c *MockServerServiceGetUserByUsernameCall) Return(arg0 model.User, arg1 error) *MockServerServiceGetUserByUsernameCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetUserByUsernameCall) Do(f func(context.Context, string) (store.User, error)) *MockServerServiceGetUserByUsernameCall {
+func (c *MockServerServiceGetUserByUsernameCall) Do(f func(context.Context, string) (model.User, error)) *MockServerServiceGetUserByUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (store.User, error)) *MockServerServiceGetUserByUsernameCall {
+func (c *MockServerServiceGetUserByUsernameCall) DoAndReturn(f func(context.Context, string) (model.User, error)) *MockServerServiceGetUserByUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockServerService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockServerService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -4925,19 +4925,19 @@ func (c *MockServerServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
+func (c *MockServerServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
+func (c *MockServerServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUsername mocks base method.
-func (m *MockServerService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (m *MockServerService) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUsername", ctx, userID)
 	ret0, _ := ret[0].(string)
@@ -4964,19 +4964,19 @@ func (c *MockServerServiceGetUsernameCall) Return(arg0 string, arg1 error) *Mock
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceGetUsernameCall) Do(f func(context.Context, store.UserID) (string, error)) *MockServerServiceGetUsernameCall {
+func (c *MockServerServiceGetUsernameCall) Do(f func(context.Context, model.UserID) (string, error)) *MockServerServiceGetUsernameCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceGetUsernameCall) DoAndReturn(f func(context.Context, store.UserID) (string, error)) *MockServerServiceGetUsernameCall {
+func (c *MockServerServiceGetUsernameCall) DoAndReturn(f func(context.Context, model.UserID) (string, error)) *MockServerServiceGetUsernameCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // IsRoomMember mocks base method.
-func (m *MockServerService) IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
+func (m *MockServerService) IsRoomMember(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomMember", ctx, roomID, userID)
 	ret0, _ := ret[0].(bool)
@@ -5003,19 +5003,19 @@ func (c *MockServerServiceIsRoomMemberCall) Return(arg0 bool, arg1 error) *MockS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceIsRoomMemberCall) Do(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockServerServiceIsRoomMemberCall {
+func (c *MockServerServiceIsRoomMemberCall) Do(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockServerServiceIsRoomMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, error)) *MockServerServiceIsRoomMemberCall {
+func (c *MockServerServiceIsRoomMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) (bool, error)) *MockServerServiceIsRoomMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // IsRoomPGPRequired mocks base method.
-func (m *MockServerService) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+func (m *MockServerService) IsRoomPGPRequired(ctx context.Context, roomID model.RoomID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsRoomPGPRequired", ctx, roomID)
 	ret0, _ := ret[0].(bool)
@@ -5042,19 +5042,19 @@ func (c *MockServerServiceIsRoomPGPRequiredCall) Return(arg0 bool, arg1 error) *
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceIsRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
+func (c *MockServerServiceIsRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
+func (c *MockServerServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // JoinRoom mocks base method.
-func (m *MockServerService) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockServerService) JoinRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "JoinRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -5080,19 +5080,19 @@ func (c *MockServerServiceJoinRoomCall) Return(arg0 error) *MockServerServiceJoi
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceJoinRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceJoinRoomCall {
+func (c *MockServerServiceJoinRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceJoinRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceJoinRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceJoinRoomCall {
+func (c *MockServerServiceJoinRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceJoinRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // LeaveRoom mocks base method.
-func (m *MockServerService) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (m *MockServerService) LeaveRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LeaveRoom", ctx, roomID, userID)
 	ret0, _ := ret[0].(error)
@@ -5118,22 +5118,22 @@ func (c *MockServerServiceLeaveRoomCall) Return(arg0 error) *MockServerServiceLe
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceLeaveRoomCall) Do(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceLeaveRoomCall {
+func (c *MockServerServiceLeaveRoomCall) Do(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceLeaveRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceLeaveRoomCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) error) *MockServerServiceLeaveRoomCall {
+func (c *MockServerServiceLeaveRoomCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID) error) *MockServerServiceLeaveRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessages mocks base method.
-func (m *MockServerService) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockServerService) ListMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, beforeID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessages", ctx, roomID, userID, beforeID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5151,28 +5151,28 @@ type MockServerServiceListMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceListMessagesCall) Return(arg0 []store.Message, arg1 error) *MockServerServiceListMessagesCall {
+func (c *MockServerServiceListMessagesCall) Return(arg0 []model.Message, arg1 error) *MockServerServiceListMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceListMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockServerServiceListMessagesCall {
+func (c *MockServerServiceListMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockServerServiceListMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceListMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockServerServiceListMessagesCall {
+func (c *MockServerServiceListMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockServerServiceListMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListMessagesAfterID mocks base method.
-func (m *MockServerService) ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error) {
+func (m *MockServerService) ListMessagesAfterID(ctx context.Context, roomID model.RoomID, userID model.UserID, afterID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessagesAfterID", ctx, roomID, userID, afterID, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5190,28 +5190,28 @@ type MockServerServiceListMessagesAfterIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceListMessagesAfterIDCall) Return(arg0 []store.Message, arg1 error) *MockServerServiceListMessagesAfterIDCall {
+func (c *MockServerServiceListMessagesAfterIDCall) Return(arg0 []model.Message, arg1 error) *MockServerServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceListMessagesAfterIDCall) Do(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockServerServiceListMessagesAfterIDCall {
+func (c *MockServerServiceListMessagesAfterIDCall) Do(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockServerServiceListMessagesAfterIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.MessageID, int) ([]store.Message, error)) *MockServerServiceListMessagesAfterIDCall {
+func (c *MockServerServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockServerServiceListMessagesAfterIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ListRoomMembersWithPGP mocks base method.
-func (m *MockServerService) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
+func (m *MockServerService) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomID) ([]model.RoomMember, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
-	ret0, _ := ret[0].([]store.RoomMember)
+	ret0, _ := ret[0].([]model.RoomMember)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5229,28 +5229,28 @@ type MockServerServiceListRoomMembersWithPGPCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceListRoomMembersWithPGPCall) Return(arg0 []store.RoomMember, arg1 error) *MockServerServiceListRoomMembersWithPGPCall {
+func (c *MockServerServiceListRoomMembersWithPGPCall) Return(arg0 []model.RoomMember, arg1 error) *MockServerServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceListRoomMembersWithPGPCall) Do(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
+func (c *MockServerServiceListRoomMembersWithPGPCall) Do(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, store.RoomID) ([]store.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
+func (c *MockServerServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockServerServiceListRoomMembersWithPGPCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // LoginUser mocks base method.
-func (m *MockServerService) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (m *MockServerService) LoginUser(ctx context.Context, username, password string) (model.UserID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoginUser", ctx, username, password)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5268,19 +5268,19 @@ type MockServerServiceLoginUserCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceLoginUserCall) Return(arg0 store.UserID, arg1 error) *MockServerServiceLoginUserCall {
+func (c *MockServerServiceLoginUserCall) Return(arg0 model.UserID, arg1 error) *MockServerServiceLoginUserCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceLoginUserCall) Do(f func(context.Context, string, string) (store.UserID, error)) *MockServerServiceLoginUserCall {
+func (c *MockServerServiceLoginUserCall) Do(f func(context.Context, string, string) (model.UserID, error)) *MockServerServiceLoginUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (store.UserID, error)) *MockServerServiceLoginUserCall {
+func (c *MockServerServiceLoginUserCall) DoAndReturn(f func(context.Context, string, string) (model.UserID, error)) *MockServerServiceLoginUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5324,7 +5324,7 @@ func (c *MockServerServicePingCall) DoAndReturn(f func(context.Context) error) *
 }
 
 // RemoveMember mocks base method.
-func (m *MockServerService) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
+func (m *MockServerService) RemoveMember(ctx context.Context, roomID model.RoomID, memberID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveMember", ctx, roomID, memberID, creatorID)
 	ret0, _ := ret[0].(error)
@@ -5350,19 +5350,19 @@ func (c *MockServerServiceRemoveMemberCall) Return(arg0 error) *MockServerServic
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceRemoveMemberCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockServerServiceRemoveMemberCall {
+func (c *MockServerServiceRemoveMemberCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockServerServiceRemoveMemberCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceRemoveMemberCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockServerServiceRemoveMemberCall {
+func (c *MockServerServiceRemoveMemberCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockServerServiceRemoveMemberCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RemoveRoomUserPGPKey mocks base method.
-func (m *MockServerService) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
+func (m *MockServerService) RemoveRoomUserPGPKey(ctx context.Context, roomID model.RoomID, targetUserID, actingUserID model.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveRoomUserPGPKey", ctx, roomID, targetUserID, actingUserID)
 	ret0, _ := ret[0].(error)
@@ -5388,22 +5388,22 @@ func (c *MockServerServiceRemoveRoomUserPGPKeyCall) Return(arg0 error) *MockServ
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
+func (c *MockServerServiceRemoveRoomUserPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, store.UserID) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
+func (c *MockServerServiceRemoveRoomUserPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.UserID) error) *MockServerServiceRemoveRoomUserPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RoomIDForInvite mocks base method.
-func (m *MockServerService) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
+func (m *MockServerService) RoomIDForInvite(ctx context.Context, inviteID model.InviteID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RoomIDForInvite", ctx, inviteID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5421,28 +5421,28 @@ type MockServerServiceRoomIDForInviteCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceRoomIDForInviteCall) Return(arg0 store.RoomID, arg1 error) *MockServerServiceRoomIDForInviteCall {
+func (c *MockServerServiceRoomIDForInviteCall) Return(arg0 model.RoomID, arg1 error) *MockServerServiceRoomIDForInviteCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceRoomIDForInviteCall) Do(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockServerServiceRoomIDForInviteCall {
+func (c *MockServerServiceRoomIDForInviteCall) Do(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockServerServiceRoomIDForInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, store.InviteID) (store.RoomID, error)) *MockServerServiceRoomIDForInviteCall {
+func (c *MockServerServiceRoomIDForInviteCall) DoAndReturn(f func(context.Context, model.InviteID) (model.RoomID, error)) *MockServerServiceRoomIDForInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SearchMessages mocks base method.
-func (m *MockServerService) SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error) {
+func (m *MockServerService) SearchMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, query string, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchMessages", ctx, roomID, userID, query, limit)
-	ret0, _ := ret[0].([]store.Message)
+	ret0, _ := ret[0].([]model.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -5460,25 +5460,25 @@ type MockServerServiceSearchMessagesCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockServerServiceSearchMessagesCall) Return(arg0 []store.Message, arg1 error) *MockServerServiceSearchMessagesCall {
+func (c *MockServerServiceSearchMessagesCall) Return(arg0 []model.Message, arg1 error) *MockServerServiceSearchMessagesCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceSearchMessagesCall) Do(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockServerServiceSearchMessagesCall {
+func (c *MockServerServiceSearchMessagesCall) Do(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockServerServiceSearchMessagesCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceSearchMessagesCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string, int) ([]store.Message, error)) *MockServerServiceSearchMessagesCall {
+func (c *MockServerServiceSearchMessagesCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string, int) ([]model.Message, error)) *MockServerServiceSearchMessagesCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomMembersCanInvite mocks base method.
-func (m *MockServerService) SetRoomMembersCanInvite(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockServerService) SetRoomMembersCanInvite(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomMembersCanInvite", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -5504,19 +5504,19 @@ func (c *MockServerServiceSetRoomMembersCanInviteCall) Return(arg0 error) *MockS
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomMembersCanInviteCall {
+func (c *MockServerServiceSetRoomMembersCanInviteCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockServerServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomMembersCanInviteCall {
+func (c *MockServerServiceSetRoomMembersCanInviteCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockServerServiceSetRoomMembersCanInviteCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomPGPKey mocks base method.
-func (m *MockServerService) SetRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, armoredPublicKey string) error {
+func (m *MockServerService) SetRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, armoredPublicKey string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPKey", ctx, roomID, userID, armoredPublicKey)
 	ret0, _ := ret[0].(error)
@@ -5542,19 +5542,19 @@ func (c *MockServerServiceSetRoomPGPKeyCall) Return(arg0 error) *MockServerServi
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceSetRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceSetRoomPGPKeyCall {
+func (c *MockServerServiceSetRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceSetRoomPGPKeyCall {
+func (c *MockServerServiceSetRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceSetRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // SetRoomPGPRequired mocks base method.
-func (m *MockServerService) SetRoomPGPRequired(ctx context.Context, roomID store.RoomID, creatorID store.UserID, value bool) error {
+func (m *MockServerService) SetRoomPGPRequired(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetRoomPGPRequired", ctx, roomID, creatorID, value)
 	ret0, _ := ret[0].(error)
@@ -5580,19 +5580,19 @@ func (c *MockServerServiceSetRoomPGPRequiredCall) Return(arg0 error) *MockServer
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceSetRoomPGPRequiredCall) Do(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
+func (c *MockServerServiceSetRoomPGPRequiredCall) Do(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
+func (c *MockServerServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, bool) error) *MockServerServiceSetRoomPGPRequiredCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockServerService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockServerService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -5619,19 +5619,19 @@ func (c *MockServerServiceUserExistsCall) Return(arg0 bool, arg1 error) *MockSer
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockServerServiceUserExistsCall {
+func (c *MockServerServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockServerServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockServerServiceUserExistsCall {
+func (c *MockServerServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockServerServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // VerifyPassword mocks base method.
-func (m *MockServerService) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+func (m *MockServerService) VerifyPassword(ctx context.Context, userID model.UserID, password string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyPassword", ctx, userID, password)
 	ret0, _ := ret[0].(error)
@@ -5657,19 +5657,19 @@ func (c *MockServerServiceVerifyPasswordCall) Return(arg0 error) *MockServerServ
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceVerifyPasswordCall) Do(f func(context.Context, store.UserID, string) error) *MockServerServiceVerifyPasswordCall {
+func (c *MockServerServiceVerifyPasswordCall) Do(f func(context.Context, model.UserID, string) error) *MockServerServiceVerifyPasswordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, store.UserID, string) error) *MockServerServiceVerifyPasswordCall {
+func (c *MockServerServiceVerifyPasswordCall) DoAndReturn(f func(context.Context, model.UserID, string) error) *MockServerServiceVerifyPasswordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // VerifyRoomPGPKey mocks base method.
-func (m *MockServerService) VerifyRoomPGPKey(ctx context.Context, roomID store.RoomID, userID store.UserID, decryptedChallenge string) error {
+func (m *MockServerService) VerifyRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, decryptedChallenge string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyRoomPGPKey", ctx, roomID, userID, decryptedChallenge)
 	ret0, _ := ret[0].(error)
@@ -5695,13 +5695,13 @@ func (c *MockServerServiceVerifyRoomPGPKeyCall) Return(arg0 error) *MockServerSe
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockServerServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceVerifyRoomPGPKeyCall {
+func (c *MockServerServiceVerifyRoomPGPKeyCall) Do(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockServerServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID, string) error) *MockServerServiceVerifyRoomPGPKeyCall {
+func (c *MockServerServiceVerifyRoomPGPKeyCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, string) error) *MockServerServiceVerifyRoomPGPKeyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5843,7 +5843,7 @@ func (c *MockSessionManagerSecureCall) DoAndReturn(f func() bool) *MockSessionMa
 }
 
 // Set mocks base method.
-func (m *MockSessionManager) Set(w http.ResponseWriter, userID store.UserID, version int) {
+func (m *MockSessionManager) Set(w http.ResponseWriter, userID model.UserID, version int) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Set", w, userID, version)
 }
@@ -5867,22 +5867,22 @@ func (c *MockSessionManagerSetCall) Return() *MockSessionManagerSetCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionManagerSetCall) Do(f func(http.ResponseWriter, store.UserID, int)) *MockSessionManagerSetCall {
+func (c *MockSessionManagerSetCall) Do(f func(http.ResponseWriter, model.UserID, int)) *MockSessionManagerSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionManagerSetCall) DoAndReturn(f func(http.ResponseWriter, store.UserID, int)) *MockSessionManagerSetCall {
+func (c *MockSessionManagerSetCall) DoAndReturn(f func(http.ResponseWriter, model.UserID, int)) *MockSessionManagerSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserID mocks base method.
-func (m *MockSessionManager) UserID(r *http.Request) (store.UserID, int, bool) {
+func (m *MockSessionManager) UserID(r *http.Request) (model.UserID, int, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserID", r)
-	ret0, _ := ret[0].(store.UserID)
+	ret0, _ := ret[0].(model.UserID)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(bool)
 	return ret0, ret1, ret2
@@ -5901,19 +5901,19 @@ type MockSessionManagerUserIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSessionManagerUserIDCall) Return(arg0 store.UserID, arg1 int, arg2 bool) *MockSessionManagerUserIDCall {
+func (c *MockSessionManagerUserIDCall) Return(arg0 model.UserID, arg1 int, arg2 bool) *MockSessionManagerUserIDCall {
 	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionManagerUserIDCall) Do(f func(*http.Request) (store.UserID, int, bool)) *MockSessionManagerUserIDCall {
+func (c *MockSessionManagerUserIDCall) Do(f func(*http.Request) (model.UserID, int, bool)) *MockSessionManagerUserIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionManagerUserIDCall) DoAndReturn(f func(*http.Request) (store.UserID, int, bool)) *MockSessionManagerUserIDCall {
+func (c *MockSessionManagerUserIDCall) DoAndReturn(f func(*http.Request) (model.UserID, int, bool)) *MockSessionManagerUserIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5943,7 +5943,7 @@ func (m *MockDMHandlersService) EXPECT() *MockDMHandlersServiceMockRecorder {
 }
 
 // GetContentView mocks base method.
-func (m *MockDMHandlersService) GetContentView(ctx context.Context, userID store.UserID) (*service.ContentView, error) {
+func (m *MockDMHandlersService) GetContentView(ctx context.Context, userID model.UserID) (*service.ContentView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetContentView", ctx, userID)
 	ret0, _ := ret[0].(*service.ContentView)
@@ -5970,22 +5970,22 @@ func (c *MockDMHandlersServiceGetContentViewCall) Return(arg0 *service.ContentVi
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDMHandlersServiceGetContentViewCall) Do(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
+func (c *MockDMHandlersServiceGetContentViewCall) Do(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDMHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
+func (c *MockDMHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.ContentView, error)) *MockDMHandlersServiceGetContentViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetOrCreateDMRoom mocks base method.
-func (m *MockDMHandlersService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID store.UserID) (store.RoomID, error) {
+func (m *MockDMHandlersService) GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID model.UserID) (model.RoomID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrCreateDMRoom", ctx, user1ID, user2ID)
-	ret0, _ := ret[0].(store.RoomID)
+	ret0, _ := ret[0].(model.RoomID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -6003,25 +6003,25 @@ type MockDMHandlersServiceGetOrCreateDMRoomCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Return(arg0 store.RoomID, arg1 error) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Return(arg0 model.RoomID, arg1 error) *MockDMHandlersServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Do(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Do(f func(context.Context, model.UserID, model.UserID) (model.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID) (model.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // GetUserSessionVersion mocks base method.
-func (m *MockDMHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (m *MockDMHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
 	ret0, _ := ret[0].(int)
@@ -6048,19 +6048,19 @@ func (c *MockDMHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 e
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDMHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
+func (c *MockDMHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDMHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
+func (c *MockDMHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserExists mocks base method.
-func (m *MockDMHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (m *MockDMHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserExists", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -6087,13 +6087,13 @@ func (c *MockDMHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) *Moc
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockDMHandlersServiceUserExistsCall) Do(f func(context.Context, store.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
+func (c *MockDMHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockDMHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, store.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
+func (c *MockDMHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -6123,7 +6123,7 @@ func (m *MockHub) EXPECT() *MockHubMockRecorder {
 }
 
 // BroadcastRoomPresence mocks base method.
-func (m *MockHub) BroadcastRoomPresence(roomID store.RoomID) {
+func (m *MockHub) BroadcastRoomPresence(roomID model.RoomID) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "BroadcastRoomPresence", roomID)
 }
@@ -6147,19 +6147,19 @@ func (c *MockHubBroadcastRoomPresenceCall) Return() *MockHubBroadcastRoomPresenc
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubBroadcastRoomPresenceCall) Do(f func(store.RoomID)) *MockHubBroadcastRoomPresenceCall {
+func (c *MockHubBroadcastRoomPresenceCall) Do(f func(model.RoomID)) *MockHubBroadcastRoomPresenceCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubBroadcastRoomPresenceCall) DoAndReturn(f func(store.RoomID)) *MockHubBroadcastRoomPresenceCall {
+func (c *MockHubBroadcastRoomPresenceCall) DoAndReturn(f func(model.RoomID)) *MockHubBroadcastRoomPresenceCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // BroadcastSystemMessage mocks base method.
-func (m *MockHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
+func (m *MockHub) BroadcastSystemMessage(roomID model.RoomID, message string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "BroadcastSystemMessage", roomID, message)
 }
@@ -6183,19 +6183,19 @@ func (c *MockHubBroadcastSystemMessageCall) Return() *MockHubBroadcastSystemMess
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubBroadcastSystemMessageCall) Do(f func(store.RoomID, string)) *MockHubBroadcastSystemMessageCall {
+func (c *MockHubBroadcastSystemMessageCall) Do(f func(model.RoomID, string)) *MockHubBroadcastSystemMessageCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubBroadcastSystemMessageCall) DoAndReturn(f func(store.RoomID, string)) *MockHubBroadcastSystemMessageCall {
+func (c *MockHubBroadcastSystemMessageCall) DoAndReturn(f func(model.RoomID, string)) *MockHubBroadcastSystemMessageCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DisconnectRoom mocks base method.
-func (m *MockHub) DisconnectRoom(roomID store.RoomID) {
+func (m *MockHub) DisconnectRoom(roomID model.RoomID) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "DisconnectRoom", roomID)
 }
@@ -6219,19 +6219,19 @@ func (c *MockHubDisconnectRoomCall) Return() *MockHubDisconnectRoomCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubDisconnectRoomCall) Do(f func(store.RoomID)) *MockHubDisconnectRoomCall {
+func (c *MockHubDisconnectRoomCall) Do(f func(model.RoomID)) *MockHubDisconnectRoomCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubDisconnectRoomCall) DoAndReturn(f func(store.RoomID)) *MockHubDisconnectRoomCall {
+func (c *MockHubDisconnectRoomCall) DoAndReturn(f func(model.RoomID)) *MockHubDisconnectRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // DisconnectUser mocks base method.
-func (m *MockHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
+func (m *MockHub) DisconnectUser(roomID model.RoomID, userID model.UserID) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "DisconnectUser", roomID, userID)
 }
@@ -6255,13 +6255,13 @@ func (c *MockHubDisconnectUserCall) Return() *MockHubDisconnectUserCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubDisconnectUserCall) Do(f func(store.RoomID, store.UserID)) *MockHubDisconnectUserCall {
+func (c *MockHubDisconnectUserCall) Do(f func(model.RoomID, model.UserID)) *MockHubDisconnectUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubDisconnectUserCall) DoAndReturn(f func(store.RoomID, store.UserID)) *MockHubDisconnectUserCall {
+func (c *MockHubDisconnectUserCall) DoAndReturn(f func(model.RoomID, model.UserID)) *MockHubDisconnectUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -6303,7 +6303,7 @@ func (c *MockHubNotifyContentUpdateCall) DoAndReturn(f func(ws.MsgType)) *MockHu
 }
 
 // NotifyRoomUpdate mocks base method.
-func (m *MockHub) NotifyRoomUpdate(roomID store.RoomID) {
+func (m *MockHub) NotifyRoomUpdate(roomID model.RoomID) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "NotifyRoomUpdate", roomID)
 }
@@ -6327,19 +6327,19 @@ func (c *MockHubNotifyRoomUpdateCall) Return() *MockHubNotifyRoomUpdateCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubNotifyRoomUpdateCall) Do(f func(store.RoomID)) *MockHubNotifyRoomUpdateCall {
+func (c *MockHubNotifyRoomUpdateCall) Do(f func(model.RoomID)) *MockHubNotifyRoomUpdateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubNotifyRoomUpdateCall) DoAndReturn(f func(store.RoomID)) *MockHubNotifyRoomUpdateCall {
+func (c *MockHubNotifyRoomUpdateCall) DoAndReturn(f func(model.RoomID)) *MockHubNotifyRoomUpdateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // NotifyUser mocks base method.
-func (m *MockHub) NotifyUser(userID store.UserID, msgType ws.MsgType, message string) {
+func (m *MockHub) NotifyUser(userID model.UserID, msgType ws.MsgType, message string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "NotifyUser", userID, msgType, message)
 }
@@ -6363,13 +6363,13 @@ func (c *MockHubNotifyUserCall) Return() *MockHubNotifyUserCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubNotifyUserCall) Do(f func(store.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
+func (c *MockHubNotifyUserCall) Do(f func(model.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubNotifyUserCall) DoAndReturn(f func(store.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
+func (c *MockHubNotifyUserCall) DoAndReturn(f func(model.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

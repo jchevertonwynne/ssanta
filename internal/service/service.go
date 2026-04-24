@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/pgp"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
@@ -61,8 +62,8 @@ func (s *Service) Ping(ctx context.Context) error {
 
 // DMRoomInfo contains information about a direct message room.
 type DMRoomInfo struct {
-	RoomID      store.RoomID `json:"room_id"`
-	PartnerID   store.UserID `json:"partner_id"`
+	RoomID      model.RoomID `json:"room_id"`
+	PartnerID   model.UserID `json:"partner_id"`
 	PartnerName string       `json:"partner_name"`
 	DisplayName string       `json:"display_name"`
 	CreatedAt   time.Time    `json:"created_at"`
@@ -71,29 +72,29 @@ type DMRoomInfo struct {
 // ContentView contains all data needed to render the main content page.
 type ContentView struct {
 	CurrentUsername string
-	Users           []store.User
-	CreatedRooms    []store.Room
-	MemberRooms     []store.Room
+	Users           []model.User
+	CreatedRooms    []model.Room
+	MemberRooms     []model.Room
 	DMRooms         []DMRoomInfo
-	Invites         []store.InviteForUser
+	Invites         []model.InviteForUser
 }
 
 // RoomDetailView contains all data needed to render a room detail page.
 type RoomDetailView struct {
 	CurrentUsername string
-	Room            store.RoomDetail
+	Room            model.RoomDetail
 	IsCreator       bool
 	IsMember        bool
 	IsDMRoom        bool
 	CanInvite       bool
-	Members         []store.RoomMember
-	PendingInvites  []store.InviteForRoom
+	Members         []model.RoomMember
+	PendingInvites  []model.InviteForRoom
 	DMPartnerName   string       // non-empty only when IsDMRoom is true
-	AllUsers        []store.User // all users in the system, for invite dropdown
+	AllUsers        []model.User // all users in the system, for invite dropdown
 }
 
 // GetContentView loads all data needed for the main content page.
-func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*ContentView, error) {
+func (s *Service) GetContentView(ctx context.Context, userID model.UserID) (*ContentView, error) {
 	view := &ContentView{}
 
 	if userID == 0 {
@@ -105,7 +106,7 @@ func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*Con
 		return view, nil
 	}
 
-	var users []store.User
+	var users []model.User
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -162,13 +163,13 @@ func (s *Service) GetContentView(ctx context.Context, userID store.UserID) (*Con
 // Auth guard checks creator or membership from the fetched members list.
 //
 //nolint:cyclop,funlen
-func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, userID store.UserID) (*RoomDetailView, error) {
+func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, userID model.UserID) (*RoomDetailView, error) {
 	var (
-		user     store.User
-		room     store.RoomDetail
-		members  []store.RoomMember
-		invites  []store.InviteForRoom
-		allUsers []store.User
+		user     model.User
+		room     model.RoomDetail
+		members  []model.RoomMember
+		invites  []model.InviteForRoom
+		allUsers []model.User
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -243,15 +244,15 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID store.RoomID, us
 }
 
 // ListRoomMembersWithPGP loads room members along with any PGP metadata.
-func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
+func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomID) ([]model.RoomMember, error) {
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
 // SetRoomPGPKey stores and challenges a room member's public key.
 func (s *Service) SetRoomPGPKey(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 	armoredPublicKey string,
 ) error {
 	isMember, err := s.store.Rooms.IsRoomMember(ctx, roomID, userID)
@@ -295,8 +296,8 @@ func (s *Service) SetRoomPGPKey(
 // VerifyRoomPGPKey verifies a decrypted challenge for a room member.
 func (s *Service) VerifyRoomPGPKey(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 	decryptedChallenge string,
 ) error {
 	plaintext := strings.TrimSpace(decryptedChallenge)
@@ -307,7 +308,7 @@ func (s *Service) VerifyRoomPGPKey(
 }
 
 // RemoveRoomUserPGPKey clears a member's PGP key.
-func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID, targetUserID, actingUserID store.UserID) error {
+func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID model.RoomID, targetUserID, actingUserID model.UserID) error {
 	if targetUserID != actingUserID {
 		isCreator, err := s.store.Rooms.IsRoomCreator(ctx, roomID, actingUserID)
 		if err != nil {
@@ -325,18 +326,18 @@ func (s *Service) RemoveRoomUserPGPKey(ctx context.Context, roomID store.RoomID,
 // User operations
 
 // UserExists reports whether a user exists.
-func (s *Service) UserExists(ctx context.Context, id store.UserID) (bool, error) {
+func (s *Service) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	return s.store.Users.UserExists(ctx, id)
 }
 
 // GetUserSessionVersion returns the user's current session_version. Session
 // cookies must carry a matching value to be considered valid.
-func (s *Service) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+func (s *Service) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	return s.store.Users.GetUserSessionVersion(ctx, id)
 }
 
 // CreateUser creates a new user account.
-func (s *Service) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (s *Service) CreateUser(ctx context.Context, username, password string) (model.UserID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateUser")
 	defer span.End()
 
@@ -363,7 +364,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password string) (st
 }
 
 // LoginUser authenticates a user by username and password.
-func (s *Service) LoginUser(ctx context.Context, username, password string) (store.UserID, error) {
+func (s *Service) LoginUser(ctx context.Context, username, password string) (model.UserID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.LoginUser")
 	defer span.End()
 	span.SetAttributes(attribute.String("username", username))
@@ -390,12 +391,12 @@ func (s *Service) LoginUser(ctx context.Context, username, password string) (sto
 }
 
 // DeleteUser removes a user account.
-func (s *Service) DeleteUser(ctx context.Context, id store.UserID) error {
+func (s *Service) DeleteUser(ctx context.Context, id model.UserID) error {
 	return s.store.Users.DeleteUser(ctx, id)
 }
 
 // VerifyPassword checks a user's password without changing it.
-func (s *Service) VerifyPassword(ctx context.Context, userID store.UserID, password string) error {
+func (s *Service) VerifyPassword(ctx context.Context, userID model.UserID, password string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.VerifyPassword")
 	defer span.End()
 	span.SetAttributes(attribute.Int64("user_id", userID.Int64()))
@@ -415,7 +416,7 @@ func (s *Service) VerifyPassword(ctx context.Context, userID store.UserID, passw
 }
 
 // ChangePassword updates a user's password after verifying the current one.
-func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, currentPassword, newPassword string) error {
+func (s *Service) ChangePassword(ctx context.Context, userID model.UserID, currentPassword, newPassword string) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ChangePassword")
 	defer span.End()
 	span.SetAttributes(attribute.Int64("user_id", userID.Int64()))
@@ -449,7 +450,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, curre
 // Room operations
 
 // CreateRoom creates a new room for the requesting user.
-func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID store.UserID) (store.RoomID, error) {
+func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID model.UserID) (model.RoomID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateRoom")
 	defer span.End()
 
@@ -477,7 +478,7 @@ func (s *Service) CreateRoom(ctx context.Context, displayName string, creatorID 
 }
 
 // DeleteRoom removes a room if the creator is allowed to do so.
-func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID store.UserID) error {
+func (s *Service) DeleteRoom(ctx context.Context, roomID model.RoomID, creatorID model.UserID) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
 	}
@@ -485,25 +486,25 @@ func (s *Service) DeleteRoom(ctx context.Context, roomID store.RoomID, creatorID
 }
 
 // LeaveRoom removes a user from a room.
-func (s *Service) LeaveRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (s *Service) LeaveRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	return s.store.Rooms.LeaveRoom(ctx, roomID, userID)
 }
 
 // JoinRoom adds a user to a room.
-func (s *Service) JoinRoom(ctx context.Context, roomID store.RoomID, userID store.UserID) error {
+func (s *Service) JoinRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
 	return s.store.Rooms.JoinRoom(ctx, roomID, userID)
 }
 
 // IsRoomCreator reports whether a user created the room.
-func (s *Service) IsRoomCreator(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error) {
+func (s *Service) IsRoomCreator(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, error) {
 	return s.store.Rooms.IsRoomCreator(ctx, roomID, userID)
 }
 
 // GetRoomAccess reports creator and membership state for a room.
 func (s *Service) GetRoomAccess(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 ) (bool, bool, error) {
 	return s.store.Rooms.GetRoomAccess(ctx, roomID, userID)
 }
@@ -511,8 +512,8 @@ func (s *Service) GetRoomAccess(
 // SetRoomMembersCanInvite toggles whether room members can invite others.
 func (s *Service) SetRoomMembersCanInvite(
 	ctx context.Context,
-	roomID store.RoomID,
-	creatorID store.UserID,
+	roomID model.RoomID,
+	creatorID model.UserID,
 	value bool,
 ) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
@@ -524,8 +525,8 @@ func (s *Service) SetRoomMembersCanInvite(
 // SetRoomPGPRequired toggles whether a room requires PGP.
 func (s *Service) SetRoomPGPRequired(
 	ctx context.Context,
-	roomID store.RoomID,
-	actingUserID store.UserID,
+	roomID model.RoomID,
+	actingUserID model.UserID,
 	value bool,
 ) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
@@ -535,7 +536,7 @@ func (s *Service) SetRoomPGPRequired(
 }
 
 // RemoveMember removes another user from a room.
-func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberID, creatorID store.UserID) error {
+func (s *Service) RemoveMember(ctx context.Context, roomID model.RoomID, memberID, creatorID model.UserID) error {
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
 	}
@@ -547,8 +548,8 @@ func (s *Service) RemoveMember(ctx context.Context, roomID store.RoomID, memberI
 // CreateInvite creates an invite for another user.
 func (s *Service) CreateInvite(
 	ctx context.Context,
-	roomID store.RoomID,
-	inviterID store.UserID,
+	roomID model.RoomID,
+	inviterID model.UserID,
 	inviteeUsername string,
 ) error {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateInvite")
@@ -573,9 +574,9 @@ func (s *Service) CreateInvite(
 // AcceptInvite accepts an invite and returns the room ID.
 func (s *Service) AcceptInvite(
 	ctx context.Context,
-	inviteID store.InviteID,
-	userID store.UserID,
-) (store.RoomID, error) {
+	inviteID model.InviteID,
+	userID model.UserID,
+) (model.RoomID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.AcceptInvite")
 	defer span.End()
 	span.SetAttributes(
@@ -601,21 +602,21 @@ func (s *Service) AcceptInvite(
 }
 
 // DeclineInvite declines an invite.
-func (s *Service) DeclineInvite(ctx context.Context, inviteID store.InviteID, userID store.UserID) error {
+func (s *Service) DeclineInvite(ctx context.Context, inviteID model.InviteID, userID model.UserID) error {
 	return s.store.Invites.DeclineInvite(ctx, inviteID, userID)
 }
 
 // CancelInvite cancels an invite and returns the affected room and user IDs.
 func (s *Service) CancelInvite(
 	ctx context.Context,
-	inviteID store.InviteID,
-	actingUserID store.UserID,
-) (store.RoomID, store.UserID, error) {
+	inviteID model.InviteID,
+	actingUserID model.UserID,
+) (model.RoomID, model.UserID, error) {
 	return s.store.Invites.CancelInvite(ctx, inviteID, actingUserID)
 }
 
 // RoomIDForInvite resolves the room associated with an invite.
-func (s *Service) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) (store.RoomID, error) {
+func (s *Service) RoomIDForInvite(ctx context.Context, inviteID model.InviteID) (model.RoomID, error) {
 	return s.store.Invites.RoomIDForInvite(ctx, inviteID)
 }
 
@@ -624,19 +625,19 @@ func (s *Service) RoomIDForInvite(ctx context.Context, inviteID store.InviteID) 
 // IsRoomMember reports whether a user belongs to a room.
 func (s *Service) IsRoomMember(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 ) (bool, error) {
 	return s.store.Rooms.IsRoomMember(ctx, roomID, userID)
 }
 
 // IsRoomPGPRequired reports whether a room requires PGP.
-func (s *Service) IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error) {
+func (s *Service) IsRoomPGPRequired(ctx context.Context, roomID model.RoomID) (bool, error) {
 	return s.store.Rooms.IsRoomPGPRequired(ctx, roomID)
 }
 
 // GetUsername resolves a user ID to a username.
-func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
+func (s *Service) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	user, err := s.store.Users.GetUserByID(ctx, userID)
 	if err != nil {
 		return "", err
@@ -645,7 +646,7 @@ func (s *Service) GetUsername(ctx context.Context, userID store.UserID) (string,
 }
 
 // GetUserByUsername looks up a user by username.
-func (s *Service) GetUserByUsername(ctx context.Context, username string) (store.User, error) {
+func (s *Service) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	return s.store.Users.GetUserByUsername(ctx, username)
 }
 
@@ -654,8 +655,8 @@ func (s *Service) GetUserByUsername(ctx context.Context, username string) (store
 // GetOrCreateDMRoom gets or creates a DM room between two users.
 func (s *Service) GetOrCreateDMRoom(
 	ctx context.Context,
-	user1ID, user2ID store.UserID,
-) (store.RoomID, error) {
+	user1ID, user2ID model.UserID,
+) (model.RoomID, error) {
 	if user1ID == user2ID {
 		return 0, store.ErrCannotInviteSelf
 	}
@@ -697,14 +698,14 @@ func (s *Service) GetOrCreateDMRoom(
 // getDMRoomsForUser returns a list of DM rooms for a user with partner info.
 //
 //nolint:cyclop,nestif,funcorder
-func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, users []store.User) ([]DMRoomInfo, error) {
+func (s *Service) getDMRoomsForUser(ctx context.Context, userID model.UserID, users []model.User) ([]DMRoomInfo, error) {
 	memberRooms, err := s.store.Rooms.ListDMRoomsByMember(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build a map of username -> user for quick lookup
-	userByName := make(map[string]store.User)
+	userByName := make(map[string]model.User)
 	for _, u := range users {
 		userByName[u.Username] = u
 	}
@@ -736,7 +737,7 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 		}
 
 		// Find the partner in the user list
-		var partnerID store.UserID
+		var partnerID model.UserID
 		if partner, ok := userByName[partnerName]; ok {
 			partnerID = partner.ID
 		} else {
@@ -765,13 +766,13 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID store.UserID, us
 // CreateMessage stores a new room message.
 func (s *Service) CreateMessage(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 	username, message string,
 	whisper bool,
-	targetUserID *store.UserID,
+	targetUserID *model.UserID,
 	preEncrypted bool,
-) (store.MessageID, error) {
+) (model.MessageID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateMessage")
 	defer span.End()
 	span.SetAttributes(
@@ -784,11 +785,11 @@ func (s *Service) CreateMessage(
 // ListMessagesAfterID returns messages newer than afterID for a room.
 func (s *Service) ListMessagesAfterID(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
-	afterID store.MessageID,
+	roomID model.RoomID,
+	userID model.UserID,
+	afterID model.MessageID,
 	limit int,
-) ([]store.Message, error) {
+) ([]model.Message, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ListMessagesAfterID")
 	defer span.End()
 	span.SetAttributes(
@@ -802,11 +803,11 @@ func (s *Service) ListMessagesAfterID(
 // ListMessages returns messages for a room.
 func (s *Service) ListMessages(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
-	beforeID store.MessageID,
+	roomID model.RoomID,
+	userID model.UserID,
+	beforeID model.MessageID,
 	limit int,
-) ([]store.Message, error) {
+) ([]model.Message, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.ListMessages")
 	defer span.End()
 	span.SetAttributes(
@@ -819,11 +820,11 @@ func (s *Service) ListMessages(
 // SearchMessages searches messages in a room.
 func (s *Service) SearchMessages(
 	ctx context.Context,
-	roomID store.RoomID,
-	userID store.UserID,
+	roomID model.RoomID,
+	userID model.UserID,
 	query string,
 	limit int,
-) ([]store.Message, error) {
+) ([]model.Message, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.SearchMessages")
 	defer span.End()
 	span.SetAttributes(
@@ -834,7 +835,7 @@ func (s *Service) SearchMessages(
 	return s.store.Chat.SearchMessages(ctx, roomID, userID, query, limit)
 }
 
-func (s *Service) assertNotDM(ctx context.Context, roomID store.RoomID) error {
+func (s *Service) assertNotDM(ctx context.Context, roomID model.RoomID) error {
 	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
 	if err != nil {
 		return err

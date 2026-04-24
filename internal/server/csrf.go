@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
 const (
@@ -29,7 +29,7 @@ func CSRF(sessions SessionManager, secret []byte, secure bool) func(http.Handler
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id := readOrIssueCSRFID(w, r, secure)
-			var userID *store.UserID
+			var userID *model.UserID
 			if sessions != nil {
 				if currentID, _, ok := sessions.UserID(r); ok {
 					userID = &currentID
@@ -99,7 +99,7 @@ func CSRFTokenFromContext(ctx context.Context) string {
 	return token
 }
 
-func computeCSRFToken(secret []byte, csrfID string, userID *store.UserID) string {
+func computeCSRFToken(secret []byte, csrfID string, userID *model.UserID) string {
 	h := hmac.New(sha256.New, secret)
 	hashable := csrfID
 	if userID != nil {

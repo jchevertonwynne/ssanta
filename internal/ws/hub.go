@@ -13,17 +13,17 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 const maxMessageLength = 4096
 
-// defaultWSBurst / defaultWSRefillPerSec cap per-connection inbound frame
+// DefaultWSBurst / DefaultWSRefillPerSec cap per-connection inbound frame
 // rate. Overridable via config.
 const (
-	defaultWSBurst        = 10
-	defaultWSRefillPerSec = 5
+	DefaultWSBurst        = 10
+	DefaultWSRefillPerSec = 5
 )
 
 type ctxKey int
@@ -31,14 +31,14 @@ type ctxKey int
 const ctxKeyWSSide ctxKey = iota
 
 type ChatHub struct {
-	rooms           map[store.RoomID]*ChatRoom
-	userConnections map[store.UserID]map[*ChatClient]bool
+	rooms           map[model.RoomID]*ChatRoom
+	userConnections map[model.UserID]map[*ChatClient]bool
 	register        chan *ChatClient
 	unregister      chan *ChatClient
 	done            chan struct{}
 	wg              sync.WaitGroup
 	mu              sync.RWMutex
-	typingStatus    map[store.RoomID]map[store.UserID]*typingSession // track who's typing
+	typingStatus    map[model.RoomID]map[model.UserID]*typingSession // track who's typing
 	typingSessionID int64
 	// lifetimeCtx backs metric emissions from hub-owned goroutines/paths that
 	// are not tied to a single HTTP request. Cancelled on Stop.
@@ -59,7 +59,7 @@ type typingSession struct {
 }
 
 type ChatRoom struct {
-	roomID  store.RoomID
+	roomID  model.RoomID
 	clients map[*ChatClient]bool
 	mu      sync.RWMutex
 }
@@ -69,8 +69,8 @@ type ChatClient struct {
 	conn      *websocket.Conn
 	send      chan []byte
 	closeOnce sync.Once
-	roomID    store.RoomID
-	userID    store.UserID
+	roomID    model.RoomID
+	userID    model.UserID
 	username  string
 	svc       Service
 	bucket    *tokenBucket
@@ -78,39 +78,32 @@ type ChatClient struct {
 
 type ChatMessagePayload struct {
 	Type         MsgType         `json:"type"`
-	ID           store.MessageID `json:"id,omitempty"`
+	ID           model.MessageID `json:"id,omitempty"`
 	Username     string          `json:"username,omitempty"`
 	Message      string          `json:"message,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
-	TargetUserID store.UserID    `json:"target_user_id,omitempty"`
+	TargetUserID model.UserID    `json:"target_user_id,omitempty"`
 	Whisper      bool            `json:"whisper,omitempty"`
 	PreEncrypted bool            `json:"pre_encrypted,omitempty"`
 	ClientMsgID  string          `json:"client_message_id,omitempty"`
 }
 
-func NewChatHub() *ChatHub {
-	return NewChatHubWithLimits(defaultWSBurst, defaultWSRefillPerSec)
-}
-
-// NewChatHubWithLimits lets callers configure the per-connection inbound
-// message token bucket. Used by production wiring; tests typically use the
-// defaults via NewChatHub.
 func NewChatHubWithLimits(burst int, refillPerSecond float64) *ChatHub {
 	if burst <= 0 {
-		burst = defaultWSBurst
+		burst = DefaultWSBurst
 	}
 	if refillPerSecond <= 0 {
-		refillPerSecond = defaultWSRefillPerSec
+		refillPerSecond = DefaultWSRefillPerSec
 	}
 	//nolint:gosec // we call cancel later
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ChatHub{
-		rooms:           make(map[store.RoomID]*ChatRoom),
-		userConnections: make(map[store.UserID]map[*ChatClient]bool),
+		rooms:           make(map[model.RoomID]*ChatRoom),
+		userConnections: make(map[model.UserID]map[*ChatClient]bool),
 		register:        make(chan *ChatClient),
 		unregister:      make(chan *ChatClient),
 		done:            make(chan struct{}),
-		typingStatus:    make(map[store.RoomID]map[store.UserID]*typingSession),
+		typingStatus:    make(map[model.RoomID]map[model.UserID]*typingSession),
 		lifetimeCtx:     ctx,
 		lifetimeCancel:  cancel,
 		msgBurst:        burst,
@@ -163,7 +156,7 @@ func (h *ChatHub) Run() {
 				}
 				room.mu.Unlock()
 			}
-			h.rooms = make(map[store.RoomID]*ChatRoom)
+			h.rooms = make(map[model.RoomID]*ChatRoom)
 			h.mu.Unlock()
 			return
 
@@ -252,7 +245,7 @@ func (h *ChatHub) Run() {
 	}
 }
 
-func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
+func (h *ChatHub) BroadcastRoomPresence(roomID model.RoomID) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	if !ok {
@@ -260,8 +253,8 @@ func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
 		return
 	}
 	room.mu.RLock()
-	seen := make(map[store.UserID]bool)
-	var onlineIDs []store.UserID
+	seen := make(map[model.UserID]bool)
+	var onlineIDs []model.UserID
 	for client := range room.clients {
 		if !seen[client.userID] {
 			seen[client.userID] = true
@@ -273,7 +266,7 @@ func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
 
 	msg, err := json.Marshal(struct {
 		Type          MsgType        `json:"type"`
-		OnlineUserIDs []store.UserID `json:"online_user_ids"`
+		OnlineUserIDs []model.UserID `json:"online_user_ids"`
 	}{Type: MsgTypePresence, OnlineUserIDs: onlineIDs})
 	if err != nil {
 		return
@@ -281,7 +274,7 @@ func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
 	h.BroadcastToRoom(roomID, msg)
 }
 
-func (h *ChatHub) BroadcastToRoom(roomID store.RoomID, message []byte) {
+func (h *ChatHub) BroadcastToRoom(roomID model.RoomID, message []byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -303,7 +296,7 @@ func (h *ChatHub) BroadcastToRoom(roomID store.RoomID, message []byte) {
 	}
 }
 
-func (h *ChatHub) SendToRoomUsers(roomID store.RoomID, perUserMessage map[store.UserID][]byte) {
+func (h *ChatHub) SendToRoomUsers(roomID model.RoomID, perUserMessage map[model.UserID][]byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -328,25 +321,7 @@ func (h *ChatHub) SendToRoomUsers(roomID store.RoomID, perUserMessage map[store.
 	}
 }
 
-// OnlineUsersInRoom returns the set of user IDs with an active WebSocket
-// connection to this room.
-func (h *ChatHub) OnlineUsersInRoom(roomID store.RoomID) map[store.UserID]bool {
-	h.mu.RLock()
-	room, ok := h.rooms[roomID]
-	h.mu.RUnlock()
-	if !ok {
-		return nil
-	}
-	room.mu.Lock()
-	defer room.mu.Unlock()
-	online := make(map[store.UserID]bool, len(room.clients))
-	for client := range room.clients {
-		online[client.userID] = true
-	}
-	return online
-}
-
-func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
+func (h *ChatHub) DisconnectUser(roomID model.RoomID, userID model.UserID) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -384,7 +359,7 @@ func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
 // DisconnectRoom notifies every client in a room that the room has been
 // deleted and then terminates their sockets. Used when the creator deletes a
 // room; mirrors DisconnectUser for a whole-room scope.
-func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
+func (h *ChatHub) DisconnectRoom(roomID model.RoomID) {
 	h.mu.Lock()
 	room, ok := h.rooms[roomID]
 	if !ok {
@@ -412,7 +387,7 @@ func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
 	}
 }
 
-func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
+func (h *ChatHub) BroadcastSystemMessage(roomID model.RoomID, message string) {
 	sysMsg := ChatMessagePayload{
 		Type:      MsgTypeSystem,
 		Message:   message,
@@ -423,7 +398,7 @@ func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
 	}
 }
 
-func (h *ChatHub) NotifyRoomUpdate(roomID store.RoomID) {
+func (h *ChatHub) NotifyRoomUpdate(roomID model.RoomID) {
 	refreshMsg := ChatMessagePayload{
 		Type: MsgTypeRefresh,
 	}
@@ -432,7 +407,7 @@ func (h *ChatHub) NotifyRoomUpdate(roomID store.RoomID) {
 	}
 }
 
-func (h *ChatHub) NotifyUser(userID store.UserID, msgType MsgType, message string) {
+func (h *ChatHub) NotifyUser(userID model.UserID, msgType MsgType, message string) {
 	h.mu.RLock()
 	connections, ok := h.userConnections[userID]
 	h.mu.RUnlock()
@@ -484,8 +459,8 @@ func (h *ChatHub) NotifyContentUpdate(msgType MsgType) {
 // interface assertion so tests using the mock Hub are unaffected.
 //
 //nolint:gocognit,cyclop,nestif
-func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
-	var affectedRooms []store.RoomID
+func (h *ChatHub) HandleAccountDeletion(userID model.UserID) {
+	var affectedRooms []model.RoomID
 
 	h.mu.Lock()
 	if conns, ok := h.userConnections[userID]; ok {
@@ -528,7 +503,7 @@ func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
 	h.mu.Unlock()
 
 	// Deduplicate and notify affected rooms outside of the lock.
-	roomSet := make(map[store.RoomID]struct{})
+	roomSet := make(map[model.RoomID]struct{})
 	for _, r := range affectedRooms {
 		roomSet[r] = struct{}{}
 	}
@@ -543,12 +518,12 @@ func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
 // A 5-second timeout is automatically applied for typing status.
 //
 //nolint:funlen,nestif
-func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, userID store.UserID, username string, isTyping bool) {
+func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID model.RoomID, userID model.UserID, username string, isTyping bool) {
 	h.mu.Lock()
 
 	// Ensure room entry exists in typingStatus
 	if h.typingStatus[roomID] == nil {
-		h.typingStatus[roomID] = make(map[store.UserID]*typingSession)
+		h.typingStatus[roomID] = make(map[model.UserID]*typingSession)
 	}
 
 	// Cancel any existing typing timeout
@@ -784,7 +759,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 					span.End()
 					continue
 				}
-				var targetID *store.UserID
+				var targetID *model.UserID
 				if isWhisper {
 					targetID = &targetUserID
 				}
@@ -808,7 +783,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 					span.End()
 					continue
 				}
-				perUser := make(map[store.UserID][]byte, len(members))
+				perUser := make(map[model.UserID][]byte, len(members))
 				if isWhisper {
 					perUser[c.userID] = outBytes
 					perUser[targetUserID] = outBytes
@@ -831,7 +806,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 			}
 
 			// PGP optional: send plaintext to all members
-			var targetID *store.UserID
+			var targetID *model.UserID
 			if isWhisper {
 				targetID = &targetUserID
 			}
@@ -840,7 +815,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 				span.End()
 				continue
 			}
-			perUser := make(map[store.UserID][]byte, len(members))
+			perUser := make(map[model.UserID][]byte, len(members))
 			out := ChatMessagePayload{
 				Type:        MsgTypeMessage,
 				ID:          msgID,
@@ -878,7 +853,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 	}
 }
 
-func persistMessage(ctx context.Context, svc Service, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func persistMessage(ctx context.Context, svc Service, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	id, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)

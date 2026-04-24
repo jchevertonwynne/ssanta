@@ -48,7 +48,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userID, usernameAlice, gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -129,7 +129,7 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, gomock.Any(), gomock.Any(), gomock.Any(), false, gomock.Any(), true).Return(store.MessageID(1), nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -224,7 +224,7 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(true, nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -290,7 +290,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -334,7 +334,7 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return(usernameAlice, nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -419,7 +419,7 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
 	svc.EXPECT().CreateMessage(gomock.Any(), roomID, userA, usernameAlice, "secret", true, gomock.Any(), false).Return(store.MessageID(1), nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -516,7 +516,7 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 	}, nil).AnyTimes()
 	svc.EXPECT().IsRoomPGPRequired(gomock.Any(), roomID).Return(false, nil).AnyTimes()
 
-	hub := ws.NewChatHub()
+	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 

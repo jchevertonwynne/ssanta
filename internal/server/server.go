@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
+	"github.com/jchevertonwynne/ssanta/internal/ratelimit"
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
@@ -30,13 +32,13 @@ type indexData struct {
 }
 
 type contentData struct {
-	CurrentUserID       store.UserID
+	CurrentUserID       model.UserID
 	CurrentUsername     string
-	Users               []store.User
-	CreatedRooms        []store.Room
-	MemberRooms         []store.Room
+	Users               []model.User
+	CreatedRooms        []model.Room
+	MemberRooms         []model.Room
 	DMRooms             []service.DMRoomInfo
-	Invites             []store.InviteForUser
+	Invites             []model.InviteForUser
 	RoomFormError       string
 	RoomFormAttempted   string
 	UserFormError       string
@@ -49,17 +51,17 @@ type contentData struct {
 }
 
 type roomDetailData struct {
-	CurrentUserID       store.UserID
+	CurrentUserID       model.UserID
 	CurrentUsername     string
-	Room                store.RoomDetail
+	Room                model.RoomDetail
 	IsCreator           bool
 	IsMember            bool
 	IsDMRoom            bool
 	CanInvite           bool
-	Members             []store.RoomMember
-	PendingInvites      []store.InviteForRoom
+	Members             []model.RoomMember
+	PendingInvites      []model.InviteForRoom
 	DMPartnerName       string
-	InvitableUsers      []store.User
+	InvitableUsers      []model.User
 	InviteFormError     string
 	InviteFormAttempted string
 	PGPKeyFormError     string
@@ -109,28 +111,28 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
 	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
-	var authLimiter *rateLimiter
+	var authLimiter *ratelimit.RateLimiter
 	if rateLimitMax > 0 && rateLimitWindow > 0 {
-		authLimiter = newRateLimiter(rateLimitMax, rateLimitWindow, opts.TrustProxyHeaders)
+		authLimiter = ratelimit.New(rateLimitMax, rateLimitWindow, opts.TrustProxyHeaders)
 	}
 	limited := func(h http.HandlerFunc) http.HandlerFunc {
 		if authLimiter == nil {
 			return h
 		}
-		return http.HandlerFunc(RateLimit(authLimiter)(h).ServeHTTP)
+		return http.HandlerFunc(ratelimit.Middleware(authLimiter)(h).ServeHTTP)
 	}
 	// Search is cheap compared to auth but does a per-room full scan on ILIKE.
 	// Use a more generous independent bucket so legitimate typing doesn't
 	// trip the limit, while a tight loop still gets throttled.
-	var searchLimiter *rateLimiter
+	var searchLimiter *ratelimit.RateLimiter
 	if opts.RateLimitSearchMax > 0 && opts.RateLimitSearchWindow > 0 {
-		searchLimiter = newRateLimiter(opts.RateLimitSearchMax, opts.RateLimitSearchWindow, opts.TrustProxyHeaders)
+		searchLimiter = ratelimit.New(opts.RateLimitSearchMax, opts.RateLimitSearchWindow, opts.TrustProxyHeaders)
 	}
 	searchLimited := func(h http.HandlerFunc) http.HandlerFunc {
 		if searchLimiter == nil {
 			return h
 		}
-		return http.HandlerFunc(RateLimit(searchLimiter)(h).ServeHTTP)
+		return http.HandlerFunc(ratelimit.Middleware(searchLimiter)(h).ServeHTTP)
 	}
 
 	mux.HandleFunc("GET /content/ws", limited(handleContentWebSocket(hub, svc, sessions)))
@@ -253,7 +255,7 @@ func handleContentUsers(svc ContentHandlersService, sessions SessionManager) htt
 // Cookies are rejected when: the signature is bad, the referenced user no
 // longer exists (DB wipe), or the server-side session_version has been bumped
 // beyond the one baked into the cookie (password change / force-logout).
-func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (store.UserID, bool) {
+func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (model.UserID, bool) {
 	id, cookieVersion, ok := sessions.UserID(r)
 	if !ok {
 		return 0, false
@@ -274,11 +276,11 @@ func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions Ses
 	return id, true
 }
 
-func renderContent(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+func renderContent(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID) {
 	renderContentData(w, ctx, svc, contentData{CurrentUserID: currentID})
 }
 
-func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID) {
 	view, err := svc.GetContentView(ctx, currentID)
 	if err != nil {
 		slog.Error("get content view", "err", err)
@@ -292,7 +294,7 @@ func renderContentInvites(w http.ResponseWriter, ctx context.Context, svc Conten
 	})
 }
 
-func renderContentUsers(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+func renderContentUsers(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID) {
 	view, err := svc.GetContentView(ctx, currentID)
 	if err != nil {
 		slog.Error("get content view", "err", err)
@@ -306,7 +308,7 @@ func renderContentUsers(w http.ResponseWriter, ctx context.Context, svc ContentV
 	})
 }
 
-func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, attempted, formErr string) {
+func renderContentWithRoomFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID, attempted, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		RoomFormAttempted: attempted,
@@ -328,14 +330,14 @@ func renderContentWithLoginFormError(w http.ResponseWriter, ctx context.Context,
 	})
 }
 
-func renderContentWithPasswordFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID, formErr string) {
+func renderContentWithPasswordFormError(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID, formErr string) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:     currentID,
 		PasswordFormError: formErr,
 	})
 }
 
-func renderContentWithPasswordSuccess(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID store.UserID) {
+func renderContentWithPasswordSuccess(w http.ResponseWriter, ctx context.Context, svc ContentViewService, currentID model.UserID) {
 	renderContentData(w, ctx, svc, contentData{
 		CurrentUserID:       currentID,
 		PasswordFormSuccess: true,
@@ -343,7 +345,7 @@ func renderContentWithPasswordSuccess(w http.ResponseWriter, ctx context.Context
 }
 
 //nolint:cyclop,funlen
-func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, opts roomRenderOpts) {
+func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID, opts roomRenderOpts) {
 	view, err := svc.GetRoomDetailView(ctx, roomID, currentID)
 	switch {
 	case errors.Is(err, store.ErrRoomNotFound):
@@ -357,7 +359,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		http.Error(w, "failed to load room", http.StatusInternalServerError)
 		return
 	}
-	verifiedKeys := make(map[store.UserID]string)
+	verifiedKeys := make(map[model.UserID]string)
 	for _, m := range view.Members {
 		if m.PGPPublicKey != "" && m.PGPVerifiedAt != nil {
 			verifiedKeys[m.ID] = m.PGPPublicKey
@@ -370,15 +372,15 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		return
 	}
 
-	memberIDs := make(map[store.UserID]struct{}, len(view.Members))
+	memberIDs := make(map[model.UserID]struct{}, len(view.Members))
 	for _, m := range view.Members {
 		memberIDs[m.ID] = struct{}{}
 	}
-	pendingIDs := make(map[store.UserID]struct{}, len(view.PendingInvites))
+	pendingIDs := make(map[model.UserID]struct{}, len(view.PendingInvites))
 	for _, inv := range view.PendingInvites {
 		pendingIDs[inv.InviteeID] = struct{}{}
 	}
-	invitableUsers := make([]store.User, 0, len(view.AllUsers))
+	invitableUsers := make([]model.User, 0, len(view.AllUsers))
 	for _, u := range view.AllUsers {
 		if _, isMem := memberIDs[u.ID]; isMem {
 			continue
@@ -414,19 +416,19 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 	})
 }
 
-func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
+func renderRoomDetail(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_detail.html"})
 }
 
-func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
+func renderRoomDynamic(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_dynamic.html"})
 }
 
-func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID) {
+func renderRoomSidebar(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{template: "room_sidebar.html"})
 }
 
-func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
+func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:        "room_sidebar.html",
 		inviteAttempted: attempted,
@@ -434,7 +436,7 @@ func renderRoomSidebarWithInviteError(w http.ResponseWriter, ctx context.Context
 	})
 }
 
-func renderRoomSidebarWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
+func renderRoomSidebarWithPGPKeyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:        "room_sidebar.html",
 		pgpKeyAttempted: attempted,
@@ -442,7 +444,7 @@ func renderRoomSidebarWithPGPKeyError(w http.ResponseWriter, ctx context.Context
 	})
 }
 
-func renderRoomSidebarWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, attempted, formErr string) {
+func renderRoomSidebarWithPGPVerifyError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID, attempted, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:           "room_sidebar.html",
 		pgpVerifyAttempted: attempted,
@@ -450,7 +452,7 @@ func renderRoomSidebarWithPGPVerifyError(w http.ResponseWriter, ctx context.Cont
 	})
 }
 
-func renderRoomSidebarWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID store.UserID, roomID store.RoomID, formErr string) {
+func renderRoomSidebarWithPGPRemoveError(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewService, currentID model.UserID, roomID model.RoomID, formErr string) {
 	renderRoom(w, ctx, svc, currentID, roomID, roomRenderOpts{
 		template:     "room_sidebar.html",
 		pgpRemoveErr: formErr,

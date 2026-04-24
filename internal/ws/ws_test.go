@@ -52,7 +52,7 @@ func TestUpgraderCheckOrigin_RejectsEmptyOriginWhenSecure(t *testing.T) {
 //nolint:funlen
 func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 	t.Parallel()
-	hub := NewChatHub()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
 	go hub.Run()
 
 	client := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 10)}
@@ -130,7 +130,7 @@ func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 
 func TestChatHub_DisconnectRoom_EvictsClientsAndEmitsRoomDeleted(t *testing.T) {
 	t.Parallel()
-	hub := NewChatHub()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 
@@ -194,7 +194,7 @@ func TestChatHub_DisconnectRoom_EvictsClientsAndEmitsRoomDeleted(t *testing.T) {
 
 func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 	t.Parallel()
-	hub := NewChatHub()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
 	go hub.Run()
 	defer hub.Stop()
 

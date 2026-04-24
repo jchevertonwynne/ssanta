@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
 type messageResponse struct {
-	ID           store.MessageID `json:"id"`
+	ID           model.MessageID `json:"id"`
 	Username     string          `json:"username"`
 	Message      string          `json:"message"`
 	CreatedAt    time.Time       `json:"created_at"`
@@ -20,7 +20,7 @@ type messageResponse struct {
 	PreEncrypted bool            `json:"pre_encrypted"`
 }
 
-func messagesToResponse(msgs []store.Message) []messageResponse {
+func messagesToResponse(msgs []model.Message) []messageResponse {
 	out := make([]messageResponse, len(msgs))
 	for i, m := range msgs {
 		out[i] = messageResponse{
@@ -72,10 +72,10 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 		}
 
 		beforeIDStr := r.URL.Query().Get("before_id")
-		var beforeID store.MessageID
+		var beforeID model.MessageID
 		if beforeIDStr != "" {
 			if v, err := strconv.ParseInt(beforeIDStr, 10, 64); err == nil {
-				beforeID = store.MessageID(v)
+				beforeID = model.MessageID(v)
 			}
 		}
 

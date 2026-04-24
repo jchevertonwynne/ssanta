@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -14,20 +13,6 @@ type MessageStore struct {
 	// text is matched literally. Order matters: \ is rewritten first so the
 	// subsequent replacements don't double-escape.
 	ilikeEscaper *strings.Replacer
-}
-
-type Message struct {
-	ID           MessageID
-	RoomID       RoomID
-	UserID       UserID
-	Username     string
-	Message      string
-	CreatedAt    time.Time
-	Whisper      bool
-	TargetUserID *UserID
-	PreEncrypted bool
-	EditedAt     *time.Time
-	DeletedAt    *time.Time
 }
 
 func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID UserID, username, message string, whisper bool, targetUserID *UserID, preEncrypted bool) (MessageID, error) {

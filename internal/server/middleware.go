@@ -20,8 +20,8 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/observability"
-	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
 var errHijackNotSupported = errors.New("hijack not supported")
@@ -137,21 +137,21 @@ func pathInt64(w http.ResponseWriter, r *http.Request, name string) (int64, bool
 }
 
 // pathUserID parses a user ID from a path parameter.
-func pathUserID(w http.ResponseWriter, r *http.Request, name string) (store.UserID, bool) {
+func pathUserID(w http.ResponseWriter, r *http.Request, name string) (model.UserID, bool) {
 	v, ok := pathInt64(w, r, name)
-	return store.UserID(v), ok
+	return model.UserID(v), ok
 }
 
 // pathRoomID parses a room ID from a path parameter.
-func pathRoomID(w http.ResponseWriter, r *http.Request, _ string) (store.RoomID, bool) {
+func pathRoomID(w http.ResponseWriter, r *http.Request, _ string) (model.RoomID, bool) {
 	v, ok := pathInt64(w, r, "id")
-	return store.RoomID(v), ok
+	return model.RoomID(v), ok
 }
 
 // pathInviteID parses an invite ID from a path parameter.
-func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (store.InviteID, bool) {
+func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (model.InviteID, bool) {
 	v, ok := pathInt64(w, r, name)
-	return store.InviteID(v), ok
+	return model.InviteID(v), ok
 }
 
 // responseWriter captures status code and response size.

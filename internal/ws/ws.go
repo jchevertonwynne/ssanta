@@ -9,10 +9,10 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
-func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.UserID, username string, roomID store.RoomID, w http.ResponseWriter, r *http.Request) {
+func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.UserID, username string, roomID model.RoomID, w http.ResponseWriter, r *http.Request) {
 	conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("upgrade websocket", "err", err)
@@ -21,13 +21,13 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.Us
 
 	// Catch up on missed messages before joining the live room.
 	lastSeenStr := r.URL.Query().Get("last_seen_id")
-	var lastSeenID store.MessageID
+	var lastSeenID model.MessageID
 	if lastSeenStr != "" {
 		lastSeenID = 0
 	} else {
 		var parsed int64
 		parsed, err = strconv.ParseInt(lastSeenStr, 10, 64)
-		lastSeenID = store.MessageID(parsed)
+		lastSeenID = model.MessageID(parsed)
 	}
 	if err == nil && lastSeenID > 0 {
 		catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
@@ -74,7 +74,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.Us
 	go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 }
 
-func RunContentWS(hub *ChatHub, sessions SessionReader, currentID store.UserID, username string, w http.ResponseWriter, r *http.Request) {
+func RunContentWS(hub *ChatHub, sessions SessionReader, currentID model.UserID, username string, w http.ResponseWriter, r *http.Request) {
 	conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("upgrade websocket", "err", err)

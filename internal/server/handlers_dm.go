@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -55,7 +56,7 @@ func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.Ha
 			http.Error(w, "invalid partner_id", http.StatusBadRequest)
 			return
 		}
-		partnerID := store.UserID(partnerID64)
+		partnerID := model.UserID(partnerID64)
 
 		// Validate partner exists
 		partnerExists, err := svc.UserExists(r.Context(), partnerID)

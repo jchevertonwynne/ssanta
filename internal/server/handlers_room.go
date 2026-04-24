@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
@@ -423,7 +424,7 @@ func handleRoomMembersList(svc MembersListService, sessions SessionManager) http
 
 		isMember := false
 		type memberEntry struct {
-			ID       store.UserID `json:"id"`
+			ID       model.UserID `json:"id"`
 			Username string       `json:"username"`
 			PGPKey   string       `json:"pgp_key,omitempty"`
 		}

@@ -15,18 +15,6 @@ type RoomStore struct {
 	db dbtx
 }
 
-func (s *RoomStore) GetRoomByDisplayName(ctx context.Context, displayName string) (Room, error) {
-	var r Room
-	err := s.db.QueryRow(ctx,
-		`SELECT id, display_name, created_at, pgp_required, is_dm FROM rooms WHERE display_name = $1`,
-		displayName,
-	).Scan(&r.ID, &r.DisplayName, &r.CreatedAt, &r.PGPRequired, &r.IsDM)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Room{}, ErrRoomNotFound
-	}
-	return r, err
-}
-
 // GetOrCreateDMRoom atomically finds or creates a DM room with the given
 // display name. Using INSERT ... ON CONFLICT DO NOTHING + fallback SELECT
 // avoids the check-then-create race between two participants starting a DM
@@ -53,29 +41,6 @@ func (s *RoomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, c
 	).Scan(&roomID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrRoomNotFound
-	}
-	return roomID, err
-}
-
-func (s *RoomStore) GetOrCreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
-	var roomID RoomID
-	err := s.db.QueryRow(ctx,
-		`INSERT INTO rooms (display_name, creator_id, is_dm) VALUES ($1, $2, $3) ON CONFLICT (display_name) DO NOTHING RETURNING id`,
-		displayName, creatorID, isDM,
-	).Scan(&roomID)
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return 0, ErrRoomNameTaken
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		err := s.db.QueryRow(ctx,
-			`SELECT id FROM rooms WHERE display_name = $1`,
-			displayName,
-		).Scan(&roomID)
-		return roomID, err
-	}
-	if err == nil {
-		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID, "room_id", roomID)
 	}
 	return roomID, err
 }
@@ -436,20 +401,6 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	}
 
 	return tx.Commit(ctx)
-}
-
-func (s *RoomStore) SetDMRoomPGPRequired(ctx context.Context, roomID RoomID, memberID UserID, value bool) error {
-	tag, err := s.db.Exec(ctx,
-		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND is_dm = TRUE AND EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
-		roomID, memberID, value,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotRoomMember
-	}
-	return nil
 }
 
 func scanRooms(rows pgx.Rows) ([]Room, error) {

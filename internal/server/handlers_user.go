@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
@@ -123,7 +124,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 		// Notify websocket hub about account deletion if it supports the optional
 		// HandleAccountDeletion hook. We keep this optional to avoid forcing a
 		// signature change on the Hub interface and to make tests simpler.
-		if notifier, ok := hub.(interface{ HandleAccountDeletion(userID store.UserID) }); ok {
+		if notifier, ok := hub.(interface{ HandleAccountDeletion(userID model.UserID) }); ok {
 			notifier.HandleAccountDeletion(id)
 		}
 		renderContent(w, r.Context(), svc, 0)
