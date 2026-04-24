@@ -646,7 +646,10 @@ func (h *ChatHub) tryRegister(c *ChatClient) bool {
 }
 
 //nolint:gocognit,cyclop,nestif,gocyclo,funlen,maintidx
-func (c *ChatClient) readPump(ctx context.Context) {
+func (c *ChatClient) readPump(parent context.Context) {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+
 	defer func() {
 		select {
 		case c.hub.unregister <- c:
@@ -1015,7 +1018,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 
 		hub.wg.Add(2)
 		go client.writePump()
-		go client.readPump(r.Context())
+		go client.readPump(hub.lifetimeCtx)
 	}
 }
 
@@ -1057,6 +1060,6 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 
 		hub.wg.Add(2)
 		go client.writePump()
-		go client.readPump(r.Context())
+		go client.readPump(hub.lifetimeCtx)
 	}
 }
