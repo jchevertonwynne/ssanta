@@ -720,7 +720,8 @@ func (c *ChatClient) readPump(parent context.Context) {
 		}
 
 		if payload.Type == "message" && payload.Message != "" {
-			ctx, span := otel.Tracer("ssanta").Start(ctx, "WebSocket.HandleMessage")
+			baseCtx := ctx
+			ctx, span := otel.Tracer("ssanta").Start(baseCtx, "WebSocket.HandleMessage")
 			span.SetAttributes(
 				attribute.Int64("room_id", c.roomID.Int64()),
 				attribute.Int64("user_id", c.userID.Int64()),
@@ -732,21 +733,21 @@ func (c *ChatClient) readPump(parent context.Context) {
 				span.End()
 				continue
 			}
-			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-			members, err := c.svc.ListRoomMembersWithPGP(ctx, c.roomID)
+			memberCtx, cancel := context.WithTimeout(baseCtx, 2*time.Second)
+			members, err := c.svc.ListRoomMembersWithPGP(memberCtx, c.roomID)
 			cancel()
 			if err != nil {
-				slog.ErrorContext(ctx, "list room members for chat encryption", "err", err, "room_id", c.roomID)
+				slog.ErrorContext(memberCtx, "list room members for chat encryption", "err", err, "room_id", c.roomID)
 				span.End()
 				continue
 			}
 
 			// Fetch room PGP requirement
-			ctx, cancel = context.WithTimeout(ctx, 2*time.Second)
-			pgpRequired, err := c.svc.IsRoomPGPRequired(ctx, c.roomID)
+			pgpCtx, cancel := context.WithTimeout(baseCtx, 2*time.Second)
+			pgpRequired, err := c.svc.IsRoomPGPRequired(pgpCtx, c.roomID)
 			cancel()
 			if err != nil {
-				slog.ErrorContext(ctx, "get room pgp status", "err", err, "room_id", c.roomID)
+				slog.ErrorContext(pgpCtx, "get room pgp status", "err", err, "room_id", c.roomID)
 				span.End()
 				continue
 			}
@@ -974,28 +975,33 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 
 		// Catch up on missed messages before joining the live room.
 		lastSeenStr := r.URL.Query().Get("last_seen_id")
+		var lastSeenID store.MessageID
 		if lastSeenStr != "" {
-			if parsed, err := strconv.ParseInt(lastSeenStr, 10, 64); err == nil && parsed > 0 {
-				lastSeenID := store.MessageID(parsed)
-				catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
-				if err != nil {
-					slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+			lastSeenID = 0
+		} else {
+			var parsed int64
+			parsed, err = strconv.ParseInt(lastSeenStr, 10, 64)
+			lastSeenID = store.MessageID(parsed)
+		}
+		if err == nil && lastSeenID > 0 {
+			catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
+			if err != nil {
+				slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+			}
+			for _, m := range catchUp {
+				msg := ChatMessagePayload{
+					Type:         "message",
+					ID:           m.ID,
+					Username:     m.Username,
+					Message:      m.Message,
+					CreatedAt:    m.CreatedAt,
+					Whisper:      m.Whisper,
+					PreEncrypted: m.PreEncrypted,
 				}
-				for _, m := range catchUp {
-					msg := ChatMessagePayload{
-						Type:         "message",
-						ID:           m.ID,
-						Username:     m.Username,
-						Message:      m.Message,
-						CreatedAt:    m.CreatedAt,
-						Whisper:      m.Whisper,
-						PreEncrypted: m.PreEncrypted,
-					}
-					if err := conn.WriteJSON(msg); err != nil {
-						slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-						_ = conn.Close()
-						return
-					}
+				if err := conn.WriteJSON(msg); err != nil {
+					slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+					_ = conn.Close()
+					return
 				}
 			}
 		}
