@@ -306,7 +306,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 }
 
 //nolint:dupl
-func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
+func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -336,6 +336,8 @@ func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager) http
 			http.Error(w, "failed to update room", http.StatusInternalServerError)
 			return
 		}
+
+		hub.NotifyRoomUpdate(roomID)
 		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 	}
 }

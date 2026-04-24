@@ -229,6 +229,7 @@ func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	roomID := store.RoomID(10)
 	userID := store.UserID(2)
@@ -237,7 +238,7 @@ func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
 
 	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
-	w := serve(t, handleSetPGPRequired(svc, sessions), r)
+	w := serve(t, handleSetPGPRequired(svc, sessions, hub), r)
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
@@ -251,16 +252,18 @@ func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
 
 	roomID := store.RoomID(10)
 	creatorID := store.UserID(1)
 	expectLoggedIn(t, svc, sessions, creatorID)
 	svc.EXPECT().SetRoomPGPRequired(gomock.Any(), roomID, creatorID, true).Return(nil)
+	hub.EXPECT().NotifyRoomUpdate(roomID)
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, creatorID).Return(stubRoomDetailView("creator"), nil)
 
 	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
-	w := serve(t, handleSetPGPRequired(svc, sessions), r)
+	w := serve(t, handleSetPGPRequired(svc, sessions, hub), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)

@@ -154,7 +154,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("POST /rooms/{id}/join", limited(handleJoinRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/leave", limited(handleLeaveRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/pgp-required", handleSetPGPRequired(svc, sessions))
+	mux.HandleFunc("POST /rooms/{id}/pgp-required", handleSetPGPRequired(svc, sessions, hubAPI))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
 
 	// PGP keys
