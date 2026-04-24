@@ -1,4 +1,4 @@
-package server
+package ratelimit
 
 import (
 	"net/http/httptest"
@@ -10,7 +10,7 @@ const testIP = "1.2.3.4"
 
 func TestRateLimiter_AllowWithinLimit(t *testing.T) {
 	t.Parallel()
-	rl := newRateLimiter(3, time.Minute, false)
+	rl := New(3, time.Minute, false)
 	defer rl.Close()
 
 	for i := range 3 {
@@ -22,7 +22,7 @@ func TestRateLimiter_AllowWithinLimit(t *testing.T) {
 
 func TestRateLimiter_BlockOverLimit(t *testing.T) {
 	t.Parallel()
-	rl := newRateLimiter(2, time.Minute, false)
+	rl := New(2, time.Minute, false)
 	defer rl.Close()
 
 	if !rl.Allow(testIP) {
@@ -38,7 +38,7 @@ func TestRateLimiter_BlockOverLimit(t *testing.T) {
 
 func TestRateLimiter_ResetAfterWindow(t *testing.T) {
 	t.Parallel()
-	rl := newRateLimiter(1, 50*time.Millisecond, false)
+	rl := New(1, 50*time.Millisecond, false)
 	defer rl.Close()
 
 	if !rl.Allow(testIP) {
@@ -57,7 +57,7 @@ func TestRateLimiter_ResetAfterWindow(t *testing.T) {
 
 func TestRateLimiter_DifferentIPsIndependent(t *testing.T) {
 	t.Parallel()
-	rl := newRateLimiter(1, time.Minute, false)
+	rl := New(1, time.Minute, false)
 	defer rl.Close()
 
 	if !rl.Allow("1.2.3.4") {
@@ -93,7 +93,7 @@ func TestClientIP_TrustProxyTrue_UsesLeftmostXFF(t *testing.T) {
 
 func TestRateLimiter_Sweeper_EvictsExpiredEntries(t *testing.T) {
 	t.Parallel()
-	rl := newRateLimiter(1, 20*time.Millisecond, false)
+	rl := New(1, 20*time.Millisecond, false)
 	defer rl.Close()
 
 	// Seed a few entries.

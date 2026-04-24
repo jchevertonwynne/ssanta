@@ -1,4 +1,4 @@
-package server
+package ratelimit
 
 import (
 	"net"
@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// rateLimiter is a simple per-IP in-memory rate limiter using a sliding-window
+// RateLimiter is a simple per-IP in-memory rate limiter using a sliding-window
 // counter. It is safe for concurrent use.
-type rateLimiter struct {
+type RateLimiter struct {
 	mu         sync.RWMutex
 	clients    map[string]*clientLimit
 	max        int
@@ -27,8 +27,8 @@ type clientLimit struct {
 	resetAt  time.Time
 }
 
-// RateLimit wraps a handler with per-IP rate limiting.
-func RateLimit(rl *rateLimiter) func(http.Handler) http.Handler {
+// Middleware wraps a handler with per-IP rate limiting.
+func Middleware(rl *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r, rl.trustProxy)
@@ -42,8 +42,9 @@ func RateLimit(rl *rateLimiter) func(http.Handler) http.Handler {
 	}
 }
 
-func newRateLimiter(maxRequests int, window time.Duration, trustProxy bool) *rateLimiter {
-	rl := &rateLimiter{
+// New creates a new RateLimiter and starts its background sweeper.
+func New(maxRequests int, window time.Duration, trustProxy bool) *RateLimiter {
+	rl := &RateLimiter{
 		clients:    make(map[string]*clientLimit),
 		max:        maxRequests,
 		window:     window,
@@ -55,7 +56,7 @@ func newRateLimiter(maxRequests int, window time.Duration, trustProxy bool) *rat
 }
 
 // Close terminates the background sweeper. Idempotent.
-func (rl *rateLimiter) Close() {
+func (rl *RateLimiter) Close() {
 	if rl == nil {
 		return
 	}
@@ -63,7 +64,7 @@ func (rl *rateLimiter) Close() {
 }
 
 // Allow returns true if the given IP has not exceeded the rate limit.
-func (rl *rateLimiter) Allow(ip string) bool {
+func (rl *RateLimiter) Allow(ip string) bool {
 	if rl == nil || rl.max <= 0 {
 		return true
 	}
@@ -87,7 +88,7 @@ func (rl *rateLimiter) Allow(ip string) bool {
 }
 
 // sweepLoop evicts entries whose window has elapsed to bound memory usage.
-func (rl *rateLimiter) sweepLoop() {
+func (rl *RateLimiter) sweepLoop() {
 	interval := max(rl.window, time.Minute)
 	t := time.NewTicker(interval)
 	defer t.Stop()
