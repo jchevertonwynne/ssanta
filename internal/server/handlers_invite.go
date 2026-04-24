@@ -10,6 +10,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
 //nolint:cyclop,funlen
@@ -79,7 +80,7 @@ func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub 
 
 		// Notify the invitee if they're online
 		if inviteeUser, err := svc.GetUserByUsername(ctx, attempted); err == nil {
-			hub.NotifyUser(inviteeUser.ID, "invite_received", "")
+			hub.NotifyUser(inviteeUser.ID, ws.MsgTypeInviteReceived, "")
 		}
 
 		renderRoomSidebar(w, ctx, svc, currentID, roomID)
@@ -177,7 +178,7 @@ func handleCancelInvite(svc InviteHandlersService, sessions SessionManager, hub 
 		}
 
 		if inviteeID > 0 {
-			hub.NotifyUser(inviteeID, "invite_cancelled", "")
+			hub.NotifyUser(inviteeID, ws.MsgTypeInviteCancelled, "")
 		}
 
 		renderRoomDynamic(w, r.Context(), svc, currentID, roomID)

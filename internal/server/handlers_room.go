@@ -11,6 +11,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
 func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
@@ -143,7 +144,7 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 		hub.BroadcastRoomPresence(roomID)
 
 		if isCreator {
-			hub.NotifyUser(currentID, "membership_gained", "")
+			hub.NotifyUser(currentID, ws.MsgTypeMembershipGained, "")
 			renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 		} else {
 			renderRoomDetail(w, r.Context(), svc, currentID, roomID)
@@ -205,7 +206,7 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 		// If user is the creator, stay on the room detail page
 		// Otherwise, go back to the main content page
 		if isCreator {
-			hub.NotifyUser(currentID, "membership_lost", "")
+			hub.NotifyUser(currentID, ws.MsgTypeMembershipLost, "")
 			renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 		} else {
 			renderContent(w, r.Context(), svc, currentID)

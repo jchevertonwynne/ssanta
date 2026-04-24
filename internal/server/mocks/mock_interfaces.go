@@ -16,6 +16,7 @@ import (
 
 	service "github.com/jchevertonwynne/ssanta/internal/service"
 	store "github.com/jchevertonwynne/ssanta/internal/store"
+	ws "github.com/jchevertonwynne/ssanta/internal/ws"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -6266,7 +6267,7 @@ func (c *MockHubDisconnectUserCall) DoAndReturn(f func(store.RoomID, store.UserI
 }
 
 // NotifyContentUpdate mocks base method.
-func (m *MockHub) NotifyContentUpdate(msgType string) {
+func (m *MockHub) NotifyContentUpdate(msgType ws.MsgType) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "NotifyContentUpdate", msgType)
 }
@@ -6290,13 +6291,13 @@ func (c *MockHubNotifyContentUpdateCall) Return() *MockHubNotifyContentUpdateCal
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubNotifyContentUpdateCall) Do(f func(string)) *MockHubNotifyContentUpdateCall {
+func (c *MockHubNotifyContentUpdateCall) Do(f func(ws.MsgType)) *MockHubNotifyContentUpdateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubNotifyContentUpdateCall) DoAndReturn(f func(string)) *MockHubNotifyContentUpdateCall {
+func (c *MockHubNotifyContentUpdateCall) DoAndReturn(f func(ws.MsgType)) *MockHubNotifyContentUpdateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -6338,7 +6339,7 @@ func (c *MockHubNotifyRoomUpdateCall) DoAndReturn(f func(store.RoomID)) *MockHub
 }
 
 // NotifyUser mocks base method.
-func (m *MockHub) NotifyUser(userID store.UserID, msgType, message string) {
+func (m *MockHub) NotifyUser(userID store.UserID, msgType ws.MsgType, message string) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "NotifyUser", userID, msgType, message)
 }
@@ -6362,13 +6363,13 @@ func (c *MockHubNotifyUserCall) Return() *MockHubNotifyUserCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHubNotifyUserCall) Do(f func(store.UserID, string, string)) *MockHubNotifyUserCall {
+func (c *MockHubNotifyUserCall) Do(f func(store.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHubNotifyUserCall) DoAndReturn(f func(store.UserID, string, string)) *MockHubNotifyUserCall {
+func (c *MockHubNotifyUserCall) DoAndReturn(f func(store.UserID, ws.MsgType, string)) *MockHubNotifyUserCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
 func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
@@ -70,7 +71,7 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 		}
 		sessions.Set(w, id, version)
 		renderContent(w, ctx, svc, id)
-		hub.NotifyContentUpdate("users_updated")
+		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 	}
 }
 
@@ -126,7 +127,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			notifier.HandleAccountDeletion(id)
 		}
 		renderContent(w, r.Context(), svc, 0)
-		hub.NotifyContentUpdate("users_updated")
+		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 	}
 }
 

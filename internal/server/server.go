@@ -15,6 +15,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
 //go:embed templates/*.html
@@ -92,7 +93,7 @@ type Options struct {
 
 //nolint:funlen
 func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration, opts Options) (http.Handler, func()) {
-	hub := NewChatHubWithLimits(opts.WSMessageBurst, opts.WSMessageRefillPerSec)
+	hub := ws.NewChatHubWithLimits(opts.WSMessageBurst, opts.WSMessageRefillPerSec)
 	go hub.Run()
 	hubAPI := Hub(hub)
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
 // Capability interfaces (small and reusable).
@@ -213,8 +214,8 @@ type DMHandlersService interface {
 type Hub interface {
 	BroadcastSystemMessage(roomID store.RoomID, message string)
 	NotifyRoomUpdate(roomID store.RoomID)
-	NotifyUser(userID store.UserID, msgType, message string)
-	NotifyContentUpdate(msgType string)
+	NotifyUser(userID store.UserID, msgType ws.MsgType, message string)
+	NotifyContentUpdate(msgType ws.MsgType)
 	DisconnectUser(roomID store.RoomID, userID store.UserID)
 	DisconnectRoom(roomID store.RoomID)
 	BroadcastRoomPresence(roomID store.RoomID)

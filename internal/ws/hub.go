@@ -1,12 +1,9 @@
-package server
+package ws
 
 import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/http"
-	"net/url"
-	"strconv"
 	"sync"
 	"time"
 
@@ -29,23 +26,9 @@ const (
 	defaultWSRefillPerSec = 5
 )
 
-func websocketUpgrader(secure bool) *websocket.Upgrader {
-	return &websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-		CheckOrigin: func(r *http.Request) bool {
-			origin := r.Header.Get("Origin")
-			if origin == "" {
-				return !secure
-			}
-			u, err := url.Parse(origin)
-			if err != nil {
-				return false
-			}
-			return u.Host == r.Host
-		},
-	}
-}
+type ctxKey int
+
+const ctxKeyWSSide ctxKey = iota
 
 type ChatHub struct {
 	rooms           map[store.RoomID]*ChatRoom
@@ -89,12 +72,12 @@ type ChatClient struct {
 	roomID    store.RoomID
 	userID    store.UserID
 	username  string
-	svc       WebSocketHandlersService
+	svc       Service
 	bucket    *tokenBucket
 }
 
 type ChatMessagePayload struct {
-	Type         string          `json:"type"` // "message", "error"
+	Type         MsgType         `json:"type"`
 	ID           store.MessageID `json:"id,omitempty"`
 	Username     string          `json:"username,omitempty"`
 	Message      string          `json:"message,omitempty"`
@@ -289,9 +272,9 @@ func (h *ChatHub) BroadcastRoomPresence(roomID store.RoomID) {
 	h.mu.RUnlock()
 
 	msg, err := json.Marshal(struct {
-		Type          string         `json:"type"`
+		Type          MsgType        `json:"type"`
 		OnlineUserIDs []store.UserID `json:"online_user_ids"`
-	}{Type: "presence", OnlineUserIDs: onlineIDs})
+	}{Type: MsgTypePresence, OnlineUserIDs: onlineIDs})
 	if err != nil {
 		return
 	}
@@ -383,7 +366,7 @@ func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
 		// will drain the queue, write the close frame, and shut the conn
 		// down deterministically — no sleep needed.
 		kickedMsg := ChatMessagePayload{
-			Type:    "kicked",
+			Type:    MsgTypeKicked,
 			Message: "You have been removed from this room",
 		}
 		if msg, err := json.Marshal(kickedMsg); err == nil {
@@ -412,7 +395,7 @@ func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
 	h.mu.Unlock()
 
 	notice := ChatMessagePayload{
-		Type:      "room_deleted",
+		Type:      MsgTypeRoomDeleted,
 		Message:   "This room has been deleted",
 		CreatedAt: time.Now(),
 	}
@@ -431,7 +414,7 @@ func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
 
 func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
 	sysMsg := ChatMessagePayload{
-		Type:      "system",
+		Type:      MsgTypeSystem,
 		Message:   message,
 		CreatedAt: time.Now(),
 	}
@@ -442,14 +425,14 @@ func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
 
 func (h *ChatHub) NotifyRoomUpdate(roomID store.RoomID) {
 	refreshMsg := ChatMessagePayload{
-		Type: "refresh",
+		Type: MsgTypeRefresh,
 	}
 	if msg, err := json.Marshal(refreshMsg); err == nil {
 		h.BroadcastToRoom(roomID, msg)
 	}
 }
 
-func (h *ChatHub) NotifyUser(userID store.UserID, msgType, message string) {
+func (h *ChatHub) NotifyUser(userID store.UserID, msgType MsgType, message string) {
 	h.mu.RLock()
 	connections, ok := h.userConnections[userID]
 	h.mu.RUnlock()
@@ -472,7 +455,7 @@ func (h *ChatHub) NotifyUser(userID store.UserID, msgType, message string) {
 	}
 }
 
-func (h *ChatHub) NotifyContentUpdate(msgType string) {
+func (h *ChatHub) NotifyContentUpdate(msgType MsgType) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -497,8 +480,8 @@ func (h *ChatHub) NotifyContentUpdate(msgType string) {
 
 // HandleAccountDeletion disconnects all active connections for a user and
 // notifies affected rooms so clients can refresh room state. This method is
-// intentionally not on the public `Hub` interface; handlers call it via an
-// optional interface assertion so tests using the mock Hub are unaffected.
+// intentionally not on the Hub interface; handlers call it via an optional
+// interface assertion so tests using the mock Hub are unaffected.
 //
 //nolint:gocognit,cyclop,nestif
 func (h *ChatHub) HandleAccountDeletion(userID store.UserID) {
@@ -580,7 +563,7 @@ func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, user
 
 		// Broadcast stopped_typing
 		stoppedMsg := ChatMessagePayload{
-			Type:     "stopped_typing",
+			Type:     MsgTypeStoppedTyping,
 			Username: username,
 		}
 		if msg, err := json.Marshal(stoppedMsg); err == nil {
@@ -602,7 +585,7 @@ func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, user
 
 		// Broadcast typing update
 		typingMsg := ChatMessagePayload{
-			Type:     "typing",
+			Type:     MsgTypeTyping,
 			Username: username,
 		}
 		if msg, err := json.Marshal(typingMsg); err == nil {
@@ -621,7 +604,7 @@ func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, user
 
 				// Broadcast stopped_typing
 				stoppedMsg := ChatMessagePayload{
-					Type:     "stopped_typing",
+					Type:     MsgTypeStoppedTyping,
 					Username: username,
 				}
 				if msg, err := json.Marshal(stoppedMsg); err == nil {
@@ -695,7 +678,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 		// Rate-limit inbound work on this connection. stopped_typing frames
 		// carry presence-reset state so we let them through unconditionally —
 		// they're cheap and dropping them causes lingering "typing…" UI.
-		if payload.Type == "typing" || payload.Type == "message" {
+		if payload.Type == MsgTypeTyping || payload.Type == MsgTypeMessage {
 			if c.bucket != nil && !c.bucket.Take() {
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
@@ -710,17 +693,17 @@ func (c *ChatClient) readPump(parent context.Context) {
 		}
 
 		// Handle typing indicators
-		if payload.Type == "typing" {
+		if payload.Type == MsgTypeTyping {
 			c.hub.SetTypingStatus(ctx, c.roomID, c.userID, c.username, true)
 			continue
 		}
 
-		if payload.Type == "stopped_typing" {
+		if payload.Type == MsgTypeStoppedTyping {
 			c.hub.SetTypingStatus(ctx, c.roomID, c.userID, c.username, false)
 			continue
 		}
 
-		if payload.Type == "message" && payload.Message != "" {
+		if payload.Type == MsgTypeMessage && payload.Message != "" {
 			baseCtx := ctx
 			ctx, span := otel.Tracer("ssanta").Start(baseCtx, "WebSocket.HandleMessage")
 			span.SetAttributes(
@@ -769,7 +752,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 				}
 				if !found {
 					sys := ChatMessagePayload{
-						Type:      "system",
+						Type:      MsgTypeSystem,
 						Message:   "That user is not in this room.",
 						CreatedAt: time.Now(),
 					}
@@ -788,7 +771,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 			if pgpRequired {
 				if !payload.PreEncrypted {
 					sys := ChatMessagePayload{
-						Type:      "system",
+						Type:      MsgTypeSystem,
 						Message:   "This room requires PGP encryption. Your client must encrypt messages before sending.",
 						CreatedAt: time.Now(),
 					}
@@ -811,7 +794,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 					continue
 				}
 				out := ChatMessagePayload{
-					Type:        "message",
+					Type:        MsgTypeMessage,
 					ID:          msgID,
 					Username:    c.username,
 					Message:     plaintext,
@@ -859,7 +842,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 			}
 			perUser := make(map[store.UserID][]byte, len(members))
 			out := ChatMessagePayload{
-				Type:        "message",
+				Type:        MsgTypeMessage,
 				ID:          msgID,
 				Username:    c.username,
 				Message:     plaintext,
@@ -895,7 +878,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 	}
 }
 
-func persistMessage(ctx context.Context, svc MessageHistoryService, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
+func persistMessage(ctx context.Context, svc Service, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	id, err := svc.CreateMessage(ctx, roomID, userID, username, message, whisper, targetUserID, preEncrypted)
@@ -932,143 +915,5 @@ func (c *ChatClient) writePump() {
 				return
 			}
 		}
-	}
-}
-
-//nolint:cyclop,funlen,gocognit
-func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-		if !ok {
-			http.Error(w, "login required", http.StatusUnauthorized)
-			return
-		}
-
-		roomID, ok := pathRoomID(w, r, "id")
-		if !ok {
-			return
-		}
-
-		// Check if user is a creator or member (allow both to access chat)
-		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
-		if err != nil {
-			http.Error(w, "failed to check room access", http.StatusInternalServerError)
-			return
-		}
-
-		if !isCreator && !isMember {
-			http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
-			return
-		}
-
-		// Get username
-		username, err := svc.GetUsername(r.Context(), currentID)
-		if err != nil {
-			http.Error(w, "failed to get user info", http.StatusInternalServerError)
-			return
-		}
-
-		conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
-		if err != nil {
-			slog.Error("upgrade websocket", "err", err)
-			return
-		}
-
-		// Catch up on missed messages before joining the live room.
-		lastSeenStr := r.URL.Query().Get("last_seen_id")
-		var lastSeenID store.MessageID
-		if lastSeenStr != "" {
-			lastSeenID = 0
-		} else {
-			var parsed int64
-			parsed, err = strconv.ParseInt(lastSeenStr, 10, 64)
-			lastSeenID = store.MessageID(parsed)
-		}
-		if err == nil && lastSeenID > 0 {
-			catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
-			if err != nil {
-				slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-			}
-			for _, m := range catchUp {
-				msg := ChatMessagePayload{
-					Type:         "message",
-					ID:           m.ID,
-					Username:     m.Username,
-					Message:      m.Message,
-					CreatedAt:    m.CreatedAt,
-					Whisper:      m.Whisper,
-					PreEncrypted: m.PreEncrypted,
-				}
-				if err := conn.WriteJSON(msg); err != nil {
-					slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
-					_ = conn.Close()
-					return
-				}
-			}
-		}
-
-		client := &ChatClient{
-			hub:      hub,
-			conn:     conn,
-			send:     make(chan []byte, 256),
-			roomID:   roomID,
-			userID:   currentID,
-			username: username,
-			svc:      svc,
-			bucket:   newTokenBucket(float64(hub.msgBurst), hub.msgRefill),
-		}
-
-		if !hub.tryRegister(client) {
-			_ = conn.Close()
-			return
-		}
-
-		hub.wg.Add(2)
-		go client.writePump()
-		//nolint: contextcheck // this is fine
-		go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
-	}
-}
-
-func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-		if !ok {
-			http.Error(w, "login required", http.StatusUnauthorized)
-			return
-		}
-
-		// Get username
-		username, err := svc.GetUsername(r.Context(), currentID)
-		if err != nil {
-			http.Error(w, "failed to get user info", http.StatusInternalServerError)
-			return
-		}
-
-		conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
-		if err != nil {
-			slog.Error("upgrade websocket", "err", err)
-			return
-		}
-
-		client := &ChatClient{
-			hub:      hub,
-			conn:     conn,
-			send:     make(chan []byte, 256),
-			roomID:   0, // Not in a room, just on content page
-			userID:   currentID,
-			username: username,
-			bucket:   newTokenBucket(float64(hub.msgBurst), hub.msgRefill),
-		}
-
-		if !hub.tryRegister(client) {
-			_ = conn.Close()
-			return
-		}
-
-		hub.wg.Add(2)
-		go client.writePump()
-		//nolint: contextcheck // this is fine
-		go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 	}
 }
