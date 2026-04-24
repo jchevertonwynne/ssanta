@@ -22,14 +22,14 @@
             {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
         </details>
     {{else}}
-        <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" onsubmit="event.preventDefault();">
+        <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" data-prevent-default-submit>
             <input name="username" placeholder="Username" required
                    pattern="[a-zA-Z0-9_]{3,32}" maxlength="32"
                    value="{{if .UserFormAttempted}}{{.UserFormAttempted}}{{else}}{{.LoginFormAttempted}}{{end}}">
             <input name="password" type="password" placeholder="Password" required
-                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('login-btn').click(); }">
+                   data-enter-click="login-btn">
             <input name="password_confirm" type="password" placeholder="Confirm password (register only)"
-                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); document.getElementById('register-btn').click(); }">
+                   data-enter-click="register-btn">
             <div style="flex-basis: 100%; display: flex; gap: 0.5rem;">
                 <button id="login-btn" type="button" hx-post="/login" hx-include="closest form">Log in</button>
                 <button id="register-btn" type="button" hx-post="/users" hx-include="closest form">Register</button>
@@ -113,39 +113,8 @@
                         {{end}}
                     {{end}}
                 </select>
-                <button type="button" onclick="createDM()">Start DM</button>
+                <button type="button" data-action="start-dm">Start DM</button>
             </form>
-            <script>
-            function createDM() {
-                const select = document.getElementById('dm-partner-select');
-                const partnerID = select.value;
-                if (!partnerID) return;
-
-				console.log('[dm] start', {partnerID});
-
-                const form = new URLSearchParams({partner_id: partnerID});
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                fetch('/dms', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: form
-                }).then(async r => {
-					console.log('[dm] response', {status: r.status, redirected: r.redirected, url: r.url});
-                    if (r.redirected) {
-                        window.location.href = r.url;
-						return;
-                    }
-					const text = await r.text();
-					console.warn('[dm] non-redirect response', text);
-				}).catch(err => {
-					console.error('[dm] request failed', err);
-				});
-            }
-            </script>
         </div>
 
         {{if .DMRooms}}
@@ -165,7 +134,7 @@
 </div>
 
 {{if .CurrentUserID}}
-<script>
+<script nonce="{{.ScriptNonce}}">
 (function() {
     const currentUserID = {{.CurrentUserID}};
     

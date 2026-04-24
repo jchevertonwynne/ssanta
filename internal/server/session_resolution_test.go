@@ -20,7 +20,7 @@ func TestResolveSessionUser_NoCookie_ReturnsLoggedOut(t *testing.T) {
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -42,8 +42,8 @@ func TestResolveSessionUser_SignedCookieForDeletedUser_ClearsCookie(t *testing.T
 	svc := servermocks.NewMockUserExistsService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(123), true)
-	svc.EXPECT().UserExists(gomock.Any(), store.UserID(123)).Return(false, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(123), 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(123)).Return(0, store.ErrUserNotFound)
 	sessions.EXPECT().Clear(gomock.Any())
 
 	w := httptest.NewRecorder()

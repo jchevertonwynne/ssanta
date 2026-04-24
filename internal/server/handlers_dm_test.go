@@ -25,8 +25,8 @@ func TestHandleCreateOrGetDM_MissingPartnerID_Returns400(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	userID := store.UserID(1)
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true)
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
 
 	r := newFormRequest(t, "/dms", url.Values{})
 	w := serve(t, handleCreateOrGetDM(svc, sessions), r)
@@ -51,8 +51,8 @@ func TestHandleCreateOrGetDM_URLEncoded_Redirects303(t *testing.T) {
 	partnerID := store.UserID(2)
 	roomID := store.RoomID(10)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true)
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
 	svc.EXPECT().UserExists(gomock.Any(), partnerID).Return(true, nil)
 	svc.EXPECT().GetOrCreateDMRoom(gomock.Any(), userID, partnerID).Return(roomID, nil)
 
@@ -79,8 +79,8 @@ func TestHandleCreateOrGetDM_Multipart_Redirects303(t *testing.T) {
 	partnerID := store.UserID(2)
 	roomID := store.RoomID(10)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true)
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
 	svc.EXPECT().UserExists(gomock.Any(), partnerID).Return(true, nil)
 	svc.EXPECT().GetOrCreateDMRoom(gomock.Any(), userID, partnerID).Return(roomID, nil)
 

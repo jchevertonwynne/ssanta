@@ -17,7 +17,7 @@ func TestLoad_RequiredMissing(t *testing.T) {
 
 func TestLoad_DefaultsApplied(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
-	t.Setenv("SESSION_SECRET", "secret")
+	t.Setenv("SESSION_SECRET", "this-is-a-32-byte-long-test-secret")
 
 	cfg, err := Load()
 	if err != nil {
@@ -45,7 +45,7 @@ func TestLoad_DefaultsApplied(t *testing.T) {
 
 func TestLoad_ParsesOverrides(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
-	t.Setenv("SESSION_SECRET", "secret")
+	t.Setenv("SESSION_SECRET", "this-is-a-32-byte-long-test-secret")
 	t.Setenv("HTTP_ADDR", ":9999")
 	t.Setenv("DATABASE_SCHEMA", "ssanta")
 	t.Setenv("MIGRATE_DATABASE_URL", "postgres://migrate:p@localhost:5432/db?sslmode=disable")
@@ -73,9 +73,19 @@ func TestLoad_ParsesOverrides(t *testing.T) {
 	}
 }
 
+func TestLoad_ShortSessionSecretRejected(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
+	t.Setenv("SESSION_SECRET", "too-short")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatalf("expected error for short SESSION_SECRET")
+	}
+}
+
 func TestLoad_InvalidDurationErrors(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://u:p@localhost:5432/db?sslmode=disable")
-	t.Setenv("SESSION_SECRET", "secret")
+	t.Setenv("SESSION_SECRET", "this-is-a-32-byte-long-test-secret")
 	t.Setenv("INVITE_MAX_AGE", "not-a-duration")
 
 	_, err := Load()

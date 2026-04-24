@@ -16,6 +16,83 @@
             evt.detail.headers['X-CSRF-Token'] = token;
         }
     });
+
+    // Delegated event handlers — declared once so HTMX-swapped fragments
+    // pick them up automatically. Fragments use data-* attrs instead of
+    // inline event attributes so we can keep script-src-attr locked down.
+    (function() {
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(fallback);
+                return;
+            }
+            fallback();
+            function fallback() {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                ta.style.top = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                try { document.execCommand('copy'); } catch (e) {}
+                document.body.removeChild(ta);
+            }
+        }
+
+        document.addEventListener('click', function(evt) {
+            var btn = evt.target.closest('[data-copy-target]');
+            if (btn) {
+                var el = document.getElementById(btn.getAttribute('data-copy-target'));
+                if (el) {
+                    var mode = btn.getAttribute('data-copy-mode') || 'text';
+                    copyToClipboard(mode === 'value' ? (el.value || el.textContent || '') : (el.textContent || ''));
+                }
+                return;
+            }
+            var dm = evt.target.closest('[data-action="start-dm"]');
+            if (dm) {
+                startDM();
+                return;
+            }
+        });
+
+        document.addEventListener('change', function(evt) {
+            var el = evt.target.closest('[data-checkbox-value]');
+            if (el && el.type === 'checkbox') {
+                el.value = el.checked ? 'true' : 'false';
+            }
+        });
+
+        document.addEventListener('submit', function(evt) {
+            if (evt.target.matches('[data-prevent-default-submit]')) {
+                evt.preventDefault();
+            }
+        });
+
+        document.addEventListener('keydown', function(evt) {
+            if (evt.key !== 'Enter') return;
+            var el = evt.target.closest('[data-enter-click]');
+            if (!el) return;
+            evt.preventDefault();
+            var target = document.getElementById(el.getAttribute('data-enter-click'));
+            if (target) target.click();
+        });
+
+        function startDM() {
+            var sel = document.getElementById('dm-partner-select');
+            if (!sel || !sel.value) return;
+            var body = new URLSearchParams({partner_id: sel.value});
+            var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            fetch('/dms', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': token},
+                body: body
+            }).then(function(r) { if (r.redirected) window.location.href = r.url; }).catch(function(){});
+        }
+    })();
     </script>
     {{end}}
     <style>

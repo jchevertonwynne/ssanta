@@ -2,10 +2,16 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 )
+
+// ilikeEscaper escapes LIKE/ILIKE pattern metacharacters so caller-supplied
+// text is matched literally. Order matters: \ is rewritten first so the
+// subsequent replacements don't double-escape.
+var ilikeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 type MessageStore struct {
 	db dbtx
@@ -122,7 +128,7 @@ func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	pattern := "%" + query + "%"
+	pattern := "%" + ilikeEscaper.Replace(query) + "%"
 
 	rows, err := s.db.Query(ctx,
 		`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
@@ -130,7 +136,7 @@ func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID
 		 WHERE room_id = $1
 		   AND deleted_at IS NULL
 		   AND (whisper = FALSE OR user_id = $2 OR target_user_id = $2)
-		   AND message ILIKE $3
+		   AND message ILIKE $3 ESCAPE '\'
 		 ORDER BY id DESC LIMIT $4`,
 		roomID, userID, pattern, limit,
 	)

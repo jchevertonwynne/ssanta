@@ -92,7 +92,13 @@ func run() error {
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)
 	startJanitor(ctx, svc, cfg.JanitorInterval)
 
-	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler, cfg.MetricsSecret, cfg.RateLimitAuthMax, cfg.RateLimitAuthWindow)
+	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler, cfg.MetricsSecret, cfg.RateLimitAuthMax, cfg.RateLimitAuthWindow, server.Options{
+		WSMessageBurst:        cfg.WSMessageBurst,
+		WSMessageRefillPerSec: cfg.WSMessageRefillPerSec,
+		TrustProxyHeaders:     cfg.TrustProxyHeaders,
+		RateLimitSearchMax:    cfg.RateLimitSearchMax,
+		RateLimitSearchWindow: cfg.RateLimitSearchWindow,
+	})
 	defer closeHub()
 
 	srv := &http.Server{

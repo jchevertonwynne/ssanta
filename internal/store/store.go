@@ -134,10 +134,11 @@ type MessageID int64
 func (id MessageID) Int64() int64 { return int64(id) }
 
 type User struct {
-	ID           UserID
-	Username     string
-	CreatedAt    time.Time
-	PasswordHash string
+	ID             UserID
+	Username       string
+	CreatedAt      time.Time
+	PasswordHash   string
+	SessionVersion int
 }
 
 type RoomMember struct {

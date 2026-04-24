@@ -294,6 +294,45 @@ func (m *MockUserExistsService) EXPECT() *MockUserExistsServiceMockRecorder {
 	return m.recorder
 }
 
+// GetUserSessionVersion mocks base method.
+func (m *MockUserExistsService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockUserExistsServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockUserExistsServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockUserExistsService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockUserExistsServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockUserExistsServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockUserExistsServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserExistsServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockUserExistsServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserExistsServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserExistsServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockUserExistsServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UserExists mocks base method.
 func (m *MockUserExistsService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -1816,6 +1855,45 @@ func (c *MockContentHandlersServiceGetContentViewCall) DoAndReturn(f func(contex
 	return c
 }
 
+// GetUserSessionVersion mocks base method.
+func (m *MockContentHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockContentHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockContentHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockContentHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockContentHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockContentHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockContentHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockContentHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockContentHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockContentHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockContentHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockContentHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UserExists mocks base method.
 func (m *MockContentHandlersService) UserExists(ctx context.Context, id store.UserID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -2029,6 +2107,45 @@ func (c *MockUserHandlersServiceGetContentViewCall) Do(f func(context.Context, s
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockUserHandlersServiceGetContentViewCall) DoAndReturn(f func(context.Context, store.UserID) (*service.ContentView, error)) *MockUserHandlersServiceGetContentViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUserSessionVersion mocks base method.
+func (m *MockUserHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockUserHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockUserHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockUserHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockUserHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockUserHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockUserHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockUserHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockUserHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockUserHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockUserHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockUserHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2364,6 +2481,45 @@ func (c *MockRoomHandlersServiceGetRoomDetailViewCall) Do(f func(context.Context
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockRoomHandlersServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (*service.RoomDetailView, error)) *MockRoomHandlersServiceGetRoomDetailViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUserSessionVersion mocks base method.
+func (m *MockRoomHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockRoomHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockRoomHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockRoomHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockRoomHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockRoomHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockRoomHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockRoomHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockRoomHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -3046,6 +3202,45 @@ func (c *MockInviteHandlersServiceGetUserByUsernameCall) DoAndReturn(f func(cont
 	return c
 }
 
+// GetUserSessionVersion mocks base method.
+func (m *MockInviteHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockInviteHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockInviteHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockInviteHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockInviteHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockInviteHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockInviteHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInviteHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockInviteHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInviteHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInviteHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockInviteHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetUsername mocks base method.
 func (m *MockInviteHandlersService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	m.ctrl.T.Helper()
@@ -3446,6 +3641,45 @@ func (c *MockMessageListServiceGetRoomAccessCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// GetUserSessionVersion mocks base method.
+func (m *MockMessageListService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockMessageListServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockMessageListServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockMessageListService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockMessageListServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockMessageListServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockMessageListServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMessageListServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockMessageListServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMessageListServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMessageListServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockMessageListServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListMessages mocks base method.
 func (m *MockMessageListService) ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error) {
 	m.ctrl.T.Helper()
@@ -3701,6 +3935,45 @@ func (c *MockWebSocketHandlersServiceGetRoomAccessCall) Do(f func(context.Contex
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(context.Context, store.RoomID, store.UserID) (bool, bool, error)) *MockWebSocketHandlersServiceGetRoomAccessCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUserSessionVersion mocks base method.
+func (m *MockWebSocketHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockWebSocketHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockWebSocketHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockWebSocketHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockWebSocketHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockWebSocketHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -4623,6 +4896,45 @@ func (c *MockServerServiceGetUserByUsernameCall) DoAndReturn(f func(context.Cont
 	return c
 }
 
+// GetUserSessionVersion mocks base method.
+func (m *MockServerService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockServerServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockServerServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockServerService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockServerServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockServerServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockServerServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockServerServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockServerServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetUsername mocks base method.
 func (m *MockServerService) GetUsername(ctx context.Context, userID store.UserID) (string, error) {
 	m.ctrl.T.Helper()
@@ -5530,15 +5842,15 @@ func (c *MockSessionManagerSecureCall) DoAndReturn(f func() bool) *MockSessionMa
 }
 
 // Set mocks base method.
-func (m *MockSessionManager) Set(w http.ResponseWriter, userID store.UserID) {
+func (m *MockSessionManager) Set(w http.ResponseWriter, userID store.UserID, version int) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Set", w, userID)
+	m.ctrl.Call(m, "Set", w, userID, version)
 }
 
 // Set indicates an expected call of Set.
-func (mr *MockSessionManagerMockRecorder) Set(w, userID any) *MockSessionManagerSetCall {
+func (mr *MockSessionManagerMockRecorder) Set(w, userID, version any) *MockSessionManagerSetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSessionManager)(nil).Set), w, userID)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockSessionManager)(nil).Set), w, userID, version)
 	return &MockSessionManagerSetCall{Call: call}
 }
 
@@ -5554,24 +5866,25 @@ func (c *MockSessionManagerSetCall) Return() *MockSessionManagerSetCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionManagerSetCall) Do(f func(http.ResponseWriter, store.UserID)) *MockSessionManagerSetCall {
+func (c *MockSessionManagerSetCall) Do(f func(http.ResponseWriter, store.UserID, int)) *MockSessionManagerSetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionManagerSetCall) DoAndReturn(f func(http.ResponseWriter, store.UserID)) *MockSessionManagerSetCall {
+func (c *MockSessionManagerSetCall) DoAndReturn(f func(http.ResponseWriter, store.UserID, int)) *MockSessionManagerSetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // UserID mocks base method.
-func (m *MockSessionManager) UserID(r *http.Request) (store.UserID, bool) {
+func (m *MockSessionManager) UserID(r *http.Request) (store.UserID, int, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UserID", r)
 	ret0, _ := ret[0].(store.UserID)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(bool)
+	return ret0, ret1, ret2
 }
 
 // UserID indicates an expected call of UserID.
@@ -5587,19 +5900,19 @@ type MockSessionManagerUserIDCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockSessionManagerUserIDCall) Return(arg0 store.UserID, arg1 bool) *MockSessionManagerUserIDCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockSessionManagerUserIDCall) Return(arg0 store.UserID, arg1 int, arg2 bool) *MockSessionManagerUserIDCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockSessionManagerUserIDCall) Do(f func(*http.Request) (store.UserID, bool)) *MockSessionManagerUserIDCall {
+func (c *MockSessionManagerUserIDCall) Do(f func(*http.Request) (store.UserID, int, bool)) *MockSessionManagerUserIDCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockSessionManagerUserIDCall) DoAndReturn(f func(*http.Request) (store.UserID, bool)) *MockSessionManagerUserIDCall {
+func (c *MockSessionManagerUserIDCall) DoAndReturn(f func(*http.Request) (store.UserID, int, bool)) *MockSessionManagerUserIDCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5702,6 +6015,45 @@ func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) Do(f func(context.Context, 
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockDMHandlersServiceGetOrCreateDMRoomCall) DoAndReturn(f func(context.Context, store.UserID, store.UserID) (store.RoomID, error)) *MockDMHandlersServiceGetOrCreateDMRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUserSessionVersion mocks base method.
+func (m *MockDMHandlersService) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockDMHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockDMHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockDMHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockDMHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockDMHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockDMHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockDMHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockDMHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockDMHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, store.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockDMHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, store.UserID) (int, error)) *MockDMHandlersServiceGetUserSessionVersionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5837,6 +6189,42 @@ func (c *MockHubBroadcastSystemMessageCall) Do(f func(store.RoomID, string)) *Mo
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockHubBroadcastSystemMessageCall) DoAndReturn(f func(store.RoomID, string)) *MockHubBroadcastSystemMessageCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// DisconnectRoom mocks base method.
+func (m *MockHub) DisconnectRoom(roomID store.RoomID) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DisconnectRoom", roomID)
+}
+
+// DisconnectRoom indicates an expected call of DisconnectRoom.
+func (mr *MockHubMockRecorder) DisconnectRoom(roomID any) *MockHubDisconnectRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisconnectRoom", reflect.TypeOf((*MockHub)(nil).DisconnectRoom), roomID)
+	return &MockHubDisconnectRoomCall{Call: call}
+}
+
+// MockHubDisconnectRoomCall wrap *gomock.Call
+type MockHubDisconnectRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHubDisconnectRoomCall) Return() *MockHubDisconnectRoomCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHubDisconnectRoomCall) Do(f func(store.RoomID)) *MockHubDisconnectRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHubDisconnectRoomCall) DoAndReturn(f func(store.RoomID)) *MockHubDisconnectRoomCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

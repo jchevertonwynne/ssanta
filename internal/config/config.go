@@ -18,7 +18,13 @@ var (
 	errRequired         = errors.New("is required")
 	errCannotSet        = errors.New("cannot set")
 	errUnsupportedType  = errors.New("unsupported type")
+	errSecretTooShort   = errors.New("SESSION_SECRET must be at least 32 bytes")
 )
+
+// minSessionSecretBytes is the hard floor for HMAC key length. 32 bytes
+// matches SHA-256 block/output sizing and leaves no room for weak dev secrets
+// to accidentally reach non-local environments.
+const minSessionSecretBytes = 32
 
 // Config contains all runtime configuration values for the application.
 type Config struct {
@@ -29,11 +35,17 @@ type Config struct {
 	MigrationsDir      string `env:"MIGRATIONS_DIR,migrations"`
 	SessionSecret      string `env:"SESSION_SECRET"`
 
-	SecureCookies bool   `env:"SECURE_COOKIES,true"`
-	MetricsSecret string `env:"METRICS_SECRET,"`
+	SecureCookies      bool   `env:"SECURE_COOKIES,true"`
+	TrustProxyHeaders  bool   `env:"TRUST_PROXY_HEADERS,false"`
+	MetricsSecret      string `env:"METRICS_SECRET,"`
 
-	RateLimitAuthMax    int           `env:"RATE_LIMIT_AUTH_MAX,5"`
-	RateLimitAuthWindow time.Duration `env:"RATE_LIMIT_AUTH_WINDOW,1m"`
+	RateLimitAuthMax      int           `env:"RATE_LIMIT_AUTH_MAX,5"`
+	RateLimitAuthWindow   time.Duration `env:"RATE_LIMIT_AUTH_WINDOW,1m"`
+	RateLimitSearchMax    int           `env:"RATE_LIMIT_SEARCH_MAX,30"`
+	RateLimitSearchWindow time.Duration `env:"RATE_LIMIT_SEARCH_WINDOW,1m"`
+
+	WSMessageBurst        int     `env:"WS_MSG_BURST,10"`
+	WSMessageRefillPerSec float64 `env:"WS_MSG_REFILL_PER_SEC,5"`
 
 	InviteMaxAge        time.Duration `env:"INVITE_MAX_AGE,24h"`
 	JanitorInterval     time.Duration `env:"JANITOR_INTERVAL,5m"`
@@ -55,6 +67,9 @@ func Load() (Config, error) {
 	var cfg Config
 	if err := loadFromEnv(&cfg); err != nil {
 		return Config{}, err
+	}
+	if len(cfg.SessionSecret) < minSessionSecretBytes {
+		return Config{}, errSecretTooShort
 	}
 	return cfg, nil
 }
@@ -163,6 +178,13 @@ func setFromString(v reflect.Value, raw string) error {
 			return err
 		}
 		v.SetBool(b)
+		return nil
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(strings.TrimSpace(raw), v.Type().Bits())
+		if err != nil {
+			return err
+		}
+		v.SetFloat(f)
 		return nil
 	default:
 		return fmt.Errorf("%w %s", errUnsupportedType, v.Type())

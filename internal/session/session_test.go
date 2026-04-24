@@ -14,7 +14,7 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 	m := NewManager("secret", false, testTTL)
 
 	rr := httptest.NewRecorder()
-	m.Set(rr, 123)
+	m.Set(rr, 123, 0)
 
 	res := rr.Result()
 	defer res.Body.Close() //nolint:errcheck
@@ -27,12 +27,15 @@ func TestManager_SetAndUserID_RoundTrip(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(cookies[0])
 
-	gotID, ok := m.UserID(req)
+	gotID, gotVersion, ok := m.UserID(req)
 	if !ok {
 		t.Fatalf("expected ok=true")
 	}
 	if gotID != 123 {
 		t.Fatalf("expected id=123, got %d", gotID)
+	}
+	if gotVersion != 0 {
+		t.Fatalf("expected version=0, got %d", gotVersion)
 	}
 }
 
@@ -40,7 +43,7 @@ func TestManager_Set_RefusesZeroUserID(t *testing.T) {
 	t.Parallel()
 	m := NewManager("secret", false, testTTL)
 	rr := httptest.NewRecorder()
-	m.Set(rr, 0)
+	m.Set(rr, 0, 0)
 	if cookies := rr.Result().Cookies(); len(cookies) != 0 {
 		t.Fatalf("expected no cookie for userID=0, got %d", len(cookies))
 	}
@@ -53,7 +56,7 @@ func TestManager_UserID_Expired(t *testing.T) {
 	m.SetNowFn(func() time.Time { return current })
 
 	rr := httptest.NewRecorder()
-	m.Set(rr, 123)
+	m.Set(rr, 123, 0)
 	cookie := rr.Result().Cookies()[0]
 
 	// Move time forward past TTL.
@@ -61,7 +64,7 @@ func TestManager_UserID_Expired(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(cookie)
-	if _, ok := m.UserID(req); ok {
+	if _, _, ok := m.UserID(req); ok {
 		t.Fatalf("expected expired session to be rejected")
 	}
 }
@@ -70,7 +73,7 @@ func TestManager_Set_CookieAttributes(t *testing.T) {
 	t.Parallel()
 	m := NewManager("secret", true, testTTL)
 	rr := httptest.NewRecorder()
-	m.Set(rr, 42)
+	m.Set(rr, 42, 0)
 
 	cookies := rr.Result().Cookies()
 	if len(cookies) != 1 {
@@ -100,7 +103,7 @@ func TestManager_UserID_TamperedSignatureRejected(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123|1700000000.bad"})
 
-	_, ok := m.UserID(req)
+	_, _, ok := m.UserID(req)
 	if ok {
 		t.Fatalf("expected ok=false")
 	}
@@ -112,7 +115,7 @@ func TestManager_UserID_MalformedRejected(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: "123"})
 
-	_, ok := m.UserID(req)
+	_, _, ok := m.UserID(req)
 	if ok {
 		t.Fatalf("expected ok=false")
 	}
@@ -130,7 +133,7 @@ func TestManager_UserID_ZeroIDRejected(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.com/", nil)
 	req.AddCookie(&http.Cookie{Name: cookieName, Value: payload + "." + sig})
 
-	if _, ok := m.UserID(req); ok {
+	if _, _, ok := m.UserID(req); ok {
 		t.Fatalf("expected userID=0 to be rejected")
 	}
 }

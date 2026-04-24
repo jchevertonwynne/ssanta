@@ -329,6 +329,12 @@ func (s *Service) UserExists(ctx context.Context, id store.UserID) (bool, error)
 	return s.store.Users.UserExists(ctx, id)
 }
 
+// GetUserSessionVersion returns the user's current session_version. Session
+// cookies must carry a matching value to be considered valid.
+func (s *Service) GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error) {
+	return s.store.Users.GetUserSessionVersion(ctx, id)
+}
+
 // CreateUser creates a new user account.
 func (s *Service) CreateUser(ctx context.Context, username, password string) (store.UserID, error) {
 	ctx, span := otel.Tracer("ssanta").Start(ctx, "Service.CreateUser")
@@ -432,7 +438,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID store.UserID, curre
 	if err != nil {
 		return fmt.Errorf("hash password: %w", err)
 	}
-	return s.store.Users.UpdatePasswordHash(ctx, userID, hash)
+	if err := s.store.Users.UpdatePasswordHash(ctx, userID, hash); err != nil {
+		return err
+	}
+	// Invalidate all other existing session cookies so a leaked cookie stops
+	// working immediately after a password change.
+	return s.store.Users.BumpSessionVersion(ctx, userID)
 }
 
 // Room operations

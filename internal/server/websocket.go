@@ -22,6 +22,13 @@ import (
 
 const maxMessageLength = 4096
 
+// defaultWSBurst / defaultWSRefillPerSec cap per-connection inbound frame
+// rate. Overridable via config.
+const (
+	defaultWSBurst        = 10
+	defaultWSRefillPerSec = 5
+)
+
 func websocketUpgrader(secure bool) *websocket.Upgrader {
 	return &websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -50,6 +57,13 @@ type ChatHub struct {
 	mu              sync.RWMutex
 	typingStatus    map[store.RoomID]map[store.UserID]*typingSession // track who's typing
 	typingSessionID int64
+	// lifetimeCtx backs metric emissions from hub-owned goroutines/paths that
+	// are not tied to a single HTTP request. Cancelled on Stop.
+	lifetimeCtx    context.Context
+	lifetimeCancel context.CancelFunc
+	// WS message rate-limit parameters applied to every new ChatClient.
+	msgBurst   int
+	msgRefill  float64
 }
 
 type typingSession struct {
@@ -74,6 +88,7 @@ type ChatClient struct {
 	userID    store.UserID
 	username  string
 	svc       WebSocketHandlersService
+	bucket    *tokenBucket
 }
 
 type ChatMessagePayload struct {
@@ -89,6 +104,20 @@ type ChatMessagePayload struct {
 }
 
 func NewChatHub() *ChatHub {
+	return NewChatHubWithLimits(defaultWSBurst, defaultWSRefillPerSec)
+}
+
+// NewChatHubWithLimits lets callers configure the per-connection inbound
+// message token bucket. Used by production wiring; tests typically use the
+// defaults via NewChatHub.
+func NewChatHubWithLimits(burst int, refillPerSecond float64) *ChatHub {
+	if burst <= 0 {
+		burst = defaultWSBurst
+	}
+	if refillPerSecond <= 0 {
+		refillPerSecond = defaultWSRefillPerSec
+	}
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ChatHub{
 		rooms:           make(map[store.RoomID]*ChatRoom),
 		userConnections: make(map[store.UserID]map[*ChatClient]bool),
@@ -96,11 +125,18 @@ func NewChatHub() *ChatHub {
 		unregister:      make(chan *ChatClient),
 		done:            make(chan struct{}),
 		typingStatus:    make(map[store.RoomID]map[store.UserID]*typingSession),
+		lifetimeCtx:     ctx,
+		lifetimeCancel:  cancel,
+		msgBurst:        burst,
+		msgRefill:       refillPerSecond,
 	}
 }
 
 func (h *ChatHub) Stop() {
 	close(h.done)
+	if h.lifetimeCancel != nil {
+		h.lifetimeCancel()
+	}
 
 	// Close all WebSocket connections to unblock reads
 	h.mu.Lock()
@@ -155,7 +191,7 @@ func (h *ChatHub) Run() {
 
 			// Record active connection metric
 			if metrics := observability.GetMetrics(); metrics != nil {
-				metrics.WSActiveConnections.Add(context.Background(), 1)
+				metrics.WSActiveConnections.Add(h.lifetimeCtx, 1)
 			}
 			slog.Info("websocket connected", "user_id", client.userID, "room_id", client.roomID)
 
@@ -188,7 +224,7 @@ func (h *ChatHub) Run() {
 
 					// Record disconnection metric
 					if metrics := observability.GetMetrics(); metrics != nil {
-						metrics.WSActiveConnections.Add(context.Background(), -1)
+						metrics.WSActiveConnections.Add(h.lifetimeCtx, -1)
 					}
 					slog.Info("websocket disconnected", "user_id", client.userID, "room_id", client.roomID)
 				}
@@ -357,6 +393,39 @@ func (h *ChatHub) DisconnectUser(roomID store.RoomID, userID store.UserID) {
 		client.closeOnce.Do(func() { close(client.send) })
 		delete(room.clients, client)
 	}
+}
+
+// DisconnectRoom notifies every client in a room that the room has been
+// deleted and then terminates their sockets. Used when the creator deletes a
+// room; mirrors DisconnectUser for a whole-room scope.
+func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
+	h.mu.Lock()
+	room, ok := h.rooms[roomID]
+	if !ok {
+		h.mu.Unlock()
+		return
+	}
+	delete(h.rooms, roomID)
+	h.mu.Unlock()
+
+	notice := ChatMessagePayload{
+		Type:    "room_deleted",
+		Message: "This room has been deleted",
+	}
+	noticeBytes, _ := json.Marshal(notice)
+
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	for client := range room.clients {
+		if noticeBytes != nil {
+			select {
+			case client.send <- noticeBytes:
+			case <-time.After(time.Second):
+			}
+		}
+		client.closeOnce.Do(func() { close(client.send) })
+	}
+	room.clients = nil
 }
 
 func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
@@ -617,6 +686,23 @@ func (c *ChatClient) readPump(ctx context.Context) {
 		if err := json.Unmarshal(message, &payload); err != nil {
 			slog.Error("unmarshal message", "err", err)
 			continue
+		}
+
+		// Rate-limit inbound work on this connection. stopped_typing frames
+		// carry presence-reset state so we let them through unconditionally —
+		// they're cheap and dropping them causes lingering "typing…" UI.
+		if payload.Type == "typing" || payload.Type == "message" {
+			if c.bucket != nil && !c.bucket.Take() {
+				if metrics := observability.GetMetrics(); metrics != nil {
+					attrs := attribute.NewSet(
+						attribute.Int64("room_id", c.roomID.Int64()),
+						attribute.Int64("user_id", c.userID.Int64()),
+						attribute.Bool("dropped", true),
+					)
+					metrics.WSMessagesReceived.Add(ctx, 1, metric.WithAttributeSet(attrs))
+				}
+				continue
+			}
 		}
 
 		// Handle typing indicators
@@ -919,6 +1005,7 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 			userID:   currentID,
 			username: username,
 			svc:      svc,
+			bucket:   newTokenBucket(float64(hub.msgBurst), hub.msgRefill),
 		}
 
 		if !hub.tryRegister(client) {
@@ -960,6 +1047,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 			roomID:   0, // Not in a room, just on content page
 			userID:   currentID,
 			username: username,
+			bucket:   newTokenBucket(float64(hub.msgBurst), hub.msgRefill),
 		}
 
 		if !hub.tryRegister(client) {

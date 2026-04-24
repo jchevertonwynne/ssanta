@@ -81,9 +81,18 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
+// Options holds optional server wiring parameters with sensible defaults.
+type Options struct {
+	WSMessageBurst        int
+	WSMessageRefillPerSec float64
+	TrustProxyHeaders     bool
+	RateLimitSearchMax    int
+	RateLimitSearchWindow time.Duration
+}
+
 //nolint:funlen
-func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration) (http.Handler, func()) {
-	hub := NewChatHub()
+func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration, opts Options) (http.Handler, func()) {
+	hub := NewChatHubWithLimits(opts.WSMessageBurst, opts.WSMessageRefillPerSec)
 	go hub.Run()
 	hubAPI := Hub(hub)
 
@@ -101,13 +110,26 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
 	var authLimiter *rateLimiter
 	if rateLimitMax > 0 && rateLimitWindow > 0 {
-		authLimiter = newRateLimiter(rateLimitMax, rateLimitWindow)
+		authLimiter = newRateLimiter(rateLimitMax, rateLimitWindow, opts.TrustProxyHeaders)
 	}
 	limited := func(h http.HandlerFunc) http.HandlerFunc {
 		if authLimiter == nil {
 			return h
 		}
 		return http.HandlerFunc(RateLimit(authLimiter)(h).ServeHTTP)
+	}
+	// Search is cheap compared to auth but does a per-room full scan on ILIKE.
+	// Use a more generous independent bucket so legitimate typing doesn't
+	// trip the limit, while a tight loop still gets throttled.
+	var searchLimiter *rateLimiter
+	if opts.RateLimitSearchMax > 0 && opts.RateLimitSearchWindow > 0 {
+		searchLimiter = newRateLimiter(opts.RateLimitSearchMax, opts.RateLimitSearchWindow, opts.TrustProxyHeaders)
+	}
+	searchLimited := func(h http.HandlerFunc) http.HandlerFunc {
+		if searchLimiter == nil {
+			return h
+		}
+		return http.HandlerFunc(RateLimit(searchLimiter)(h).ServeHTTP)
 	}
 
 	mux.HandleFunc("GET /content/ws", limited(handleContentWebSocket(hub, svc, sessions)))
@@ -122,12 +144,12 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	// Rooms
 	mux.HandleFunc("POST /rooms", limited(handleCreateRoom(svc, sessions)))
 	mux.HandleFunc("GET /rooms/{id}", handleRoomDetail(svc, sessions))
-	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions))
+	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions, hubAPI))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/dynamic", handleRoomDynamic(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/members-list", handleRoomMembersList(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/messages", handleListMessages(svc, sessions))
-	mux.HandleFunc("GET /rooms/{id}/messages/search", handleSearchMessages(svc, sessions))
+	mux.HandleFunc("GET /rooms/{id}/messages/search", searchLimited(handleSearchMessages(svc, sessions)))
 	mux.HandleFunc("GET /rooms/{id}/ws", limited(handleWebSocket(hub, svc, sessions)))
 	mux.HandleFunc("POST /rooms/{id}/join", limited(handleJoinRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/leave", limited(handleLeaveRoom(svc, sessions, hubAPI)))
@@ -163,16 +185,23 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		WithRequestLogger(nil),
 	)
 
-	return handler, hub.Stop
+	closeFn := func() {
+		if authLimiter != nil {
+			authLimiter.Close()
+		}
+		if searchLimiter != nil {
+			searchLimiter.Close()
+		}
+		hub.Stop()
+	}
+	return handler, closeFn
 }
 
 func metricsWithSecret(next http.Handler, secret string) http.Handler {
+	// Header-only: a query-string fallback would leak the secret into proxy
+	// access logs / APM trace attributes.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		provided := r.URL.Query().Get("secret")
-		if provided == "" {
-			provided = r.Header.Get("X-Metrics-Secret")
-		}
-		if provided != secret {
+		if r.Header.Get("X-Metrics-Secret") != secret {
 			http.NotFound(w, r)
 			return
 		}
@@ -220,19 +249,24 @@ func handleContentUsers(svc ContentHandlersService, sessions SessionManager) htt
 }
 
 // resolveSessionUser returns the logged-in user ID, or 0 if no valid session.
-// If the cookie is signed but references a user that no longer exists (e.g.
-// after a DB wipe), the cookie is cleared so the caller sees a logged-out state.
+// Cookies are rejected when: the signature is bad, the referenced user no
+// longer exists (DB wipe), or the server-side session_version has been bumped
+// beyond the one baked into the cookie (password change / force-logout).
 func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions SessionManager, w http.ResponseWriter, r *http.Request) (store.UserID, bool) {
-	id, ok := sessions.UserID(r)
+	id, cookieVersion, ok := sessions.UserID(r)
 	if !ok {
 		return 0, false
 	}
-	exists, err := svc.UserExists(ctx, id)
+	serverVersion, err := svc.GetUserSessionVersion(ctx, id)
 	if err != nil {
-		slog.Error("check user exists", "err", err)
+		if errors.Is(err, store.ErrUserNotFound) {
+			sessions.Clear(w)
+			return 0, false
+		}
+		slog.Error("fetch session version", "err", err)
 		return 0, false
 	}
-	if !exists {
+	if cookieVersion != serverVersion {
 		sessions.Clear(w)
 		return 0, false
 	}

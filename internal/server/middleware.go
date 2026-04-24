@@ -271,7 +271,7 @@ func SecurityHeaders(secure bool) func(http.Handler) http.Handler {
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					scriptSrc+"; "+
-					"script-src-attr 'unsafe-inline'; "+
+					"script-src-attr 'none'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"connect-src 'self' ws: wss:;")
 			if secure {

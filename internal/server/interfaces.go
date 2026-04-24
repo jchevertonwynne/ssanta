@@ -30,6 +30,7 @@ type RoomMembersWithPGPService interface {
 
 type UserExistsService interface {
 	UserExists(ctx context.Context, id store.UserID) (bool, error)
+	GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error)
 }
 
 type CreateUserService interface {
@@ -196,9 +197,9 @@ type ServerService interface {
 }
 
 type SessionManager interface {
-	Set(w http.ResponseWriter, userID store.UserID)
+	Set(w http.ResponseWriter, userID store.UserID, version int)
 	Clear(w http.ResponseWriter)
-	UserID(r *http.Request) (store.UserID, bool)
+	UserID(r *http.Request) (store.UserID, int, bool)
 	Secret() []byte
 	Secure() bool
 }
@@ -215,5 +216,6 @@ type Hub interface {
 	NotifyUser(userID store.UserID, msgType, message string)
 	NotifyContentUpdate(msgType string)
 	DisconnectUser(roomID store.RoomID, userID store.UserID)
+	DisconnectRoom(roomID store.RoomID)
 	BroadcastRoomPresence(roomID store.RoomID)
 }

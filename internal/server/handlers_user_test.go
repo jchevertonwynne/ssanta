@@ -24,7 +24,8 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	hub := servermocks.NewMockHub(ctrl)
 
 	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(store.UserID(42), nil)
-	sessions.EXPECT().Set(gomock.Any(), store.UserID(42))
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(42)).Return(0, nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(42), 0)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(42)).Return(stubContentView("Alice"), nil)
 	hub.EXPECT().NotifyContentUpdate("users_updated")
 
@@ -105,7 +106,7 @@ func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/users/1", nil)
 	r.SetPathValue("id", "1")
@@ -196,7 +197,8 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	svc.EXPECT().LoginUser(gomock.Any(), "alice", "correctpass").Return(store.UserID(5), nil)
-	sessions.EXPECT().Set(gomock.Any(), store.UserID(5))
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(5)).Return(0, nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(5), 0)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(5)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, "/login", url.Values{
@@ -262,7 +264,10 @@ func TestHandleChangePassword_Success(t *testing.T) {
 
 	expectLoggedIn(t, svc, sessions, 10)
 	svc.EXPECT().ChangePassword(gomock.Any(), store.UserID(10), "oldpass12", "newpass12").Return(nil)
-	sessions.EXPECT().Set(gomock.Any(), store.UserID(10))
+	// ChangePassword bumped the server-side version; handler re-reads it and
+	// re-signs the cookie to the new version.
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(10)).Return(1, nil)
+	sessions.EXPECT().Set(gomock.Any(), store.UserID(10), 1)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(10)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, "/password", url.Values{
@@ -288,7 +293,7 @@ func TestHandleChangePassword_Unauthorized(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := newFormRequest(t, "/password", url.Values{
 		"current_password":     {"old"},

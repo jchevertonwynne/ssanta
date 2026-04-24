@@ -107,6 +107,34 @@ func (s *UserStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordH
 	return nil
 }
 
+// GetUserSessionVersion returns the current session_version for a user.
+// ErrUserNotFound is returned when the row is missing. Sessions whose cookie
+// carries a mismatched version should be treated as invalid.
+func (s *UserStore) GetUserSessionVersion(ctx context.Context, id UserID) (int, error) {
+	var v int
+	err := s.db.QueryRow(ctx, `SELECT session_version FROM users WHERE id = $1`, id).Scan(&v)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrUserNotFound
+	}
+	return v, err
+}
+
+// BumpSessionVersion increments the user's session_version so all previously
+// issued session cookies stop validating. Called by password change flows.
+func (s *UserStore) BumpSessionVersion(ctx context.Context, id UserID) error {
+	tag, err := s.db.Exec(ctx,
+		`UPDATE users SET session_version = session_version + 1 WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
 	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY username ASC`)
 	if err != nil {

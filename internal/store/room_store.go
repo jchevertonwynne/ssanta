@@ -27,6 +27,36 @@ func (s *RoomStore) GetRoomByDisplayName(ctx context.Context, displayName string
 	return r, err
 }
 
+// GetOrCreateDMRoom atomically finds or creates a DM room with the given
+// display name. Using INSERT ... ON CONFLICT DO NOTHING + fallback SELECT
+// avoids the check-then-create race between two participants starting a DM
+// at the same time.
+func (s *RoomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, creatorID UserID) (RoomID, error) {
+	var roomID RoomID
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO rooms (display_name, creator_id, is_dm)
+		 VALUES ($1, $2, TRUE)
+		 ON CONFLICT (display_name) DO NOTHING
+		 RETURNING id`,
+		displayName, creatorID,
+	).Scan(&roomID)
+	if err == nil {
+		return roomID, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return 0, err
+	}
+	// Row already existed; resolve it.
+	err = s.db.QueryRow(ctx,
+		`SELECT id FROM rooms WHERE display_name = $1`,
+		displayName,
+	).Scan(&roomID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, ErrRoomNotFound
+	}
+	return roomID, err
+}
+
 func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
 	var roomID RoomID
 	err := s.db.QueryRow(ctx,

@@ -174,6 +174,70 @@ func TestChatHub_RegisterBroadcastUnregister(t *testing.T) {
 	hub.Stop()
 }
 
+func TestChatHub_DisconnectRoom_EvictsClientsAndEmitsRoomDeleted(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHub()
+	go hub.Run()
+	defer hub.Stop()
+
+	client := &ChatClient{hub: hub, roomID: 42, userID: 7, send: make(chan []byte, 4)}
+	hub.register <- client
+
+	// Wait until the hub processed the registration (room entry exists).
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		hub.mu.RLock()
+		_, ok := hub.rooms[42]
+		hub.mu.RUnlock()
+		if ok {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	// Drain the initial presence broadcast fired on registration.
+	select {
+	case <-client.send:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for initial presence broadcast")
+	}
+
+	hub.DisconnectRoom(42)
+
+	// First message should be the room_deleted notice.
+	select {
+	case msg, ok := <-client.send:
+		if !ok {
+			t.Fatalf("expected room_deleted before channel close")
+		}
+		var p struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(msg, &p); err != nil || p.Type != "room_deleted" {
+			t.Fatalf("unexpected frame: %q err=%v", msg, err)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for room_deleted frame")
+	}
+
+	// Channel closes immediately after.
+	select {
+	case _, ok := <-client.send:
+		if ok {
+			t.Fatalf("expected send channel closed")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for channel close")
+	}
+
+	hub.mu.RLock()
+	_, stillThere := hub.rooms[42]
+	hub.mu.RUnlock()
+	if stillThere {
+		t.Fatalf("room 42 should have been removed")
+	}
+}
+
 //nolint:funlen
 func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	t.Parallel()
@@ -188,8 +252,8 @@ func TestWebSocket_E2E_PreEncryptedMessageForwarded(t *testing.T) {
 	roomID := store.RoomID(10)
 	verifiedAt := time.Now()
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return(usernameAlice, nil).AnyTimes()
 	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
@@ -257,18 +321,19 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	userB := store.UserID(3)
 	verifiedAt := time.Now()
 
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, int, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case usernameAlice:
-			return userA, true
+			return userA, 0, true
 		case usernameBob:
-			return userB, true
+			return userB, 0, true
 		default:
-			return 0, false
+			return 0, 0, false
 		}
 	}).AnyTimes()
 
 	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), gomock.Any()).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return(usernameAlice, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return(usernameBob, nil).AnyTimes()
@@ -353,18 +418,19 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	userA := store.UserID(2)
 	userB := store.UserID(3)
 
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, int, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case usernameAlice:
-			return userA, true
+			return userA, 0, true
 		case usernameBob:
-			return userB, true
+			return userB, 0, true
 		default:
-			return 0, false
+			return 0, 0, false
 		}
 	}).AnyTimes()
 
 	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), gomock.Any()).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return(usernameAlice, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return(usernameBob, nil).AnyTimes()
@@ -437,8 +503,8 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil).AnyTimes()
 
 	hub := NewChatHub()
@@ -481,8 +547,8 @@ func TestWebSocket_E2E_DisconnectUser_SendsKicked(t *testing.T) {
 	userID := store.UserID(2)
 	roomID := store.RoomID(10)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true).AnyTimes()
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil).AnyTimes()
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return(usernameAlice, nil).AnyTimes()
 
@@ -589,20 +655,21 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 	userB := store.UserID(3)
 	userC := store.UserID(4)
 
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, int, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case usernameAlice:
-			return userA, true
+			return userA, 0, true
 		case usernameBob:
-			return userB, true
+			return userB, 0, true
 		case "charlie":
-			return userC, true
+			return userC, 0, true
 		default:
-			return 0, false
+			return 0, 0, false
 		}
 	}).AnyTimes()
 
 	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), gomock.Any()).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return(usernameAlice, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return(usernameBob, nil).AnyTimes()
@@ -691,18 +758,19 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 	userA := store.UserID(2)
 	userB := store.UserID(3)
 
-	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, bool) {
+	sessions.EXPECT().UserID(gomock.Any()).DoAndReturn(func(r *http.Request) (store.UserID, int, bool) {
 		switch r.Header.Get("X-Test-User") {
 		case usernameAlice:
-			return userA, true
+			return userA, 0, true
 		case usernameBob:
-			return userB, true
+			return userB, 0, true
 		default:
-			return 0, false
+			return 0, 0, false
 		}
 	}).AnyTimes()
 
 	svc.EXPECT().UserExists(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), gomock.Any()).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, gomock.Any()).Return(false, true, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userA).Return(usernameAlice, nil).AnyTimes()
 	svc.EXPECT().GetUsername(gomock.Any(), userB).Return(usernameBob, nil).AnyTimes()

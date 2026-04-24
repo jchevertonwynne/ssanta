@@ -62,7 +62,13 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			metrics.UsersRegistered.Add(ctx, 1)
 		}
 
-		sessions.Set(w, id)
+		version, verr := svc.GetUserSessionVersion(ctx, id)
+		if verr != nil {
+			loggerFromContext(ctx).Error("fetch session version after create", "err", verr)
+			http.Error(w, "failed to create user", http.StatusInternalServerError)
+			return
+		}
+		sessions.Set(w, id, version)
 		renderContent(w, ctx, svc, id)
 		hub.NotifyContentUpdate("users_updated")
 	}
@@ -159,7 +165,13 @@ func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerF
 			metrics.UsersLoggedIn.Add(ctx, 1)
 		}
 
-		sessions.Set(w, id)
+		version, verr := svc.GetUserSessionVersion(ctx, id)
+		if verr != nil {
+			loggerFromContext(ctx).Error("fetch session version after login", "err", verr)
+			http.Error(w, "failed to log in", http.StatusInternalServerError)
+			return
+		}
+		sessions.Set(w, id, version)
 		renderContent(w, ctx, svc, id)
 	}
 }
@@ -216,7 +228,15 @@ func handleChangePassword(svc UserHandlersService, sessions SessionManager) http
 		}
 
 		loggerFromContext(ctx).Info("password changed", "user_id", currentID)
-		sessions.Set(w, currentID)
+		// ChangePassword bumped the server-side version; rotate this tab's
+		// cookie to the new version so the current session stays usable.
+		version, verr := svc.GetUserSessionVersion(ctx, currentID)
+		if verr != nil {
+			loggerFromContext(ctx).Error("fetch session version after change password", "err", verr)
+			http.Error(w, "failed to change password", http.StatusInternalServerError)
+			return
+		}
+		sessions.Set(w, currentID, version)
 		renderContentWithPasswordSuccess(w, ctx, svc, currentID)
 	}
 }

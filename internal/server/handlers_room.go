@@ -68,7 +68,7 @@ func handleCreateRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 	}
 }
 
-func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
+func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -92,6 +92,9 @@ func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager) http.Han
 			http.Error(w, "failed to delete room", http.StatusInternalServerError)
 			return
 		}
+		// Evict any live WS sessions attached to this room so their next frames
+		// don't produce FK-violation errors against the deleted room row.
+		hub.DisconnectRoom(roomID)
 		renderContent(w, r.Context(), svc, currentID)
 	}
 }
@@ -188,6 +191,11 @@ func handleLeaveRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) 
 			http.Error(w, "failed to leave room", http.StatusInternalServerError)
 			return
 		}
+
+		// Boot any live WS sessions so post-leave frames can't still reach the hot
+		// path. For creators the subsequent upgrade will succeed again; for
+		// non-creators the auth check at upgrade time blocks reconnection.
+		hub.DisconnectUser(roomID, currentID)
 
 		// Send system message and notify other members to update their member lists
 		hub.BroadcastSystemMessage(roomID, username+" left the room")

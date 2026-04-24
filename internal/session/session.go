@@ -14,10 +14,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-const (
-	cookieName     = "session"
-	csrfCookieName = "csrf_id"
-)
+const cookieName = "session"
 
 var (
 	// ErrInvalidSession indicates a malformed or expired session cookie.
@@ -55,12 +52,16 @@ func (m *Manager) Secret() []byte { return m.secret }
 // Secure returns whether cookies should be marked Secure.
 func (m *Manager) Secure() bool { return m.secure }
 
-// Set writes a signed session cookie for the given user.
-func (m *Manager) Set(w http.ResponseWriter, userID store.UserID) {
+// Set writes a signed session cookie for the given user and session version.
+// Bumping the server-side version invalidates all previously-issued cookies
+// for that user — used by ChangePassword and any future "logout everywhere".
+func (m *Manager) Set(w http.ResponseWriter, userID store.UserID, version int) {
 	if userID == 0 {
 		return
 	}
-	payload := strconv.FormatInt(userID.Int64(), 10) + "|" + strconv.FormatInt(m.now().Unix(), 10)
+	payload := strconv.FormatInt(userID.Int64(), 10) + "|" +
+		strconv.FormatInt(m.now().Unix(), 10) + "|" +
+		strconv.Itoa(version)
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    payload + "." + m.sign(payload),
@@ -85,35 +86,41 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 	})
 }
 
-// UserID extracts and validates the current session user ID.
-func (m *Manager) UserID(r *http.Request) (store.UserID, bool) {
+// UserID extracts and validates the current session user ID and the session
+// version carried by the cookie. Callers must compare the version against the
+// persisted server-side value before trusting the session.
+func (m *Manager) UserID(r *http.Request) (store.UserID, int, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		return 0, false
+		return 0, 0, false
 	}
 	payload, sig, valid := strings.Cut(cookie.Value, ".")
 	if !valid {
-		return 0, false
+		return 0, 0, false
 	}
 	if !hmac.Equal([]byte(sig), []byte(m.sign(payload))) {
-		return 0, false
+		return 0, 0, false
 	}
-	idStr, issuedStr, valid := strings.Cut(payload, "|")
-	if !valid {
-		return 0, false
+	parts := strings.Split(payload, "|")
+	if len(parts) != 3 {
+		return 0, 0, false
 	}
-	userID, err := strconv.ParseInt(idStr, 10, 64)
+	userID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil || userID <= 0 {
-		return 0, false
+		return 0, 0, false
 	}
-	issuedUnix, err := strconv.ParseInt(issuedStr, 10, 64)
+	issuedUnix, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		return 0, false
+		return 0, 0, false
+	}
+	version, err := strconv.Atoi(parts[2])
+	if err != nil || version < 0 {
+		return 0, 0, false
 	}
 	if m.now().Sub(time.Unix(issuedUnix, 0)) > m.ttl {
-		return 0, false
+		return 0, 0, false
 	}
-	return store.UserID(userID), true
+	return store.UserID(userID), version, true
 }
 
 func (m *Manager) sign(payload string) string {

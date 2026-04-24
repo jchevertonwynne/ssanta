@@ -33,8 +33,8 @@ func serve(t *testing.T, h http.Handler, r *http.Request) *httptest.ResponseReco
 
 func expectLoggedIn(t *testing.T, svc *servermocks.MockServerService, sessions *servermocks.MockSessionManager, userID store.UserID) {
 	t.Helper()
-	sessions.EXPECT().UserID(gomock.Any()).Return(userID, true)
-	svc.EXPECT().UserExists(gomock.Any(), userID).Return(true, nil)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
 }
 
 func stubContentView(username string) *service.ContentView {

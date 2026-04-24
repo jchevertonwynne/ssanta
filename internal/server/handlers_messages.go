@@ -116,8 +116,10 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 		}
 
 		query := r.URL.Query().Get("q")
-		if query == "" {
-			http.Error(w, "missing query", http.StatusBadRequest)
+		// Floor at 2 chars to avoid trivial "%a%" scans; cap at 128 to keep
+		// the ILIKE pattern bounded. Matches the client's search input limits.
+		if n := len(query); n < 2 || n > 128 {
+			http.Error(w, "query must be between 2 and 128 characters", http.StatusBadRequest)
 			return
 		}
 

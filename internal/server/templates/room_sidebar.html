@@ -60,7 +60,7 @@
                    name="value"
                    value="true"
                    {{if .Room.MembersCanInvite}}checked{{end}}
-                   onchange="this.value = this.checked ? 'true' : 'false'">
+                   data-checkbox-value>
             Members can invite
         </label>
         </form>
@@ -74,7 +74,7 @@
                    name="value"
                    value="true"
                    {{if .Room.PGPRequired}}checked{{end}}
-                   onchange="this.value = this.checked ? 'true' : 'false'">
+                   data-checkbox-value>
             Require PGP encryption
         </label>
         </form>
@@ -94,7 +94,7 @@
                    name="value"
                    value="true"
                    {{if .Room.PGPRequired}}checked{{end}}
-                   onchange="this.value = this.checked ? 'true' : 'false'">
+                   data-checkbox-value>
             Require PGP encryption
         </label>
         </form>
@@ -121,14 +121,14 @@
                                 <strong>Status:</strong> {{if .PGPVerifiedAt}}verified{{else}}unverified{{end}}
                                 {{if .PGPFingerprint}}
                                     <span> · <span id="pgp-fingerprint-self">{{.PGPFingerprint}}</span></span>
-                                    <button type="button" style="margin-left: 0.5rem;" onclick="(function(){var t=document.getElementById('pgp-fingerprint-self'); if(!t) return; var v=t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);});} else {var ta=document.createElement('textarea'); ta.value=v; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; ta.style.top='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta);}})()">Copy fingerprint</button>
+                                    <button type="button" style="margin-left: 0.5rem;" data-copy-target="pgp-fingerprint-self" data-copy-mode="text">Copy fingerprint</button>
                                 {{end}}
                             </div>
 
                             {{if .PGPChallengeCiphertext}}
                                 <p style="margin-top: 0.5rem;"><strong>Encrypted challenge</strong>{{if .PGPChallengeExpiresAt}} (expires {{.PGPChallengeExpiresAt.Format "2006-01-02 15:04:05"}}){{end}}:</p>
                                 <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.25rem;">
-                                    <button type="button" onclick="(function(){var t=document.getElementById('pgp-challenge-ciphertext'); if(!t) return; var v=t.value||t.textContent||''; if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).catch(function(){t.focus();t.select();document.execCommand('copy');});} else {t.focus();t.select();document.execCommand('copy');}})()">Copy</button>
+                                    <button type="button" data-copy-target="pgp-challenge-ciphertext" data-copy-mode="value">Copy</button>
                                 </div>
                                 <textarea id="pgp-challenge-ciphertext" readonly rows="8" style="width: 100%; font-family: monospace;">{{.PGPChallengeCiphertext}}</textarea>
 

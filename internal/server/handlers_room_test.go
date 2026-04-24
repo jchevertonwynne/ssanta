@@ -22,7 +22,7 @@ func TestHandleCreateRoom_Unauthorized_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := newFormRequest(t, "/rooms", url.Values{"display_name": {"room"}})
 	w := serve(t, handleCreateRoom(svc, sessions), r)
@@ -166,7 +166,7 @@ func TestHandleRoomDetail_LoggedOut_NonHTMX_RedirectsHome(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
@@ -188,7 +188,7 @@ func TestHandleRoomDetail_LoggedOut_HTMX_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10", nil)
 	r.SetPathValue("id", "10")
@@ -309,7 +309,7 @@ func TestHandleRoomMembersList_Unauthorized_Returns401(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), false)
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")

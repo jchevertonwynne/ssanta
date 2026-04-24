@@ -45,7 +45,7 @@
     </section>
 </div>
 
-<script>
+<script nonce="{{.ScriptNonce}}">
 (function() {
     const chatMessages = document.getElementById('chat-messages');
     const chatForm = document.getElementById('chat-form');
@@ -290,7 +290,7 @@
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
 
-            if (data.type === 'kicked') {
+            if (data.type === 'kicked' || data.type === 'room_deleted') {
                 intentionalClose = true;
                 ws.close();
                 window.location.href = '/';
