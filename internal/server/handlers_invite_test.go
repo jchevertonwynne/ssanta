@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
@@ -55,7 +56,7 @@ func TestHandleCreateInvite_Success_BroadcastsAndNotifiesInvitee(t *testing.T) {
 	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
 	hub.EXPECT().BroadcastSystemMessage(roomID, "alice invited bob")
 	svc.EXPECT().GetUserByUsername(gomock.Any(), "bob").Return(store.User{ID: 99, Username: "bob"}, nil)
-	hub.EXPECT().NotifyUser(store.UserID(99), "invite_received", "")
+	hub.EXPECT().NotifyUser(store.UserID(99), ws.MsgTypeInviteReceived, "")
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
 	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})

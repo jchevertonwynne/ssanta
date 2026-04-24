@@ -9,9 +9,18 @@ import (
 func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
-	tag, err := s.db.Exec(ctx,
-		`SET LOCAL lock_timeout = '5s';
-		 DELETE FROM room_invites 
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, `SET LOCAL lock_timeout = '5s'`); err != nil {
+		return 0, err
+	}
+
+	tag, err := tx.Exec(ctx,
+		`DELETE FROM room_invites 
 		 WHERE id IN (
 		     SELECT id FROM room_invites 
 		     WHERE expires_at < $1 
@@ -22,6 +31,10 @@ func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (
 	if err != nil {
 		return 0, err
 	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
 	return tag.RowsAffected(), nil
 }
 
@@ -30,9 +43,18 @@ func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (
 func (s *RoomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
-	tag, err := s.db.Exec(ctx,
-		`SET LOCAL lock_timeout = '5s';
-		 UPDATE room_users
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, `SET LOCAL lock_timeout = '5s'`); err != nil {
+		return 0, err
+	}
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE room_users
 		 SET pgp_challenge_ciphertext = NULL,
 		     pgp_challenge_hash = NULL,
 		     pgp_challenge_expires_at = NULL
@@ -45,6 +67,10 @@ func (s *RoomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.
 		now,
 	)
 	if err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
 	return tag.RowsAffected(), nil

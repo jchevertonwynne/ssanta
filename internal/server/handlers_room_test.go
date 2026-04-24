@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
@@ -111,7 +112,7 @@ func TestHandleJoinRoom_Creator_RendersSidebarAndNotifiesUser(t *testing.T) {
 	hub.EXPECT().BroadcastSystemMessage(roomID, "creator joined the room")
 	hub.EXPECT().NotifyRoomUpdate(roomID)
 	hub.EXPECT().BroadcastRoomPresence(roomID)
-	hub.EXPECT().NotifyUser(userID, "membership_gained", "")
+	hub.EXPECT().NotifyUser(userID, ws.MsgTypeMembershipGained, "")
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("creator"), nil)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)

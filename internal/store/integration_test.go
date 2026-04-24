@@ -83,7 +83,7 @@ func resetDB(t *testing.T, pool *pgxpool.Pool) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	_, err := pool.Exec(ctx, `TRUNCATE room_invites, room_users, rooms, users RESTART IDENTITY CASCADE`)
+	_, err := pool.Exec(ctx, `TRUNCATE room_invites, room_users, rooms, users, messages RESTART IDENTITY CASCADE`)
 	if err != nil {
 		t.Fatalf("reset db: %v", err)
 	}

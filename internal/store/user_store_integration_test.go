@@ -8,7 +8,6 @@ import (
 )
 
 func TestUserStore_CreateGetListDelete(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -22,7 +21,7 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 
 	u, err := st.Users.GetUserByID(ctx, id)
 	if err != nil {
-		t.Fatalf("get user by id: %v", err)
+		t.Fatalf("get user by id %d: %v", id, err)
 	}
 	if u.Username != "alice" {
 		t.Fatalf("expected username alice, got %q", u.Username)
@@ -57,7 +56,6 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 }
 
 func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -73,7 +71,6 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 }
 
 func TestUserStore_UserExists(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -103,7 +100,6 @@ func TestUserStore_UserExists(t *testing.T) {
 }
 
 func TestUserStore_DeleteUser_NotFound(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -116,7 +112,6 @@ func TestUserStore_DeleteUser_NotFound(t *testing.T) {
 }
 
 func TestUserStore_GetUser_NotFound(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 

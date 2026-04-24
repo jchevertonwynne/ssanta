@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/jchevertonwynne/ssanta/internal/store"
+	"github.com/jchevertonwynne/ssanta/internal/ws"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
@@ -26,7 +27,7 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(42)).Return(0, nil)
 	sessions.EXPECT().Set(gomock.Any(), store.UserID(42), 0)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(42)).Return(stubContentView("Alice"), nil)
-	hub.EXPECT().NotifyContentUpdate("users_updated")
+	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 
 	r := newFormRequest(t, "/users", url.Values{
 		"username":         {"Alice"},
@@ -145,7 +146,7 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	svc.EXPECT().DeleteUser(gomock.Any(), store.UserID(7)).Return(nil)
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
-	hub.EXPECT().NotifyContentUpdate("users_updated")
+	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 
 	r := newFormRequest(t, "/users/7", url.Values{"current_password": {"mypassword"}})
 	r.Method = http.MethodDelete

@@ -11,7 +11,6 @@ import (
 )
 
 func TestRoomPGPChallengeLifecycle(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -72,7 +71,6 @@ func TestRoomPGPChallengeLifecycle(t *testing.T) {
 }
 
 func TestRoomPGPClearKey(t *testing.T) {
-	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 

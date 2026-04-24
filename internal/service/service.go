@@ -528,12 +528,8 @@ func (s *Service) SetRoomPGPRequired(
 	actingUserID store.UserID,
 	value bool,
 ) error {
-	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
-	if err != nil {
+	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
-	}
-	if detail.IsDM {
-		return s.store.Rooms.SetDMRoomPGPRequired(ctx, roomID, actingUserID, value)
 	}
 	return s.store.Rooms.SetRoomPGPRequired(ctx, roomID, actingUserID, value)
 }

@@ -11,29 +11,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
-type WebSocketHandlersService interface {
-	UserExists(ctx context.Context, id store.UserID) (bool, error)
-	GetUserSessionVersion(ctx context.Context, id store.UserID) (int, error)
-	GetUsername(ctx context.Context, userID store.UserID) (string, error)
-	IsRoomMember(ctx context.Context, roomID store.RoomID, userID store.UserID) (bool, error)
-	ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error)
-	IsRoomPGPRequired(ctx context.Context, roomID store.RoomID) (bool, error)
-	GetRoomAccess(ctx context.Context, roomID store.RoomID, userID store.UserID) (isCreator bool, isMember bool, err error)
-	CreateMessage(ctx context.Context, roomID store.RoomID, userID store.UserID, username, message string, whisper bool, targetUserID *store.UserID, preEncrypted bool) (store.MessageID, error)
-	ListMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, beforeID store.MessageID, limit int) ([]store.Message, error)
-	ListMessagesAfterID(ctx context.Context, roomID store.RoomID, userID store.UserID, afterID store.MessageID, limit int) ([]store.Message, error)
-	SearchMessages(ctx context.Context, roomID store.RoomID, userID store.UserID, query string, limit int) ([]store.Message, error)
-}
-
-type SessionManager interface {
-	Set(w http.ResponseWriter, userID store.UserID, version int)
-	Clear(w http.ResponseWriter)
-	UserID(r *http.Request) (store.UserID, int, bool)
-	Secret() []byte
-	Secure() bool
-}
-
-func RunWS(hub *ChatHub, sessions SessionManager, svc WebSocketHandlersService, currentID store.UserID, username string, roomID store.RoomID, w http.ResponseWriter, r *http.Request) {
+func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.UserID, username string, roomID store.RoomID, w http.ResponseWriter, r *http.Request) {
 	conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("upgrade websocket", "err", err)
@@ -95,7 +73,7 @@ func RunWS(hub *ChatHub, sessions SessionManager, svc WebSocketHandlersService, 
 	go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 }
 
-func RunContentWS(hub *ChatHub, sessions SessionManager, currentID store.UserID, username string, w http.ResponseWriter, r *http.Request) {
+func RunContentWS(hub *ChatHub, sessions SessionReader, currentID store.UserID, username string, w http.ResponseWriter, r *http.Request) {
 	conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("upgrade websocket", "err", err)
