@@ -62,8 +62,8 @@ type ChatHub struct {
 	lifetimeCtx    context.Context
 	lifetimeCancel context.CancelFunc
 	// WS message rate-limit parameters applied to every new ChatClient.
-	msgBurst   int
-	msgRefill  float64
+	msgBurst  int
+	msgRefill float64
 }
 
 type typingSession struct {
@@ -609,7 +609,7 @@ func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, user
 		}
 
 		// Wait for timeout and auto-clear
-		go func() {
+		h.wg.Go(func() {
 			<-ctx.Done()
 
 			h.mu.Lock()
@@ -629,7 +629,7 @@ func (h *ChatHub) SetTypingStatus(ctx context.Context, roomID store.RoomID, user
 			} else {
 				h.mu.Unlock()
 			}
-		}()
+		})
 	}
 }
 

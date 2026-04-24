@@ -57,6 +57,30 @@ func (s *RoomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, c
 	return roomID, err
 }
 
+func (s *RoomStore) GetOrCreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
+	var roomID RoomID
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO rooms (display_name, creator_id, is_dm) VALUES ($1, $2, $3) ON CONFLICT (display_name) DO NOTHING RETURNING id`,
+		displayName, creatorID, isDM,
+	).Scan(&roomID)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return 0, ErrRoomNameTaken
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		err := s.db.QueryRow(ctx,
+			`SELECT id FROM rooms WHERE display_name = $1`,
+			displayName,
+		).Scan(&roomID)
+		return roomID, err	
+	}
+	if err == nil {
+		slog.InfoContext(ctx, "room created in db", "room_name", displayName, "creator_id", creatorID, "room_id", roomID)
+	}
+	return roomID, err
+}
+
+
 func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
 	var roomID RoomID
 	err := s.db.QueryRow(ctx,

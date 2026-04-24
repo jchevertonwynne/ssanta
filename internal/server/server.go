@@ -181,7 +181,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		MaxRequestBody,
 		TracingMiddleware(serviceName),
 		MetricsMiddleware,
-		CSRF(sessions.Secret(), sessions.Secure()),
+		CSRF(sessions, sessions.Secret(), sessions.Secure()),
 		WithRequestLogger(nil),
 	)
 

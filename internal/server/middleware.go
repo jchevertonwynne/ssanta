@@ -53,40 +53,6 @@ func loggerFromContext(ctx context.Context) *slog.Logger {
 	return slog.Default()
 }
 
-// RequireAuth resolves the session, hits UserExists, and on success injects
-// the user ID into the request context. On failure the handler short-circuits
-// with 401.
-func RequireAuth(svc UserExistsService, sessions SessionManager) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-			if !ok {
-				http.Error(w, "login required", http.StatusUnauthorized)
-				return
-			}
-			ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
-			ctx = context.WithValue(ctx, ctxKeyLogger, loggerFromContext(ctx).With("user_id", id))
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// WithOptionalAuth resolves the session if present (so handlers can vary
-// behaviour for logged-in users) but never short-circuits the request.
-func WithOptionalAuth(svc UserExistsService, sessions SessionManager) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-			if ok {
-				ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
-				ctx = context.WithValue(ctx, ctxKeyLogger, loggerFromContext(ctx).With("user_id", id))
-				r = r.WithContext(ctx)
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 // WithRequestLogger derives a request-scoped logger holding request_id, method
 // and path. Handlers retrieve it via loggerFromContext.
 func WithRequestLogger(base *slog.Logger) func(http.Handler) http.Handler {

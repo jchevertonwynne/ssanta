@@ -683,20 +683,9 @@ func (s *Service) GetOrCreateDMRoom(
 	}
 	displayName := "dm:" + name1 + ":" + name2
 
-	// DM rooms are identified by the reserved displayName prefix. We treat them as
-	// special rooms and ensure both users are members, even if one previously left.
-	room, err := s.store.Rooms.GetRoomByDisplayName(ctx, displayName)
-	if err != nil && !errors.Is(err, store.ErrRoomNotFound) {
+	roomID, err := s.store.Rooms.GetOrCreateDMRoom(ctx, displayName, user1ID)
+	if err != nil {
 		return 0, err
-	}
-
-	roomID := room.ID
-	if errors.Is(err, store.ErrRoomNotFound) {
-		// Create new DM room (user1 is creator)
-		roomID, err = s.store.Rooms.CreateRoom(ctx, displayName, user1ID, true)
-		if err != nil {
-			return 0, err
-		}
 	}
 
 	// Ensure BOTH participants are members.

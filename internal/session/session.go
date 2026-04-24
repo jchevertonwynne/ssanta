@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ func (m *Manager) SetNowFn(fn func() time.Time) { m.now = fn }
 
 // Secret exposes the raw signing secret to other packages (e.g., CSRF) that
 // need to derive cookie-bound tokens. Keep this internal-only.
-func (m *Manager) Secret() []byte { return m.secret }
+func (m *Manager) Secret() []byte { return slices.Clone(m.secret) }
 
 // Secure returns whether cookies should be marked Secure.
 func (m *Manager) Secure() bool { return m.secure }
