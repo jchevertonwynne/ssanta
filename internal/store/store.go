@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -78,7 +79,7 @@ func storeFromDB(db dbtx, pool *pgxpool.Pool) *Store {
 		Users:   &UserStore{db: db},
 		Rooms:   &RoomStore{db: db},
 		Invites: &InviteStore{db: db},
-		Chat:    &MessageStore{db: db},
+		Chat:    &MessageStore{db: db, ilikeEscaper: strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)},
 		pool:    pool,
 	}
 }

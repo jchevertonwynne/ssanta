@@ -35,6 +35,7 @@ const (
 	ctxKeyCSRFID
 	ctxKeyCSRFToken
 	ctxKeyScriptNonce
+	ctxKeyWSSide
 )
 
 // Chain wraps h with the given middlewares, with the *first* middleware as the

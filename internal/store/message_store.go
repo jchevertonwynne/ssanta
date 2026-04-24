@@ -8,13 +8,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ilikeEscaper escapes LIKE/ILIKE pattern metacharacters so caller-supplied
-// text is matched literally. Order matters: \ is rewritten first so the
-// subsequent replacements don't double-escape.
-var ilikeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
-
 type MessageStore struct {
 	db dbtx
+	// ilikeEscaper escapes LIKE/ILIKE pattern metacharacters so caller-supplied
+	// text is matched literally. Order matters: \ is rewritten first so the
+	// subsequent replacements don't double-escape.
+	ilikeEscaper *strings.Replacer
 }
 
 type Message struct {
@@ -128,7 +127,7 @@ func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
-	pattern := "%" + ilikeEscaper.Replace(query) + "%"
+	pattern := "%" + s.ilikeEscaper.Replace(query) + "%"
 
 	rows, err := s.db.Query(ctx,
 		`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at

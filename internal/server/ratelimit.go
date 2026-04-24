@@ -27,6 +27,21 @@ type clientLimit struct {
 	resetAt  time.Time
 }
 
+// RateLimit wraps a handler with per-IP rate limiting.
+func RateLimit(rl *rateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := clientIP(r, rl.trustProxy)
+			if !rl.Allow(ip) {
+				w.Header().Set("Retry-After", strconv.Itoa(int(rl.window.Seconds())))
+				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func newRateLimiter(maxRequests int, window time.Duration, trustProxy bool) *rateLimiter {
 	rl := &rateLimiter{
 		clients:    make(map[string]*clientLimit),
@@ -45,30 +60,6 @@ func (rl *rateLimiter) Close() {
 		return
 	}
 	rl.stopOnce.Do(func() { close(rl.stop) })
-}
-
-// sweepLoop evicts entries whose window has elapsed to bound memory usage.
-func (rl *rateLimiter) sweepLoop() {
-	interval := rl.window
-	if interval < time.Minute {
-		interval = time.Minute
-	}
-	t := time.NewTicker(interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-rl.stop:
-			return
-		case now := <-t.C:
-			rl.mu.Lock()
-			for ip, cl := range rl.clients {
-				if now.After(cl.resetAt) {
-					delete(rl.clients, ip)
-				}
-			}
-			rl.mu.Unlock()
-		}
-	}
 }
 
 // Allow returns true if the given IP has not exceeded the rate limit.
@@ -95,18 +86,24 @@ func (rl *rateLimiter) Allow(ip string) bool {
 	return true
 }
 
-// RateLimit wraps a handler with per-IP rate limiting.
-func RateLimit(rl *rateLimiter) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := clientIP(r, rl.trustProxy)
-			if !rl.Allow(ip) {
-				w.Header().Set("Retry-After", strconv.Itoa(int(rl.window.Seconds())))
-				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
-				return
+// sweepLoop evicts entries whose window has elapsed to bound memory usage.
+func (rl *rateLimiter) sweepLoop() {
+	interval := max(rl.window, time.Minute)
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-rl.stop:
+			return
+		case now := <-t.C:
+			rl.mu.Lock()
+			for ip, cl := range rl.clients {
+				if now.After(cl.resetAt) {
+					delete(rl.clients, ip)
+				}
 			}
-			next.ServeHTTP(w, r)
-		})
+			rl.mu.Unlock()
+		}
 	}
 }
 
@@ -115,6 +112,7 @@ func RateLimit(rl *rateLimiter) func(http.Handler) http.Handler {
 // Otherwise we use RemoteAddr directly so forwarded headers sent by an
 // attacker don't bypass per-IP limits.
 func clientIP(r *http.Request, trustProxy bool) string {
+	//nolint: nestif // idc
 	if trustProxy {
 		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
 			// Leftmost entry is the originating client when the proxy

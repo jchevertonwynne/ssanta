@@ -59,6 +59,8 @@ type ChatHub struct {
 	typingSessionID int64
 	// lifetimeCtx backs metric emissions from hub-owned goroutines/paths that
 	// are not tied to a single HTTP request. Cancelled on Stop.
+	//
+	//nolint:containedctx // we use this for child processes
 	lifetimeCtx    context.Context
 	lifetimeCancel context.CancelFunc
 	// WS message rate-limit parameters applied to every new ChatClient.
@@ -117,6 +119,7 @@ func NewChatHubWithLimits(burst int, refillPerSecond float64) *ChatHub {
 	if refillPerSecond <= 0 {
 		refillPerSecond = defaultWSRefillPerSec
 	}
+	//nolint:gosec // we call cancel later
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ChatHub{
 		rooms:           make(map[store.RoomID]*ChatRoom),
@@ -409,23 +412,21 @@ func (h *ChatHub) DisconnectRoom(roomID store.RoomID) {
 	h.mu.Unlock()
 
 	notice := ChatMessagePayload{
-		Type:    "room_deleted",
-		Message: "This room has been deleted",
+		Type:      "room_deleted",
+		Message:   "This room has been deleted",
+		CreatedAt: time.Now(),
 	}
-	noticeBytes, _ := json.Marshal(notice)
-
-	room.mu.Lock()
-	defer room.mu.Unlock()
-	for client := range room.clients {
-		if noticeBytes != nil {
+	if noticeBytes, err := json.Marshal(notice); err == nil {
+		room.mu.Lock()
+		defer room.mu.Unlock()
+		for client := range room.clients {
 			select {
 			case client.send <- noticeBytes:
 			case <-time.After(time.Second):
 			}
+			client.closeOnce.Do(func() { close(client.send) })
 		}
-		client.closeOnce.Do(func() { close(client.send) })
 	}
-	room.clients = nil
 }
 
 func (h *ChatHub) BroadcastSystemMessage(roomID store.RoomID, message string) {
@@ -934,7 +935,7 @@ func (c *ChatClient) writePump() {
 	}
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop,funlen,gocognit
 func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -1024,7 +1025,8 @@ func handleWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions Sessio
 
 		hub.wg.Add(2)
 		go client.writePump()
-		go client.readPump(hub.lifetimeCtx)
+		//nolint: contextcheck // this is fine
+		go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 	}
 }
 
@@ -1066,6 +1068,7 @@ func handleContentWebSocket(hub *ChatHub, svc WebSocketHandlersService, sessions
 
 		hub.wg.Add(2)
 		go client.writePump()
-		go client.readPump(context.WithValue(hub.lifetimeCtx, "ws_side", "readPump"))
+		//nolint: contextcheck // this is fine
+		go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 	}
 }

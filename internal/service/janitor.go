@@ -9,7 +9,7 @@ import (
 
 // Cleanup deletes or clears expired rows.
 // - Invites: expires_at < now
-// - Room PGP challenges: pgp_challenge_expires_at < now
+// - Room PGP challenges: pgp_challenge_expires_at < now.
 func (s *Service) Cleanup(
 	ctx context.Context,
 	now time.Time,

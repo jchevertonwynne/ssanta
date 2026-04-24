@@ -522,7 +522,9 @@
             created_at: new Date().toISOString(),
             whisper: isWhisper,
             pre_encrypted: false,
-            client_message_id: clientMsgId
+            client_message_id: clientMsgId,
+            self: true,
+            pgp_required: roomPGPRequired
         });
 
         const payload = { type: 'message', message: message, client_message_id: clientMsgId };
@@ -826,7 +828,7 @@
             }
         }
 
-        if (decrypted) {
+        if (decrypted || (data.self && data.pgp_required)) {
             const badge = document.createElement('span');
             badge.textContent = 'Decrypted';
             badge.style.cssText = 'display:inline-block;background:#2e7d32;color:#fff;font-size:0.7em;padding:1px 6px;border-radius:3px;margin-bottom:0.25rem;font-family:sans-serif;font-style:normal;';

@@ -32,7 +32,11 @@ func TestTokenBucket_RefillOverTime(t *testing.T) {
 
 	now = time.Unix(1_700_000_000, 0)
 	b.last = now
-	if !b.Take() || !b.Take() {
+
+	call1 := b.Take()
+	call2 := b.Take()
+
+	if !call1 || !call2 {
 		t.Fatalf("burst of 2 should be allowed")
 	}
 	if b.Take() {
