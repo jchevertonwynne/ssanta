@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 const (

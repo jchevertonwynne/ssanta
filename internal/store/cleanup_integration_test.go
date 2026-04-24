@@ -10,6 +10,7 @@ import (
 )
 
 func TestCleanupDeletesOldInvitesAndClearsExpiredChallenges(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 

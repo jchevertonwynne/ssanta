@@ -6,7 +6,6 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
-//nolint:cyclop,funlen,gocognit
 func handleWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -59,6 +58,7 @@ func handleContentWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessi
 			return
 		}
 
+		//nolint:contextcheck // the code inside makes its own
 		ws.RunContentWS(hub, sessions, currentID, username, w, r)
 	}
 }

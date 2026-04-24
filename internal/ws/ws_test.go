@@ -192,7 +192,6 @@ func TestChatHub_DisconnectRoom_EvictsClientsAndEmitsRoomDeleted(t *testing.T) {
 	}
 }
 
-
 func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 	t.Parallel()
 	hub := NewChatHub()
@@ -236,4 +235,3 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 		t.Fatalf("expected fanout type invite_received")
 	}
 }
-

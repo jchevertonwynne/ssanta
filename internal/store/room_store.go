@@ -353,15 +353,6 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 
 		if memberCount == 0 {
 			// Delete all related data for this DM room
-			// Delete room PGP keys
-			_, err = tx.Exec(ctx,
-				`DELETE FROM room_user_pgp_keys WHERE room_id = $1`,
-				roomID,
-			)
-			if err != nil {
-				return err
-			}
-
 			// Delete room invites
 			_, err = tx.Exec(ctx,
 				`DELETE FROM room_invites WHERE room_id = $1`,

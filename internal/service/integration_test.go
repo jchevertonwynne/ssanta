@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 var integrationPool *pgxpool.Pool                 //nolint:gochecknoglobals // test container pool
 var integrationContainer testcontainers.Container //nolint:gochecknoglobals // test container
+var integrationDSN string                         //nolint:gochecknoglobals // base DSN for per-test schemas
 
 func TestMain(m *testing.M) {
 	if os.Getenv("SSANTA_INTEGRATION") != "1" {
@@ -33,21 +35,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	integrationContainer = container
-
-	migrationsDir, err := migrationsDir()
-	if err != nil {
-		cancel()
-		fmt.Fprintln(os.Stderr, "failed to locate migrations dir:", err)
-		_ = integrationContainer.Terminate(ctx)
-		os.Exit(1)
-	}
-
-	if err := db.Migrate(dsn, migrationsDir); err != nil {
-		cancel()
-		fmt.Fprintln(os.Stderr, "failed to run migrations:", err)
-		_ = integrationContainer.Terminate(ctx)
-		os.Exit(1)
-	}
+	integrationDSN = dsn
 
 	pool, err := db.Connect(ctx, dsn)
 	if err != nil {
@@ -57,6 +45,15 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	integrationPool = pool
+
+	// Install database-level extensions once before parallel tests run.
+	// CREATE EXTENSION is not concurrency-safe so parallel migrations would race.
+	if _, err := pool.Exec(ctx, "CREATE EXTENSION IF NOT EXISTS citext"); err != nil {
+		cancel()
+		fmt.Fprintln(os.Stderr, "failed to create citext extension:", err)
+		_ = integrationContainer.Terminate(ctx)
+		os.Exit(1)
+	}
 
 	code := m.Run()
 
@@ -74,19 +71,61 @@ func requireIntegration(t *testing.T) *pgxpool.Pool {
 	if integrationPool == nil {
 		t.Fatalf("integration pool not initialized")
 	}
-	resetDB(t, integrationPool)
-	return integrationPool
-}
 
-func resetDB(t *testing.T, pool *pgxpool.Pool) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	schema := testSchemaName(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	_, err := pool.Exec(ctx, `TRUNCATE room_invites, room_users, rooms, users RESTART IDENTITY CASCADE`)
-	if err != nil {
-		t.Fatalf("reset db: %v", err)
+	if err := db.CreateSchema(ctx, integrationDSN, schema); err != nil {
+		t.Fatalf("create test schema %q: %v", schema, err)
 	}
+	t.Cleanup(func() {
+		cleanCtx, cleanCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cleanCancel()
+		_, _ = integrationPool.Exec(cleanCtx, `DROP SCHEMA "`+schema+`" CASCADE`)
+	})
+
+	// Include public in the search path so extension types (e.g. citext) installed
+	// in public are visible, while unqualified table creates still land in schema.
+	schemaDSN, err := db.WithSearchPath(integrationDSN, schema+",public")
+	if err != nil {
+		t.Fatalf("build schema DSN: %v", err)
+	}
+
+	migsDir, err := migrationsDir()
+	if err != nil {
+		t.Fatalf("locate migrations dir: %v", err)
+	}
+	if err := db.Migrate(schemaDSN, migsDir); err != nil {
+		t.Fatalf("migrate test schema %q: %v", schema, err)
+	}
+
+	pool, err := db.Connect(ctx, schemaDSN)
+	if err != nil {
+		t.Fatalf("connect to test schema %q: %v", schema, err)
+	}
+	t.Cleanup(pool.Close)
+
+	return pool
+}
+
+func testSchemaName(t *testing.T) string {
+	t.Helper()
+	name := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + 32
+		default:
+			return '_'
+		}
+	}, t.Name())
+	const maxLength = 57 // keep total ≤ 63 bytes (PostgreSQL identifier limit)
+	if len(name) > maxLength {
+		name = name[:maxLength]
+	}
+	return "test_" + name
 }
 
 func migrationsDir() (string, error) {

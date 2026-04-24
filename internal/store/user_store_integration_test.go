@@ -8,6 +8,7 @@ import (
 )
 
 func TestUserStore_CreateGetListDelete(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -56,6 +57,7 @@ func TestUserStore_CreateGetListDelete(t *testing.T) {
 }
 
 func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -71,6 +73,7 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 }
 
 func TestUserStore_UserExists(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -100,6 +103,7 @@ func TestUserStore_UserExists(t *testing.T) {
 }
 
 func TestUserStore_DeleteUser_NotFound(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -112,6 +116,7 @@ func TestUserStore_DeleteUser_NotFound(t *testing.T) {
 }
 
 func TestUserStore_GetUser_NotFound(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 

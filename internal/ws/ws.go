@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/jchevertonwynne/ssanta/internal/store"
 )
 
@@ -31,7 +32,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.Us
 	if err == nil && lastSeenID > 0 {
 		catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)
 		if err != nil {
-			slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+			slog.Error("list messages after id", "err", err, "room_id", roomID, "user_id", currentID)
 		}
 		for _, m := range catchUp {
 			msg := ChatMessagePayload{
@@ -44,7 +45,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID store.Us
 				PreEncrypted: m.PreEncrypted,
 			}
 			if err := conn.WriteJSON(msg); err != nil {
-				slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID) //nolint:gosec
+				slog.Error("write catch-up message", "err", err, "room_id", roomID, "user_id", currentID)
 				_ = conn.Close()
 				return
 			}
@@ -97,7 +98,6 @@ func RunContentWS(hub *ChatHub, sessions SessionReader, currentID store.UserID, 
 
 	hub.wg.Add(2)
 	go client.writePump()
-	//nolint: contextcheck // this is fine
 	go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 }
 

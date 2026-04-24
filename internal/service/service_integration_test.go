@@ -11,6 +11,7 @@ import (
 
 //nolint:funlen
 func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := store.New(pool)
 	svc := New(st)
@@ -82,6 +83,7 @@ func TestService_GetRoomDetailView_PermissionAndCanInvite(t *testing.T) {
 }
 
 func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := store.New(pool)
 	svc := New(st)
@@ -127,6 +129,7 @@ func TestService_GetContentView_LoggedOutVsLoggedIn(t *testing.T) {
 }
 
 func TestService_GetOrCreateDMRoom_AutoJoinsAndRejoins(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := store.New(pool)
 	svc := New(st)
@@ -188,6 +191,7 @@ func TestService_GetOrCreateDMRoom_AutoJoinsAndRejoins(t *testing.T) {
 }
 
 func TestService_DMOperationsBlocked(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := store.New(pool)
 	svc := New(st)
@@ -227,6 +231,7 @@ func TestService_DMOperationsBlocked(t *testing.T) {
 }
 
 func TestService_GetContentView_ExcludesDMsFromRoomLists(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := store.New(pool)
 	svc := New(st)

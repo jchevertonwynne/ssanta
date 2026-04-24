@@ -10,6 +10,7 @@ import (
 
 //nolint:funlen
 func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -88,6 +89,7 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 }
 
 func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -123,6 +125,7 @@ func TestInviteStore_CreateInvite_PermissionDeniedWhenMembersCannotInvite(t *tes
 }
 
 func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -161,6 +164,7 @@ func TestInviteStore_CreateInvite_MemberAllowedWhenMembersCanInviteEnabled(t *te
 }
 
 func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -191,6 +195,7 @@ func TestInviteStore_CreateInvite_DuplicateInviteRejected(t *testing.T) {
 }
 
 func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
@@ -236,6 +241,7 @@ func TestInviteStore_AcceptInvite_WrongUserGetsNotFound(t *testing.T) {
 }
 
 func TestInviteStore_AcceptInvite_Expired(t *testing.T) {
+	t.Parallel()
 	pool := requireIntegration(t)
 	st := New(pool)
 
