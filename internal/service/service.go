@@ -83,7 +83,7 @@ type ContentView struct {
 // AdminView contains all data needed to render the admin page.
 type AdminView struct {
 	CurrentUsername string
-	Users           []model.User
+	Users           []model.AdminUser
 	Rooms           []model.RoomDetail
 }
 

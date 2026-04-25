@@ -44,14 +44,14 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (Use
 	return u, err
 }
 
-func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (User, error) {
-	var u User
+func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (UserWithPassword, error) {
+	var u UserWithPassword
 	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at, password_hash FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrUserNotFound
+		return UserWithPassword{}, ErrUserNotFound
 	}
 	return u, err
 }
@@ -84,14 +84,14 @@ func (s *UserStore) DeleteUser(ctx context.Context, id UserID) error {
 	return nil
 }
 
-func (s *UserStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (User, error) {
-	var u User
+func (s *UserStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (UserWithPassword, error) {
+	var u UserWithPassword
 	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at, password_hash FROM users WHERE id = $1`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, ErrUserNotFound
+		return UserWithPassword{}, ErrUserNotFound
 	}
 	return u, err
 }
@@ -154,7 +154,7 @@ func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
 	return users, rows.Err()
 }
 
-func (s *UserStore) ListAllUsers(ctx context.Context) ([]User, error) {
+func (s *UserStore) ListAllUsers(ctx context.Context) ([]AdminUser, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT u.id, u.username, u.created_at,
 		        a.user_id IS NOT NULL,
@@ -170,9 +170,9 @@ func (s *UserStore) ListAllUsers(ctx context.Context) ([]User, error) {
 	}
 	defer rows.Close()
 
-	var users []User
+	var users []AdminUser
 	for rows.Next() {
-		var u User
+		var u AdminUser
 		if err := rows.Scan(&u.ID, &u.Username, &u.CreatedAt, &u.IsAdmin, &u.AdminSince, &u.AdminGrantedByUsername); err != nil {
 			return nil, err
 		}

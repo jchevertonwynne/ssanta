@@ -28,13 +28,18 @@ type MessageID int64
 func (id MessageID) Int64() int64 { return int64(id) }
 
 type User struct {
-	ID             UserID
-	Username       string
-	CreatedAt      time.Time
-	PasswordHash   string
-	SessionVersion int
+	ID        UserID
+	Username  string
+	CreatedAt time.Time
+}
 
-	// Populated only by store.ListAllUsers (admin context).
+type UserWithPassword struct {
+	User
+	PasswordHash string
+}
+
+type AdminUser struct {
+	User
 	IsAdmin                bool
 	AdminSince             *time.Time
 	AdminGrantedByUsername *string

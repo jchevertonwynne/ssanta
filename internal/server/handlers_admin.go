@@ -13,7 +13,7 @@ import (
 type adminData struct {
 	CurrentUserID   model.UserID
 	CurrentUsername string
-	Users           []model.User
+	Users           []model.AdminUser
 	Rooms           []model.RoomDetail
 	ScriptNonce     string
 }

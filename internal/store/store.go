@@ -75,15 +75,17 @@ func (s *Store) Ping(ctx context.Context) error {
 
 // Type aliases so existing store-internal code continues to work unqualified.
 type (
-	UserID        = model.UserID
-	RoomID        = model.RoomID
-	InviteID      = model.InviteID
-	MessageID     = model.MessageID
-	User          = model.User
-	RoomMember    = model.RoomMember
-	Room          = model.Room
-	RoomDetail    = model.RoomDetail
-	InviteForUser = model.InviteForUser
-	InviteForRoom = model.InviteForRoom
-	Message       = model.Message
+	UserID           = model.UserID
+	RoomID           = model.RoomID
+	InviteID         = model.InviteID
+	MessageID        = model.MessageID
+	User             = model.User
+	UserWithPassword = model.UserWithPassword
+	AdminUser        = model.AdminUser
+	RoomMember       = model.RoomMember
+	Room             = model.Room
+	RoomDetail       = model.RoomDetail
+	InviteForUser    = model.InviteForUser
+	InviteForRoom    = model.InviteForRoom
+	Message          = model.Message
 )
