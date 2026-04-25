@@ -56,6 +56,10 @@ func renderAdmin(w http.ResponseWriter, r *http.Request, svc AdminHandlersServic
 
 func handleAdminPage(svc AdminHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Hx-Request") == "" {
+			render(w, "index.html", indexData{BootstrapURL: "/admin", CSRFToken: CSRFTokenFromContext(r.Context()), ScriptNonce: scriptNonceFromContext(r.Context())})
+			return
+		}
 		adminID, ok := requireAdmin(svc, sessions, w, r)
 		if !ok {
 			return

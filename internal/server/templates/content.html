@@ -3,25 +3,32 @@
         <span>Logged in as {{.CurrentUsername}}</span>
         {{if .CurrentUserIsAdmin}}<button hx-get="/admin" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Admin</button>{{end}}
         <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
-        <form hx-delete="/users/{{.CurrentUserID}}"
-              hx-target="#content"
-              hx-swap="innerHTML"
-              hx-confirm="Delete your account? Rooms you created will also be removed."
-              style="display:inline;">
-            <input name="current_password" type="password" placeholder="Password to confirm" required style="padding:0.25rem;">
-            <button type="submit">Delete account</button>
-        </form>
-        <details style="width: 100%; margin-top: 0.5rem;">
-            <summary style="cursor: pointer;">Change password</summary>
-            <form hx-post="/password" hx-target="#content" hx-swap="innerHTML" style="margin-top: 0.5rem;">
-                <input name="current_password" type="password" placeholder="Current password" required>
-                <input name="new_password" type="password" placeholder="New password" required>
-                <input name="new_password_confirm" type="password" placeholder="Confirm new password" required>
-                <button type="submit">Change password</button>
+        <span id="delete-account-ui">
+            <button data-action="show-delete-form">Delete account</button>
+            <form hx-delete="/users/{{.CurrentUserID}}"
+                  hx-target="#content"
+                  hx-swap="innerHTML"
+                  hx-confirm="Delete your account? Rooms you created will also be removed."
+                  style="display:none; margin:0;">
+                <input name="current_password" type="password" placeholder="Password to confirm" required style="padding:0.25rem;">
+                <button type="submit">Delete account</button>
+                <button type="button" data-action="hide-delete-form">Cancel</button>
             </form>
-            {{if .PasswordFormError}}<p class="error">{{.PasswordFormError}}</p>{{end}}
-            {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
-        </details>
+        </span>
+        <div id="change-password-ui" style="width: 100%; margin-top: 0.5rem;">
+            <button data-action="show-change-password-form"{{if or .PasswordFormError .PasswordFormSuccess}} style="display:none;"{{end}}>Change password</button>
+            <div{{if not (or .PasswordFormError .PasswordFormSuccess)}} style="display:none;"{{end}}>
+                <form hx-post="/password" hx-target="#content" hx-swap="innerHTML" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                    <input name="current_password" type="password" placeholder="Current password" required>
+                    <input name="new_password" type="password" placeholder="New password" required>
+                    <input name="new_password_confirm" type="password" placeholder="Confirm new password" required>
+                    <button type="submit">Change password</button>
+                    <button type="button" data-action="hide-change-password-form">Cancel</button>
+                </form>
+                {{if .PasswordFormError}}<p class="error">{{.PasswordFormError}}</p>{{end}}
+                {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
+            </div>
+        </div>
     {{else}}
         <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" data-prevent-default-submit>
             <input name="username" placeholder="Username" required

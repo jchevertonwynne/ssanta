@@ -32,6 +32,7 @@ services:
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       MIGRATIONS_DIR: /app/migrations
+      ADMIN_USERNAME: joseph
     entrypoint: ["/app/migrate"]
 
   server:

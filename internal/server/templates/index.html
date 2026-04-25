@@ -43,6 +43,36 @@
         }
 
         document.addEventListener('click', function(evt) {
+            var showDel = evt.target.closest('[data-action="show-delete-form"]');
+            if (showDel) {
+                var delUi = showDel.closest('#delete-account-ui');
+                showDel.style.display = 'none';
+                var delForm = delUi.querySelector('form');
+                if (delForm) { delForm.style.display = 'flex'; delForm.querySelector('input')?.focus(); }
+                return;
+            }
+            var hideDel = evt.target.closest('[data-action="hide-delete-form"]');
+            if (hideDel) {
+                var delUi2 = hideDel.closest('#delete-account-ui');
+                hideDel.closest('form').style.display = 'none';
+                delUi2.querySelector('[data-action="show-delete-form"]').style.display = '';
+                return;
+            }
+            var showCp = evt.target.closest('[data-action="show-change-password-form"]');
+            if (showCp) {
+                var cpUi = showCp.closest('#change-password-ui');
+                showCp.style.display = 'none';
+                var cpPanel = cpUi.querySelector('div');
+                if (cpPanel) { cpPanel.style.display = ''; cpPanel.querySelector('input')?.focus(); }
+                return;
+            }
+            var hideCp = evt.target.closest('[data-action="hide-change-password-form"]');
+            if (hideCp) {
+                var cpUi2 = hideCp.closest('#change-password-ui');
+                cpUi2.querySelector('[data-action="show-change-password-form"]').style.display = '';
+                cpUi2.querySelector('div').style.display = 'none';
+                return;
+            }
             var btn = evt.target.closest('[data-copy-target]');
             if (btn) {
                 var el = document.getElementById(btn.getAttribute('data-copy-target'));

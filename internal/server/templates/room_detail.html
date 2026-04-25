@@ -25,6 +25,7 @@
             </div>
         </details>
         <div id="chat-messages" style="height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 0.5rem; margin-bottom: 0.5rem; background: #f9f9f9;"></div>
+        <div id="typing-indicator" style="min-height:1.2em;font-size:0.8em;color:#888;font-style:italic;margin-bottom:0.25rem;"></div>
         <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: center;">
             {{if not .IsDMRoom}}
             <select id="chat-target" {{if not .IsMember}}disabled{{end}}>
@@ -60,6 +61,12 @@
     const currentUsername = "{{.CurrentUsername}}";
     const memberPGPKeys = JSON.parse(atob('{{.MemberPGPKeysBase64}}'));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const typingIndicator = document.getElementById('typing-indicator');
+    let typingUsers = new Set();
+    let isTyping = false;
+    let typingDebounceTimer = null;
+    let typingThrottleTimer = null;
 
     let loadedPrivateKey = null;
     const messageHistory = [];
@@ -235,6 +242,20 @@
         reconnectMsgEl = null;
     }
 
+    function updateTypingIndicator() {
+        const names = Array.from(typingUsers);
+        if (names.length === 0) {
+            typingIndicator.textContent = '';
+        } else if (names.length === 1) {
+            typingIndicator.textContent = names[0] + ' is typing…';
+        } else if (names.length === 2) {
+            typingIndicator.textContent = names[0] + ' and ' + names[1] + ' are typing…';
+        } else {
+            const others = names.length - 2;
+            typingIndicator.textContent = names[0] + ', ' + names[1] + ', and ' + others + ' other' + (others > 1 ? 's' : '') + ' are typing…';
+        }
+    }
+
     function applyPresenceIndicators() {
         document.querySelectorAll('[data-member-id]').forEach(function(li) {
             const uid = li.getAttribute('data-member-id');
@@ -308,6 +329,8 @@
             const data = JSON.parse(event.data);
 
             if (data.type === 'kicked' || data.type === 'room_deleted') {
+                typingUsers.clear();
+                updateTypingIndicator();
                 intentionalClose = true;
                 ws.close();
                 window.location.href = '/';
@@ -315,6 +338,8 @@
             }
 
             if (data.type === 'membership_lost') {
+                typingUsers.clear();
+                updateTypingIndicator();
                 chatInput.disabled = true;
                 chatInput.placeholder = 'Join the room to chat';
                 document.querySelector('#chat-form button[type=submit]').disabled = true;
@@ -401,6 +426,22 @@
                     return;
                 }
                 appendMessageAsync(data);
+                return;
+            }
+
+            if (data.type === 'typing') {
+                if (data.username && data.username !== currentUsername) {
+                    typingUsers.add(data.username);
+                    updateTypingIndicator();
+                }
+                return;
+            }
+
+            if (data.type === 'stopped_typing') {
+                if (data.username) {
+                    typingUsers.delete(data.username);
+                    updateTypingIndicator();
+                }
                 return;
             }
         };
@@ -577,8 +618,32 @@
         }
 
         ws.send(JSON.stringify(payload));
+        clearTimeout(typingDebounceTimer);
+        clearTimeout(typingThrottleTimer);
+        if (isTyping) {
+            isTyping = false;
+            ws.send(JSON.stringify({ type: 'stopped_typing' }));
+        }
         chatInput.value = '';
     };
+
+    chatInput.addEventListener('input', function() {
+        if (ws.readyState !== WebSocket.OPEN) return;
+
+        clearTimeout(typingDebounceTimer);
+        typingDebounceTimer = setTimeout(function() {
+            if (isTyping) {
+                isTyping = false;
+                ws.send(JSON.stringify({ type: 'stopped_typing' }));
+            }
+        }, 4000);
+
+        if (!isTyping) {
+            isTyping = true;
+            ws.send(JSON.stringify({ type: 'typing' }));
+            typingThrottleTimer = setTimeout(function() { isTyping = false; }, 2000);
+        }
+    });
 
 
     // --- PGP key management ---
