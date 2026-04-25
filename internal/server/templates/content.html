@@ -1,6 +1,7 @@
 <div class="bar">
     {{if .CurrentUserID}}
         <span>Logged in as {{.CurrentUsername}}</span>
+        {{if .CurrentUserIsAdmin}}<button hx-get="/admin" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Admin</button>{{end}}
         <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
         <form hx-delete="/users/{{.CurrentUserID}}"
               hx-target="#content"

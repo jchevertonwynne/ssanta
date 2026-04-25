@@ -34,6 +34,7 @@ type indexData struct {
 type contentData struct {
 	CurrentUserID       model.UserID
 	CurrentUsername     string
+	CurrentUserIsAdmin  bool
 	Users               []model.User
 	CreatedRooms        []model.Room
 	MemberRooms         []model.Room
@@ -175,6 +176,12 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	// Direct Messages
 	mux.HandleFunc("POST /dms", limited(handleCreateOrGetDM(svc, sessions)))
 	mux.HandleFunc("GET /dms", handleListDMs(svc, sessions))
+
+	// Admin
+	mux.HandleFunc("GET /admin", handleAdminPage(svc, sessions))
+	mux.HandleFunc("DELETE /admin/users/{id}", handleAdminDeleteUser(svc, sessions, hubAPI))
+	mux.HandleFunc("DELETE /admin/rooms/{id}", handleAdminDeleteRoom(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /admin/users/{id}/admin", handleAdminSetUserAdmin(svc, sessions))
 
 	// Apply middleware stack (outermost first)
 	handler := Chain(mux,
@@ -468,6 +475,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	}
 
 	data.CurrentUsername = view.CurrentUsername
+	data.CurrentUserIsAdmin = view.IsAdmin
 	data.Users = view.Users
 	data.CreatedRooms = view.CreatedRooms
 	data.MemberRooms = view.MemberRooms

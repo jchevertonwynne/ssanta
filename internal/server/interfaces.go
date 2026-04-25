@@ -195,6 +195,7 @@ type ServerService interface {
 	WebSocketHandlersService
 	MessageHistoryService
 	DMHandlersService
+	AdminHandlersService
 }
 
 type SessionManager interface {
@@ -209,6 +210,36 @@ type DMHandlersService interface {
 	UserExistsService
 	ContentViewService
 	GetOrCreateDMRoom(ctx context.Context, user1ID, user2ID model.UserID) (model.RoomID, error)
+}
+
+type IsAdminService interface {
+	IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error)
+}
+
+type GetAdminViewService interface {
+	GetAdminView(ctx context.Context, adminID model.UserID) (*service.AdminView, error)
+}
+
+type AdminDeleteUserService interface {
+	AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error
+}
+
+type AdminDeleteRoomService interface {
+	AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error
+}
+
+type SetUserAdminService interface {
+	SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error
+}
+
+//nolint:interfacebloat
+type AdminHandlersService interface {
+	UserExistsService
+	IsAdminService
+	GetAdminViewService
+	AdminDeleteUserService
+	AdminDeleteRoomService
+	SetUserAdminService
 }
 
 type Hub interface {

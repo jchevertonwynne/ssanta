@@ -52,6 +52,12 @@ func run() error {
 		return err
 	}
 
+	if adminUsername := strings.TrimSpace(os.Getenv("ADMIN_USERNAME")); adminUsername != "" {
+		if err := db.SeedAdmin(ctx, dbURL, adminUsername); err != nil {
+			return err
+		}
+	}
+
 	if runtimeDBUser != "" {
 		runtimeDBPass := strings.TrimSpace(os.Getenv("RUNTIME_DB_PASS"))
 		if err := db.GrantRuntimePrivileges(ctx, dbURL, databaseSchema, runtimeDBUser, runtimeDBPass); err != nil {

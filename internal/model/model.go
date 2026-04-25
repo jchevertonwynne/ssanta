@@ -33,6 +33,11 @@ type User struct {
 	CreatedAt      time.Time
 	PasswordHash   string
 	SessionVersion int
+
+	// Populated only by store.ListAllUsers (admin context).
+	IsAdmin                bool
+	AdminSince             *time.Time
+	AdminGrantedByUsername *string
 }
 
 type RoomMember struct {

@@ -1,0 +1,90 @@
+<div class="bar">
+    <span>Admin — logged in as {{.CurrentUsername}}</span>
+    <button hx-get="/content" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Back</button>
+</div>
+
+<div class="cols">
+    <section>
+        <h2>Users</h2>
+        {{if .Users}}
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Created</th>
+                    <th>Admin</th>
+                    <th>Admin since</th>
+                    <th>Granted by</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .Users}}
+                <tr>
+                    <td>{{.Username}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>{{if .IsAdmin}}Yes{{else}}No{{end}}</td>
+                    <td>{{if .AdminSince}}{{.AdminSince.Format "2006-01-02"}}{{end}}</td>
+                    <td>{{if .AdminGrantedByUsername}}{{.AdminGrantedByUsername}}{{end}}</td>
+                    <td>
+                        {{if ne .ID $.CurrentUserID}}
+                            {{if .IsAdmin}}
+                                <button hx-post="/admin/users/{{.ID}}/admin"
+                                        hx-vals='{"grant":"false"}'
+                                        hx-target="#content"
+                                        hx-swap="innerHTML"
+                                        hx-confirm="Revoke admin from {{.Username}}?">Revoke admin</button>
+                            {{else}}
+                                <button hx-post="/admin/users/{{.ID}}/admin"
+                                        hx-vals='{"grant":"true"}'
+                                        hx-target="#content"
+                                        hx-swap="innerHTML">Grant admin</button>
+                            {{end}}
+                            <button hx-delete="/admin/users/{{.ID}}"
+                                    hx-target="#content"
+                                    hx-swap="innerHTML"
+                                    hx-confirm="Delete user {{.Username}} and all their data?">Delete</button>
+                        {{end}}
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p>No users.</p>
+        {{end}}
+    </section>
+
+    <section>
+        <h2>Rooms</h2>
+        {{if .Rooms}}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Creator</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {{range .Rooms}}
+                <tr>
+                    <td>{{.DisplayName}}</td>
+                    <td>{{.CreatorUsername}}</td>
+                    <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                    <td>
+                        <button hx-delete="/admin/rooms/{{.ID}}"
+                                hx-target="#content"
+                                hx-swap="innerHTML"
+                                hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
+                    </td>
+                </tr>
+            {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p>No rooms.</p>
+        {{end}}
+    </section>
+</div>

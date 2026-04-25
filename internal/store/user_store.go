@@ -153,3 +153,49 @@ func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
 	}
 	return users, rows.Err()
 }
+
+func (s *UserStore) ListAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT u.id, u.username, u.created_at,
+		        a.user_id IS NOT NULL,
+		        a.admin_since,
+		        g.username
+		 FROM users u
+		 LEFT JOIN admins a ON a.user_id = u.id
+		 LEFT JOIN users g ON g.id = a.granted_by
+		 ORDER BY u.username ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.CreatedAt, &u.IsAdmin, &u.AdminSince, &u.AdminGrantedByUsername); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+func (s *UserStore) IsUserAdmin(ctx context.Context, id UserID) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM admins WHERE user_id = $1)`, id).Scan(&exists)
+	return exists, err
+}
+
+func (s *UserStore) GrantAdmin(ctx context.Context, targetID, grantedBy UserID) error {
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO admins (user_id, granted_by) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		targetID, grantedBy,
+	)
+	return err
+}
+
+func (s *UserStore) RevokeAdmin(ctx context.Context, targetID UserID) error {
+	_, err := s.pool.Exec(ctx, `DELETE FROM admins WHERE user_id = $1`, targetID)
+	return err
+}

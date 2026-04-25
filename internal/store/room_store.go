@@ -404,6 +404,42 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	return tx.Commit(ctx)
 }
 
+func (s *RoomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, r.is_dm, u.username
+		 FROM rooms r
+		 JOIN users u ON u.id = r.creator_id
+		 WHERE r.is_dm = FALSE
+		 ORDER BY r.display_name ASC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rooms []RoomDetail
+	for rows.Next() {
+		var d RoomDetail
+		if err := rows.Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.PGPRequired, &d.IsDM, &d.CreatorUsername); err != nil {
+			return nil, err
+		}
+		rooms = append(rooms, d)
+	}
+	return rooms, rows.Err()
+}
+
+func (s *RoomStore) AdminDeleteRoom(ctx context.Context, roomID RoomID) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM rooms WHERE id = $1`, roomID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrRoomNotFound
+	}
+	slog.InfoContext(ctx, "room admin-deleted from db", "room_id", roomID)
+	return nil
+}
+
 func scanRooms(rows pgx.Rows) ([]Room, error) {
 	defer rows.Close()
 	var rooms []Room

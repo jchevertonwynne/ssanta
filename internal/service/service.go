@@ -72,11 +72,19 @@ type DMRoomInfo struct {
 // ContentView contains all data needed to render the main content page.
 type ContentView struct {
 	CurrentUsername string
+	IsAdmin         bool
 	Users           []model.User
 	CreatedRooms    []model.Room
 	MemberRooms     []model.Room
 	DMRooms         []DMRoomInfo
 	Invites         []model.InviteForUser
+}
+
+// AdminView contains all data needed to render the admin page.
+type AdminView struct {
+	CurrentUsername string
+	Users           []model.User
+	Rooms           []model.RoomDetail
 }
 
 // RoomDetailView contains all data needed to render a room detail page.
@@ -122,6 +130,12 @@ func (s *Service) GetContentView(ctx context.Context, userID model.UserID) (*Con
 		}
 		view.CurrentUsername = user.Username
 		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		view.IsAdmin, err = s.store.Users.IsUserAdmin(gCtx, userID)
+		return err
 	})
 
 	g.Go(func() error {
@@ -844,4 +858,99 @@ func (s *Service) assertNotDM(ctx context.Context, roomID model.RoomID) error {
 		return store.ErrOperationNotAllowedOnDM
 	}
 	return nil
+}
+
+// Admin operations
+
+// IsUserAdmin reports whether a user has admin status.
+func (s *Service) IsUserAdmin(ctx context.Context, id model.UserID) (bool, error) {
+	return s.store.Users.IsUserAdmin(ctx, id)
+}
+
+// GetAdminView loads all data needed for the admin page.
+func (s *Service) GetAdminView(ctx context.Context, adminID model.UserID) (*AdminView, error) {
+	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
+	if err != nil {
+		return nil, err
+	}
+	if !isAdmin {
+		return nil, store.ErrNotAdmin
+	}
+
+	view := &AdminView{}
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		user, err := s.store.Users.GetUserByID(gCtx, adminID)
+		if err != nil {
+			return err
+		}
+		view.CurrentUsername = user.Username
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		view.Users, err = s.store.Users.ListAllUsers(gCtx)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.Rooms, err = s.store.Rooms.ListAllRooms(gCtx)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return view, nil
+}
+
+// AdminDeleteUser removes any user account. The acting admin cannot delete themselves.
+func (s *Service) AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error {
+	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
+	if err != nil {
+		return err
+	}
+	if !isAdmin {
+		return store.ErrNotAdmin
+	}
+	if adminID == targetID {
+		return store.ErrUserNotFound
+	}
+	return s.store.Users.DeleteUser(ctx, targetID)
+}
+
+// AdminDeleteRoom removes any non-DM room regardless of creator.
+func (s *Service) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error {
+	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
+	if err != nil {
+		return err
+	}
+	if !isAdmin {
+		return store.ErrNotAdmin
+	}
+	if err := s.assertNotDM(ctx, roomID); err != nil {
+		return err
+	}
+	return s.store.Rooms.AdminDeleteRoom(ctx, roomID)
+}
+
+// SetUserAdmin grants or revokes admin status. An admin cannot demote themselves.
+func (s *Service) SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error {
+	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
+	if err != nil {
+		return err
+	}
+	if !isAdmin {
+		return store.ErrNotAdmin
+	}
+	if !grant && adminID == targetID {
+		return store.ErrCannotSelfDemote
+	}
+	if grant {
+		return s.store.Users.GrantAdmin(ctx, targetID, adminID)
+	}
+	return s.store.Users.RevokeAdmin(ctx, targetID)
 }

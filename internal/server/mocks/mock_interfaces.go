@@ -4354,6 +4354,82 @@ func (c *MockServerServiceAcceptInviteCall) DoAndReturn(f func(context.Context, 
 	return c
 }
 
+// AdminDeleteRoom mocks base method.
+func (m *MockServerService) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteRoom", ctx, adminID, roomID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteRoom indicates an expected call of AdminDeleteRoom.
+func (mr *MockServerServiceMockRecorder) AdminDeleteRoom(ctx, adminID, roomID any) *MockServerServiceAdminDeleteRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteRoom", reflect.TypeOf((*MockServerService)(nil).AdminDeleteRoom), ctx, adminID, roomID)
+	return &MockServerServiceAdminDeleteRoomCall{Call: call}
+}
+
+// MockServerServiceAdminDeleteRoomCall wrap *gomock.Call
+type MockServerServiceAdminDeleteRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceAdminDeleteRoomCall) Return(arg0 error) *MockServerServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceAdminDeleteRoomCall) Do(f func(context.Context, model.UserID, model.RoomID) error) *MockServerServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceAdminDeleteRoomCall) DoAndReturn(f func(context.Context, model.UserID, model.RoomID) error) *MockServerServiceAdminDeleteRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// AdminDeleteUser mocks base method.
+func (m *MockServerService) AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteUser", ctx, adminID, targetID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteUser indicates an expected call of AdminDeleteUser.
+func (mr *MockServerServiceMockRecorder) AdminDeleteUser(ctx, adminID, targetID any) *MockServerServiceAdminDeleteUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteUser", reflect.TypeOf((*MockServerService)(nil).AdminDeleteUser), ctx, adminID, targetID)
+	return &MockServerServiceAdminDeleteUserCall{Call: call}
+}
+
+// MockServerServiceAdminDeleteUserCall wrap *gomock.Call
+type MockServerServiceAdminDeleteUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceAdminDeleteUserCall) Return(arg0 error) *MockServerServiceAdminDeleteUserCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceAdminDeleteUserCall) Do(f func(context.Context, model.UserID, model.UserID) error) *MockServerServiceAdminDeleteUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceAdminDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID) error) *MockServerServiceAdminDeleteUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CancelInvite mocks base method.
 func (m *MockServerService) CancelInvite(ctx context.Context, inviteID model.InviteID, actingUserID model.UserID) (model.RoomID, model.UserID, error) {
 	m.ctrl.T.Helper()
@@ -4697,6 +4773,45 @@ func (c *MockServerServiceDeleteUserCall) Do(f func(context.Context, model.UserI
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID) error) *MockServerServiceDeleteUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetAdminView mocks base method.
+func (m *MockServerService) GetAdminView(ctx context.Context, adminID model.UserID) (*service.AdminView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAdminView", ctx, adminID)
+	ret0, _ := ret[0].(*service.AdminView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAdminView indicates an expected call of GetAdminView.
+func (mr *MockServerServiceMockRecorder) GetAdminView(ctx, adminID any) *MockServerServiceGetAdminViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdminView", reflect.TypeOf((*MockServerService)(nil).GetAdminView), ctx, adminID)
+	return &MockServerServiceGetAdminViewCall{Call: call}
+}
+
+// MockServerServiceGetAdminViewCall wrap *gomock.Call
+type MockServerServiceGetAdminViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetAdminViewCall) Return(arg0 *service.AdminView, arg1 error) *MockServerServiceGetAdminViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetAdminViewCall) Do(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockServerServiceGetAdminViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetAdminViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockServerServiceGetAdminViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5049,6 +5164,45 @@ func (c *MockServerServiceIsRoomPGPRequiredCall) Do(f func(context.Context, mode
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceIsRoomPGPRequiredCall) DoAndReturn(f func(context.Context, model.RoomID) (bool, error)) *MockServerServiceIsRoomPGPRequiredCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// IsUserAdmin mocks base method.
+func (m *MockServerService) IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUserAdmin", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsUserAdmin indicates an expected call of IsUserAdmin.
+func (mr *MockServerServiceMockRecorder) IsUserAdmin(ctx, userID any) *MockServerServiceIsUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserAdmin", reflect.TypeOf((*MockServerService)(nil).IsUserAdmin), ctx, userID)
+	return &MockServerServiceIsUserAdminCall{Call: call}
+}
+
+// MockServerServiceIsUserAdminCall wrap *gomock.Call
+type MockServerServiceIsUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceIsUserAdminCall) Return(arg0 bool, arg1 error) *MockServerServiceIsUserAdminCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceIsUserAdminCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockServerServiceIsUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceIsUserAdminCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockServerServiceIsUserAdminCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5591,6 +5745,44 @@ func (c *MockServerServiceSetRoomPGPRequiredCall) DoAndReturn(f func(context.Con
 	return c
 }
 
+// SetUserAdmin mocks base method.
+func (m *MockServerService) SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUserAdmin", ctx, adminID, targetID, grant)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUserAdmin indicates an expected call of SetUserAdmin.
+func (mr *MockServerServiceMockRecorder) SetUserAdmin(ctx, adminID, targetID, grant any) *MockServerServiceSetUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserAdmin", reflect.TypeOf((*MockServerService)(nil).SetUserAdmin), ctx, adminID, targetID, grant)
+	return &MockServerServiceSetUserAdminCall{Call: call}
+}
+
+// MockServerServiceSetUserAdminCall wrap *gomock.Call
+type MockServerServiceSetUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceSetUserAdminCall) Return(arg0 error) *MockServerServiceSetUserAdminCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceSetUserAdminCall) Do(f func(context.Context, model.UserID, model.UserID, bool) error) *MockServerServiceSetUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceSetUserAdminCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID, bool) error) *MockServerServiceSetUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UserExists mocks base method.
 func (m *MockServerService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -6094,6 +6286,612 @@ func (c *MockDMHandlersServiceUserExistsCall) Do(f func(context.Context, model.U
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockDMHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockDMHandlersServiceUserExistsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockIsAdminService is a mock of IsAdminService interface.
+type MockIsAdminService struct {
+	ctrl     *gomock.Controller
+	recorder *MockIsAdminServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockIsAdminServiceMockRecorder is the mock recorder for MockIsAdminService.
+type MockIsAdminServiceMockRecorder struct {
+	mock *MockIsAdminService
+}
+
+// NewMockIsAdminService creates a new mock instance.
+func NewMockIsAdminService(ctrl *gomock.Controller) *MockIsAdminService {
+	mock := &MockIsAdminService{ctrl: ctrl}
+	mock.recorder = &MockIsAdminServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIsAdminService) EXPECT() *MockIsAdminServiceMockRecorder {
+	return m.recorder
+}
+
+// IsUserAdmin mocks base method.
+func (m *MockIsAdminService) IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUserAdmin", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsUserAdmin indicates an expected call of IsUserAdmin.
+func (mr *MockIsAdminServiceMockRecorder) IsUserAdmin(ctx, userID any) *MockIsAdminServiceIsUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserAdmin", reflect.TypeOf((*MockIsAdminService)(nil).IsUserAdmin), ctx, userID)
+	return &MockIsAdminServiceIsUserAdminCall{Call: call}
+}
+
+// MockIsAdminServiceIsUserAdminCall wrap *gomock.Call
+type MockIsAdminServiceIsUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockIsAdminServiceIsUserAdminCall) Return(arg0 bool, arg1 error) *MockIsAdminServiceIsUserAdminCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockIsAdminServiceIsUserAdminCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockIsAdminServiceIsUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockIsAdminServiceIsUserAdminCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockIsAdminServiceIsUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockGetAdminViewService is a mock of GetAdminViewService interface.
+type MockGetAdminViewService struct {
+	ctrl     *gomock.Controller
+	recorder *MockGetAdminViewServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockGetAdminViewServiceMockRecorder is the mock recorder for MockGetAdminViewService.
+type MockGetAdminViewServiceMockRecorder struct {
+	mock *MockGetAdminViewService
+}
+
+// NewMockGetAdminViewService creates a new mock instance.
+func NewMockGetAdminViewService(ctrl *gomock.Controller) *MockGetAdminViewService {
+	mock := &MockGetAdminViewService{ctrl: ctrl}
+	mock.recorder = &MockGetAdminViewServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGetAdminViewService) EXPECT() *MockGetAdminViewServiceMockRecorder {
+	return m.recorder
+}
+
+// GetAdminView mocks base method.
+func (m *MockGetAdminViewService) GetAdminView(ctx context.Context, adminID model.UserID) (*service.AdminView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAdminView", ctx, adminID)
+	ret0, _ := ret[0].(*service.AdminView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAdminView indicates an expected call of GetAdminView.
+func (mr *MockGetAdminViewServiceMockRecorder) GetAdminView(ctx, adminID any) *MockGetAdminViewServiceGetAdminViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdminView", reflect.TypeOf((*MockGetAdminViewService)(nil).GetAdminView), ctx, adminID)
+	return &MockGetAdminViewServiceGetAdminViewCall{Call: call}
+}
+
+// MockGetAdminViewServiceGetAdminViewCall wrap *gomock.Call
+type MockGetAdminViewServiceGetAdminViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGetAdminViewServiceGetAdminViewCall) Return(arg0 *service.AdminView, arg1 error) *MockGetAdminViewServiceGetAdminViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGetAdminViewServiceGetAdminViewCall) Do(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockGetAdminViewServiceGetAdminViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGetAdminViewServiceGetAdminViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockGetAdminViewServiceGetAdminViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockAdminDeleteUserService is a mock of AdminDeleteUserService interface.
+type MockAdminDeleteUserService struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdminDeleteUserServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockAdminDeleteUserServiceMockRecorder is the mock recorder for MockAdminDeleteUserService.
+type MockAdminDeleteUserServiceMockRecorder struct {
+	mock *MockAdminDeleteUserService
+}
+
+// NewMockAdminDeleteUserService creates a new mock instance.
+func NewMockAdminDeleteUserService(ctrl *gomock.Controller) *MockAdminDeleteUserService {
+	mock := &MockAdminDeleteUserService{ctrl: ctrl}
+	mock.recorder = &MockAdminDeleteUserServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdminDeleteUserService) EXPECT() *MockAdminDeleteUserServiceMockRecorder {
+	return m.recorder
+}
+
+// AdminDeleteUser mocks base method.
+func (m *MockAdminDeleteUserService) AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteUser", ctx, adminID, targetID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteUser indicates an expected call of AdminDeleteUser.
+func (mr *MockAdminDeleteUserServiceMockRecorder) AdminDeleteUser(ctx, adminID, targetID any) *MockAdminDeleteUserServiceAdminDeleteUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteUser", reflect.TypeOf((*MockAdminDeleteUserService)(nil).AdminDeleteUser), ctx, adminID, targetID)
+	return &MockAdminDeleteUserServiceAdminDeleteUserCall{Call: call}
+}
+
+// MockAdminDeleteUserServiceAdminDeleteUserCall wrap *gomock.Call
+type MockAdminDeleteUserServiceAdminDeleteUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminDeleteUserServiceAdminDeleteUserCall) Return(arg0 error) *MockAdminDeleteUserServiceAdminDeleteUserCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminDeleteUserServiceAdminDeleteUserCall) Do(f func(context.Context, model.UserID, model.UserID) error) *MockAdminDeleteUserServiceAdminDeleteUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminDeleteUserServiceAdminDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID) error) *MockAdminDeleteUserServiceAdminDeleteUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockAdminDeleteRoomService is a mock of AdminDeleteRoomService interface.
+type MockAdminDeleteRoomService struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdminDeleteRoomServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockAdminDeleteRoomServiceMockRecorder is the mock recorder for MockAdminDeleteRoomService.
+type MockAdminDeleteRoomServiceMockRecorder struct {
+	mock *MockAdminDeleteRoomService
+}
+
+// NewMockAdminDeleteRoomService creates a new mock instance.
+func NewMockAdminDeleteRoomService(ctrl *gomock.Controller) *MockAdminDeleteRoomService {
+	mock := &MockAdminDeleteRoomService{ctrl: ctrl}
+	mock.recorder = &MockAdminDeleteRoomServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdminDeleteRoomService) EXPECT() *MockAdminDeleteRoomServiceMockRecorder {
+	return m.recorder
+}
+
+// AdminDeleteRoom mocks base method.
+func (m *MockAdminDeleteRoomService) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteRoom", ctx, adminID, roomID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteRoom indicates an expected call of AdminDeleteRoom.
+func (mr *MockAdminDeleteRoomServiceMockRecorder) AdminDeleteRoom(ctx, adminID, roomID any) *MockAdminDeleteRoomServiceAdminDeleteRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteRoom", reflect.TypeOf((*MockAdminDeleteRoomService)(nil).AdminDeleteRoom), ctx, adminID, roomID)
+	return &MockAdminDeleteRoomServiceAdminDeleteRoomCall{Call: call}
+}
+
+// MockAdminDeleteRoomServiceAdminDeleteRoomCall wrap *gomock.Call
+type MockAdminDeleteRoomServiceAdminDeleteRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminDeleteRoomServiceAdminDeleteRoomCall) Return(arg0 error) *MockAdminDeleteRoomServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminDeleteRoomServiceAdminDeleteRoomCall) Do(f func(context.Context, model.UserID, model.RoomID) error) *MockAdminDeleteRoomServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminDeleteRoomServiceAdminDeleteRoomCall) DoAndReturn(f func(context.Context, model.UserID, model.RoomID) error) *MockAdminDeleteRoomServiceAdminDeleteRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockSetUserAdminService is a mock of SetUserAdminService interface.
+type MockSetUserAdminService struct {
+	ctrl     *gomock.Controller
+	recorder *MockSetUserAdminServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockSetUserAdminServiceMockRecorder is the mock recorder for MockSetUserAdminService.
+type MockSetUserAdminServiceMockRecorder struct {
+	mock *MockSetUserAdminService
+}
+
+// NewMockSetUserAdminService creates a new mock instance.
+func NewMockSetUserAdminService(ctrl *gomock.Controller) *MockSetUserAdminService {
+	mock := &MockSetUserAdminService{ctrl: ctrl}
+	mock.recorder = &MockSetUserAdminServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSetUserAdminService) EXPECT() *MockSetUserAdminServiceMockRecorder {
+	return m.recorder
+}
+
+// SetUserAdmin mocks base method.
+func (m *MockSetUserAdminService) SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUserAdmin", ctx, adminID, targetID, grant)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUserAdmin indicates an expected call of SetUserAdmin.
+func (mr *MockSetUserAdminServiceMockRecorder) SetUserAdmin(ctx, adminID, targetID, grant any) *MockSetUserAdminServiceSetUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserAdmin", reflect.TypeOf((*MockSetUserAdminService)(nil).SetUserAdmin), ctx, adminID, targetID, grant)
+	return &MockSetUserAdminServiceSetUserAdminCall{Call: call}
+}
+
+// MockSetUserAdminServiceSetUserAdminCall wrap *gomock.Call
+type MockSetUserAdminServiceSetUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockSetUserAdminServiceSetUserAdminCall) Return(arg0 error) *MockSetUserAdminServiceSetUserAdminCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockSetUserAdminServiceSetUserAdminCall) Do(f func(context.Context, model.UserID, model.UserID, bool) error) *MockSetUserAdminServiceSetUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockSetUserAdminServiceSetUserAdminCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID, bool) error) *MockSetUserAdminServiceSetUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockAdminHandlersService is a mock of AdminHandlersService interface.
+type MockAdminHandlersService struct {
+	ctrl     *gomock.Controller
+	recorder *MockAdminHandlersServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockAdminHandlersServiceMockRecorder is the mock recorder for MockAdminHandlersService.
+type MockAdminHandlersServiceMockRecorder struct {
+	mock *MockAdminHandlersService
+}
+
+// NewMockAdminHandlersService creates a new mock instance.
+func NewMockAdminHandlersService(ctrl *gomock.Controller) *MockAdminHandlersService {
+	mock := &MockAdminHandlersService{ctrl: ctrl}
+	mock.recorder = &MockAdminHandlersServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAdminHandlersService) EXPECT() *MockAdminHandlersServiceMockRecorder {
+	return m.recorder
+}
+
+// AdminDeleteRoom mocks base method.
+func (m *MockAdminHandlersService) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteRoom", ctx, adminID, roomID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteRoom indicates an expected call of AdminDeleteRoom.
+func (mr *MockAdminHandlersServiceMockRecorder) AdminDeleteRoom(ctx, adminID, roomID any) *MockAdminHandlersServiceAdminDeleteRoomCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteRoom", reflect.TypeOf((*MockAdminHandlersService)(nil).AdminDeleteRoom), ctx, adminID, roomID)
+	return &MockAdminHandlersServiceAdminDeleteRoomCall{Call: call}
+}
+
+// MockAdminHandlersServiceAdminDeleteRoomCall wrap *gomock.Call
+type MockAdminHandlersServiceAdminDeleteRoomCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceAdminDeleteRoomCall) Return(arg0 error) *MockAdminHandlersServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceAdminDeleteRoomCall) Do(f func(context.Context, model.UserID, model.RoomID) error) *MockAdminHandlersServiceAdminDeleteRoomCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceAdminDeleteRoomCall) DoAndReturn(f func(context.Context, model.UserID, model.RoomID) error) *MockAdminHandlersServiceAdminDeleteRoomCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// AdminDeleteUser mocks base method.
+func (m *MockAdminHandlersService) AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AdminDeleteUser", ctx, adminID, targetID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AdminDeleteUser indicates an expected call of AdminDeleteUser.
+func (mr *MockAdminHandlersServiceMockRecorder) AdminDeleteUser(ctx, adminID, targetID any) *MockAdminHandlersServiceAdminDeleteUserCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AdminDeleteUser", reflect.TypeOf((*MockAdminHandlersService)(nil).AdminDeleteUser), ctx, adminID, targetID)
+	return &MockAdminHandlersServiceAdminDeleteUserCall{Call: call}
+}
+
+// MockAdminHandlersServiceAdminDeleteUserCall wrap *gomock.Call
+type MockAdminHandlersServiceAdminDeleteUserCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceAdminDeleteUserCall) Return(arg0 error) *MockAdminHandlersServiceAdminDeleteUserCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceAdminDeleteUserCall) Do(f func(context.Context, model.UserID, model.UserID) error) *MockAdminHandlersServiceAdminDeleteUserCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceAdminDeleteUserCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID) error) *MockAdminHandlersServiceAdminDeleteUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetAdminView mocks base method.
+func (m *MockAdminHandlersService) GetAdminView(ctx context.Context, adminID model.UserID) (*service.AdminView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAdminView", ctx, adminID)
+	ret0, _ := ret[0].(*service.AdminView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAdminView indicates an expected call of GetAdminView.
+func (mr *MockAdminHandlersServiceMockRecorder) GetAdminView(ctx, adminID any) *MockAdminHandlersServiceGetAdminViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdminView", reflect.TypeOf((*MockAdminHandlersService)(nil).GetAdminView), ctx, adminID)
+	return &MockAdminHandlersServiceGetAdminViewCall{Call: call}
+}
+
+// MockAdminHandlersServiceGetAdminViewCall wrap *gomock.Call
+type MockAdminHandlersServiceGetAdminViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceGetAdminViewCall) Return(arg0 *service.AdminView, arg1 error) *MockAdminHandlersServiceGetAdminViewCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceGetAdminViewCall) Do(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockAdminHandlersServiceGetAdminViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceGetAdminViewCall) DoAndReturn(f func(context.Context, model.UserID) (*service.AdminView, error)) *MockAdminHandlersServiceGetAdminViewCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetUserSessionVersion mocks base method.
+func (m *MockAdminHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserSessionVersion", ctx, id)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserSessionVersion indicates an expected call of GetUserSessionVersion.
+func (mr *MockAdminHandlersServiceMockRecorder) GetUserSessionVersion(ctx, id any) *MockAdminHandlersServiceGetUserSessionVersionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserSessionVersion", reflect.TypeOf((*MockAdminHandlersService)(nil).GetUserSessionVersion), ctx, id)
+	return &MockAdminHandlersServiceGetUserSessionVersionCall{Call: call}
+}
+
+// MockAdminHandlersServiceGetUserSessionVersionCall wrap *gomock.Call
+type MockAdminHandlersServiceGetUserSessionVersionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceGetUserSessionVersionCall) Return(arg0 int, arg1 error) *MockAdminHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceGetUserSessionVersionCall) Do(f func(context.Context, model.UserID) (int, error)) *MockAdminHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceGetUserSessionVersionCall) DoAndReturn(f func(context.Context, model.UserID) (int, error)) *MockAdminHandlersServiceGetUserSessionVersionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// IsUserAdmin mocks base method.
+func (m *MockAdminHandlersService) IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUserAdmin", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsUserAdmin indicates an expected call of IsUserAdmin.
+func (mr *MockAdminHandlersServiceMockRecorder) IsUserAdmin(ctx, userID any) *MockAdminHandlersServiceIsUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserAdmin", reflect.TypeOf((*MockAdminHandlersService)(nil).IsUserAdmin), ctx, userID)
+	return &MockAdminHandlersServiceIsUserAdminCall{Call: call}
+}
+
+// MockAdminHandlersServiceIsUserAdminCall wrap *gomock.Call
+type MockAdminHandlersServiceIsUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceIsUserAdminCall) Return(arg0 bool, arg1 error) *MockAdminHandlersServiceIsUserAdminCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceIsUserAdminCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockAdminHandlersServiceIsUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceIsUserAdminCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockAdminHandlersServiceIsUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetUserAdmin mocks base method.
+func (m *MockAdminHandlersService) SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUserAdmin", ctx, adminID, targetID, grant)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUserAdmin indicates an expected call of SetUserAdmin.
+func (mr *MockAdminHandlersServiceMockRecorder) SetUserAdmin(ctx, adminID, targetID, grant any) *MockAdminHandlersServiceSetUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUserAdmin", reflect.TypeOf((*MockAdminHandlersService)(nil).SetUserAdmin), ctx, adminID, targetID, grant)
+	return &MockAdminHandlersServiceSetUserAdminCall{Call: call}
+}
+
+// MockAdminHandlersServiceSetUserAdminCall wrap *gomock.Call
+type MockAdminHandlersServiceSetUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceSetUserAdminCall) Return(arg0 error) *MockAdminHandlersServiceSetUserAdminCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceSetUserAdminCall) Do(f func(context.Context, model.UserID, model.UserID, bool) error) *MockAdminHandlersServiceSetUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceSetUserAdminCall) DoAndReturn(f func(context.Context, model.UserID, model.UserID, bool) error) *MockAdminHandlersServiceSetUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// UserExists mocks base method.
+func (m *MockAdminHandlersService) UserExists(ctx context.Context, id model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UserExists", ctx, id)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UserExists indicates an expected call of UserExists.
+func (mr *MockAdminHandlersServiceMockRecorder) UserExists(ctx, id any) *MockAdminHandlersServiceUserExistsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserExists", reflect.TypeOf((*MockAdminHandlersService)(nil).UserExists), ctx, id)
+	return &MockAdminHandlersServiceUserExistsCall{Call: call}
+}
+
+// MockAdminHandlersServiceUserExistsCall wrap *gomock.Call
+type MockAdminHandlersServiceUserExistsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockAdminHandlersServiceUserExistsCall) Return(arg0 bool, arg1 error) *MockAdminHandlersServiceUserExistsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockAdminHandlersServiceUserExistsCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockAdminHandlersServiceUserExistsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockAdminHandlersServiceUserExistsCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockAdminHandlersServiceUserExistsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -143,6 +143,38 @@ func Migrate(url, dir string) error {
 	return nil
 }
 
+// SeedAdmin promotes a named user to admin if they exist. Safe to call
+// multiple times (ON CONFLICT DO NOTHING). If the user does not exist yet,
+// a warning is logged and nil is returned — re-run migrate after the user registers.
+func SeedAdmin(ctx context.Context, databaseURL, username string) error {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil
+	}
+
+	pool, err := Connect(ctx, databaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	tag, err := pool.Exec(ctx,
+		`INSERT INTO admins (user_id, granted_by)
+		 SELECT id, NULL FROM users WHERE LOWER(username) = LOWER($1)
+		 ON CONFLICT DO NOTHING`,
+		username,
+	)
+	if err != nil {
+		return fmt.Errorf("seed admin %q: %w", username, err)
+	}
+	if tag.RowsAffected() == 0 {
+		slog.Warn("admin seed: user not found (register the account then re-run migrate)", "username", username)
+	} else {
+		slog.Info("admin seeded", "username", username)
+	}
+	return nil
+}
+
 // GrantRuntimePrivileges grants runtime access to the application role.
 //
 //nolint:cyclop,funlen
