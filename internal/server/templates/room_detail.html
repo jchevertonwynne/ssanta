@@ -251,6 +251,15 @@
         });
     }
 
+    let pgpSectionWasOpen = false;
+
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === 'room-sidebar') {
+            const details = document.getElementById('pgp-keys-section');
+            pgpSectionWasOpen = details ? details.open : false;
+        }
+    });
+
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail && evt.detail.target && evt.detail.target.id === 'room-dynamic') {
             applyPresenceIndicators();
@@ -266,6 +275,8 @@
             if (keyInput) keyInput.value = storedKey || '';
             if (passInput) passInput.value = storedPass;
             if (persistEl) persistEl.checked = persist;
+            const details = document.getElementById('pgp-keys-section');
+            if (details && pgpSectionWasOpen) details.open = true;
             applyPresenceIndicators();
         }
     });
@@ -682,9 +693,10 @@
         }
     }
 
-    async function swapRoomSidebar(html) {
+    async function swapRoomSidebar(html, keepPGPOpen = false) {
         const existing = document.getElementById('room-sidebar');
         if (!existing) return;
+        const pgpWasOpen = keepPGPOpen || (document.getElementById('pgp-keys-section')?.open ?? false);
         existing.outerHTML = html;
         const next = document.getElementById('room-sidebar');
         if (next) {
@@ -700,6 +712,8 @@
             if (keyInput) keyInput.value = storedKey || '';
             if (passInput) passInput.value = storedPass;
             if (persistEl) persistEl.checked = persist;
+            const details = document.getElementById('pgp-keys-section');
+            if (details && pgpWasOpen) details.open = true;
             applyPresenceIndicators();
         }
     }
@@ -721,7 +735,10 @@
 
         // State 1: no public key uploaded yet — derive and POST it directly
         const allPGPForms = document.querySelectorAll('#room-sidebar form[hx-post$="/pgp-key"]');
-        const uploadForm = Array.from(allPGPForms).find(f => !f.closest('details'));
+        const uploadForm = Array.from(allPGPForms).find(f => {
+            const d = f.closest('details');
+            return !d || d.id === 'pgp-keys-section';
+        });
         if (uploadForm) {
             const armoredPublic = loadedPrivateKey.toPublic().armor();
             const body = new URLSearchParams();

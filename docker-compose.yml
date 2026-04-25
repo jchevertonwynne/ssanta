@@ -46,7 +46,7 @@ services:
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       HTTP_ADDR: ":8080"
-      SESSION_SECRET: dev-secret-change-me
+      SESSION_SECRET: dev-secret-change-me-to-at-least-32-bytes
       SECURE_COOKIES: "false"
       OTLP_ENDPOINT: otel-lgtm:4317
     ports:
