@@ -7,21 +7,22 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserStore struct {
-	db dbtx
+	pool *pgxpool.Pool
 }
 
 func (s *UserStore) UserExists(ctx context.Context, id UserID) (bool, error) {
 	var exists bool
-	err := s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, id).Scan(&exists)
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, id).Scan(&exists)
 	return exists, err
 }
 
 func (s *UserStore) GetUserByID(ctx context.Context, id UserID) (User, error) {
 	var u User
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at FROM users WHERE id = $1`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
@@ -33,7 +34,7 @@ func (s *UserStore) GetUserByID(ctx context.Context, id UserID) (User, error) {
 
 func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (User, error) {
 	var u User
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
@@ -45,7 +46,7 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (Use
 
 func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (User, error) {
 	var u User
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at, password_hash FROM users WHERE username = $1`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
@@ -57,7 +58,7 @@ func (s *UserStore) GetUserWithPassword(ctx context.Context, username string) (U
 
 func (s *UserStore) CreateUser(ctx context.Context, username, passwordHash string) (UserID, error) {
 	var id UserID
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id`,
 		username, passwordHash,
 	).Scan(&id)
@@ -72,7 +73,7 @@ func (s *UserStore) CreateUser(ctx context.Context, username, passwordHash strin
 }
 
 func (s *UserStore) DeleteUser(ctx context.Context, id UserID) error {
-	tag, err := s.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	tag, err := s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func (s *UserStore) DeleteUser(ctx context.Context, id UserID) error {
 
 func (s *UserStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (User, error) {
 	var u User
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`SELECT id, username, created_at, password_hash FROM users WHERE id = $1`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
@@ -96,7 +97,7 @@ func (s *UserStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (Use
 }
 
 func (s *UserStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordHash string) error {
-	tag, err := s.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, id)
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, passwordHash, id)
 	if err != nil {
 		return err
 	}
@@ -112,7 +113,7 @@ func (s *UserStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordH
 // carries a mismatched version should be treated as invalid.
 func (s *UserStore) GetUserSessionVersion(ctx context.Context, id UserID) (int, error) {
 	var v int
-	err := s.db.QueryRow(ctx, `SELECT session_version FROM users WHERE id = $1`, id).Scan(&v)
+	err := s.pool.QueryRow(ctx, `SELECT session_version FROM users WHERE id = $1`, id).Scan(&v)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrUserNotFound
 	}
@@ -122,7 +123,7 @@ func (s *UserStore) GetUserSessionVersion(ctx context.Context, id UserID) (int, 
 // BumpSessionVersion increments the user's session_version so all previously
 // issued session cookies stop validating. Called by password change flows.
 func (s *UserStore) BumpSessionVersion(ctx context.Context, id UserID) error {
-	tag, err := s.db.Exec(ctx,
+	tag, err := s.pool.Exec(ctx,
 		`UPDATE users SET session_version = session_version + 1 WHERE id = $1`,
 		id,
 	)
@@ -136,7 +137,7 @@ func (s *UserStore) BumpSessionVersion(ctx context.Context, id UserID) error {
 }
 
 func (s *UserStore) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY username ASC`)
+	rows, err := s.pool.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY username ASC`)
 	if err != nil {
 		return nil, err
 	}

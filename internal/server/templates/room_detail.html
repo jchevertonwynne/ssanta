@@ -251,6 +251,12 @@
         });
     }
 
+    function disablePresenceIndicators() {
+        document.querySelectorAll('.presence-dot').forEach(function(dot) {
+            dot.style.display = 'none';
+        });
+    }
+
     let pgpSectionWasOpen = false;
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -407,6 +413,7 @@
             if (intentionalClose) return;
             console.log('Disconnected from chat');
             wasDisconnected = true;
+            disablePresenceIndicators();
             const secs = Math.round(reconnectDelay / 1000);
             showReconnectMsg('Disconnected. Reconnecting in ' + secs + 's…');
             reconnectTimer = setTimeout(connect, reconnectDelay);

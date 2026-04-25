@@ -11,7 +11,7 @@ import (
 )
 
 func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomID RoomID, userID UserID, publicKey, fingerprint, challengeCiphertext string, challengeHash []byte, challengeExpiresAt time.Time) error {
-	tag, err := s.db.Exec(ctx,
+	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users
 		 SET pgp_public_key = $3,
 		     pgp_fingerprint = $4,
@@ -32,7 +32,7 @@ func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomI
 }
 
 func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomID, userID UserID, providedPlaintext string, now time.Time) error {
-	tx, err := s.db.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomI
 }
 
 func (s *RoomStore) ClearRoomUserPGPKey(ctx context.Context, roomID RoomID, userID UserID) error {
-	tag, err := s.db.Exec(ctx,
+	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users
 		 SET pgp_public_key = NULL,
 		     pgp_fingerprint = NULL,

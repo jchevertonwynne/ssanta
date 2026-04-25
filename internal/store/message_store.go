@@ -5,10 +5,11 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MessageStore struct {
-	db dbtx
+	pool *pgxpool.Pool
 	// ilikeEscaper escapes LIKE/ILIKE pattern metacharacters so caller-supplied
 	// text is matched literally. Order matters: \ is rewritten first so the
 	// subsequent replacements don't double-escape.
@@ -17,7 +18,7 @@ type MessageStore struct {
 
 func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID UserID, username, message string, whisper bool, targetUserID *UserID, preEncrypted bool) (MessageID, error) {
 	var id MessageID
-	err := s.db.QueryRow(ctx,
+	err := s.pool.QueryRow(ctx,
 		`INSERT INTO messages (room_id, user_id, username, message, whisper, target_user_id, pre_encrypted)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)
 		 RETURNING id`,
@@ -34,7 +35,7 @@ func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID U
 	var rows pgx.Rows
 	var err error
 	if beforeID > 0 {
-		rows, err = s.db.Query(ctx,
+		rows, err = s.pool.Query(ctx,
 			`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
 			 FROM messages
 			 WHERE room_id = $1
@@ -45,7 +46,7 @@ func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID U
 			roomID, userID, beforeID, limit,
 		)
 	} else {
-		rows, err = s.db.Query(ctx,
+		rows, err = s.pool.Query(ctx,
 			`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
 			 FROM messages
 			 WHERE room_id = $1
@@ -79,7 +80,7 @@ func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, u
 		limit = 50
 	}
 
-	rows, err := s.db.Query(ctx,
+	rows, err := s.pool.Query(ctx,
 		`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
 		 FROM messages
 		 WHERE room_id = $1
@@ -114,7 +115,7 @@ func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID
 	}
 	pattern := "%" + s.ilikeEscaper.Replace(query) + "%"
 
-	rows, err := s.db.Query(ctx,
+	rows, err := s.pool.Query(ctx,
 		`SELECT id, room_id, user_id, username, message, created_at, whisper, target_user_id, pre_encrypted, edited_at, deleted_at
 		 FROM messages
 		 WHERE room_id = $1

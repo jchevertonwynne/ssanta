@@ -5,8 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jchevertonwynne/ssanta/internal/model"
@@ -49,14 +47,6 @@ var (
 	ErrOperationNotAllowedOnDM = errors.New("operation not allowed on DM room")
 )
 
-// dbtx is the subset of pgxpool.Pool that the stores call.
-type dbtx interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
-	Begin(ctx context.Context) (pgx.Tx, error)
-}
-
 type Store struct {
 	Users   *UserStore
 	Rooms   *RoomStore
@@ -68,10 +58,10 @@ type Store struct {
 
 func New(pool *pgxpool.Pool) *Store {
 	return &Store{
-		Users:   &UserStore{db: pool},
-		Rooms:   &RoomStore{db: pool},
-		Invites: &InviteStore{db: pool},
-		Chat:    &MessageStore{db: pool, ilikeEscaper: strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)},
+		Users:   &UserStore{pool},
+		Rooms:   &RoomStore{pool},
+		Invites: &InviteStore{pool},
+		Chat:    &MessageStore{pool, strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)},
 		pool:    pool,
 	}
 }

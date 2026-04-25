@@ -9,7 +9,7 @@ import (
 func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
-	tx, err := s.db.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -43,7 +43,7 @@ func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (
 func (s *RoomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
-	tx, err := s.db.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
