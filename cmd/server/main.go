@@ -198,7 +198,6 @@ func (m *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &multiHandler{handlers: handlers}
 }
 
-
 func (m *multiHandler) WithGroup(name string) slog.Handler {
 	handlers := make([]slog.Handler, len(m.handlers))
 	for i, h := range m.handlers {
