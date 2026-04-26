@@ -51,20 +51,20 @@ var (
 )
 
 type Store struct {
-	Users   *UserStore
-	Rooms   *RoomStore
-	Invites *InviteStore
-	Chat    *MessageStore
+	Users   UserStore
+	Rooms   RoomStore
+	Invites InviteStore
+	Chat    MessageStore
 
 	pool *pgxpool.Pool
 }
 
 func New(pool *pgxpool.Pool) *Store {
 	return &Store{
-		Users:   &UserStore{pool},
-		Rooms:   &RoomStore{pool},
-		Invites: &InviteStore{pool},
-		Chat:    &MessageStore{pool, strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)},
+		Users:   &userStore{pool},
+		Rooms:   &roomStore{pool},
+		Invites: &inviteStore{pool},
+		Chat:    &messageStore{pool, strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)},
 		pool:    pool,
 	}
 }

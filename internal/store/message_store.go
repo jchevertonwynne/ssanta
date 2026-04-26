@@ -10,7 +10,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
-type MessageStore struct {
+type messageStore struct {
 	pool *pgxpool.Pool
 	// ilikeEscaper escapes LIKE/ILIKE pattern metacharacters so caller-supplied
 	// text is matched literally. Order matters: \ is rewritten first so the
@@ -18,7 +18,7 @@ type MessageStore struct {
 	ilikeEscaper *strings.Replacer
 }
 
-func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID UserID, username, message string, whisper bool, targetUserID *UserID, preEncrypted bool) (MessageID, error) {
+func (s *messageStore) CreateMessage(ctx context.Context, roomID RoomID, userID UserID, username, message string, whisper bool, targetUserID *UserID, preEncrypted bool) (MessageID, error) {
 	ctx = db.WithQueryName(ctx, "create_message")
 	var id MessageID
 	err := s.pool.QueryRow(ctx,
@@ -30,7 +30,7 @@ func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID 
 	return id, err
 }
 
-func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID UserID, beforeID MessageID, limit int) ([]Message, error) {
+func (s *messageStore) ListMessages(ctx context.Context, roomID RoomID, userID UserID, beforeID MessageID, limit int) ([]Message, error) {
 	ctx = db.WithQueryName(ctx, "list_messages")
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -79,7 +79,7 @@ func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID U
 	return messages, rows.Err()
 }
 
-func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, userID UserID, afterID MessageID, limit int) ([]Message, error) {
+func (s *messageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, userID UserID, afterID MessageID, limit int) ([]Message, error) {
 	ctx = db.WithQueryName(ctx, "list_messages_after_id")
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -114,7 +114,7 @@ func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, u
 	return messages, rows.Err()
 }
 
-func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID UserID, query string, limit int) ([]Message, error) {
+func (s *messageStore) SearchMessages(ctx context.Context, roomID RoomID, userID UserID, query string, limit int) ([]Message, error) {
 	ctx = db.WithQueryName(ctx, "search_messages")
 	if limit <= 0 || limit > 200 {
 		limit = 50

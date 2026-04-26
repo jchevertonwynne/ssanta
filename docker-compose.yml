@@ -81,7 +81,7 @@ services:
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       SSANTA_INTEGRATION: "0"
-    command: ["sh", "-c", "go vet ./... && golangci-lint run ./... && go test ./... -v"]
+    command: ["sh", "-c", "go vet ./... && golangci-lint run ./... && go test -race ./... -v"]
     tty: true
 
   # Run integration tests which use Testcontainers. This mounts the host
@@ -99,7 +99,7 @@ services:
     environment:
       DATABASE_URL: postgres://ssanta:ssanta@db:5432/ssanta?sslmode=disable
       SSANTA_INTEGRATION: "1"
-    command: ["sh", "-c", "go test ./internal/store ./internal/service -count=1 -v"]
+    command: ["sh", "-c", "go test -race ./internal/store ./internal/service -count=1 -v"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     tty: true

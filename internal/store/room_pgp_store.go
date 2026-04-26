@@ -12,7 +12,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
-func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomID RoomID, userID UserID, publicKey, fingerprint, challengeCiphertext string, challengeHash []byte, challengeExpiresAt time.Time) error {
+func (s *roomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomID RoomID, userID UserID, publicKey, fingerprint, challengeCiphertext string, challengeHash []byte, challengeExpiresAt time.Time) error {
 	ctx = db.WithQueryName(ctx, "upsert_room_user_pgp_key")
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users
@@ -34,7 +34,7 @@ func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomI
 	return nil
 }
 
-func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomID, userID UserID, providedPlaintext string, now time.Time) error {
+func (s *roomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomID, userID UserID, providedPlaintext string, now time.Time) error {
 	ctx = db.WithQueryName(ctx, "verify_room_user_pgp_challenge")
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomI
 	return tx.Commit(ctx)
 }
 
-func (s *RoomStore) ClearRoomUserPGPKey(ctx context.Context, roomID RoomID, userID UserID) error {
+func (s *roomStore) ClearRoomUserPGPKey(ctx context.Context, roomID RoomID, userID UserID) error {
 	ctx = db.WithQueryName(ctx, "clear_room_user_pgp_key")
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users

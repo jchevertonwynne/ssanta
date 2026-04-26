@@ -14,7 +14,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
-type RoomStore struct {
+type roomStore struct {
 	pool *pgxpool.Pool
 }
 
@@ -22,7 +22,7 @@ type RoomStore struct {
 // display name. Using INSERT ... ON CONFLICT DO NOTHING + fallback SELECT
 // avoids the check-then-create race between two participants starting a DM
 // at the same time.
-func (s *RoomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, creatorID UserID) (RoomID, error) {
+func (s *roomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, creatorID UserID) (RoomID, error) {
 	ctx = db.WithQueryName(ctx, "get_or_create_dm_room")
 	var roomID RoomID
 	err := s.pool.QueryRow(ctx,
@@ -49,7 +49,7 @@ func (s *RoomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, c
 	return roomID, err
 }
 
-func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
+func (s *roomStore) CreateRoom(ctx context.Context, displayName string, creatorID UserID, isDM bool) (RoomID, error) {
 	ctx = db.WithQueryName(ctx, "create_room")
 	var roomID RoomID
 	err := s.pool.QueryRow(ctx,
@@ -66,7 +66,7 @@ func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorI
 	return roomID, err
 }
 
-func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
+func (s *roomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
 	ctx = db.WithQueryName(ctx, "delete_room")
 	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
 		`DELETE FROM rooms WHERE id = $1 AND creator_id = $2`,
@@ -78,7 +78,7 @@ func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID Use
 	return nil
 }
 
-func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
+func (s *roomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
 	ctx = db.WithQueryName(ctx, "list_rooms_by_creator")
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, display_name, created_at, pgp_required, is_dm, is_public FROM rooms WHERE creator_id = $1 AND is_dm = FALSE ORDER BY display_name ASC`,
@@ -90,7 +90,7 @@ func (s *RoomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Ro
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
+func (s *roomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
 	ctx = db.WithQueryName(ctx, "list_rooms_by_member")
 	rows, err := s.pool.Query(ctx,
 		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm, r.is_public
@@ -106,7 +106,7 @@ func (s *RoomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
+func (s *roomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]Room, error) {
 	ctx = db.WithQueryName(ctx, "list_dm_rooms_by_member")
 	rows, err := s.pool.Query(ctx,
 		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm, r.is_public
@@ -121,7 +121,7 @@ func (s *RoomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]R
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetail, error) {
+func (s *roomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetail, error) {
 	ctx = db.WithQueryName(ctx, "get_room_detail")
 	var d RoomDetail
 	err := s.pool.QueryRow(ctx,
@@ -137,7 +137,7 @@ func (s *RoomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetai
 	return d, err
 }
 
-func (s *RoomStore) IsRoomMember(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
+func (s *roomStore) IsRoomMember(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	ctx = db.WithQueryName(ctx, "is_room_member")
 	var exists bool
 	err := s.pool.QueryRow(ctx,
@@ -147,7 +147,7 @@ func (s *RoomStore) IsRoomMember(ctx context.Context, roomID RoomID, userID User
 	return exists, err
 }
 
-func (s *RoomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool, error) {
+func (s *roomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool, error) {
 	ctx = db.WithQueryName(ctx, "is_room_pgp_required")
 	var required bool
 	err := s.pool.QueryRow(ctx,
@@ -160,7 +160,7 @@ func (s *RoomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool,
 	return required, err
 }
 
-func (s *RoomStore) IsRoomPublic(ctx context.Context, roomID RoomID) (bool, error) {
+func (s *roomStore) IsRoomPublic(ctx context.Context, roomID RoomID) (bool, error) {
 	ctx = db.WithQueryName(ctx, "is_room_public")
 	var public bool
 	err := s.pool.QueryRow(ctx,
@@ -173,7 +173,7 @@ func (s *RoomStore) IsRoomPublic(ctx context.Context, roomID RoomID) (bool, erro
 	return public, err
 }
 
-func (s *RoomStore) ListPublicRooms(ctx context.Context, userID UserID) ([]Room, error) {
+func (s *roomStore) ListPublicRooms(ctx context.Context, userID UserID) ([]Room, error) {
 	ctx = db.WithQueryName(ctx, "list_public_rooms")
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, display_name, created_at, pgp_required, is_dm, is_public
@@ -193,7 +193,7 @@ func (s *RoomStore) ListPublicRooms(ctx context.Context, userID UserID) ([]Room,
 	return scanRooms(rows)
 }
 
-func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
+func (s *roomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	ctx = db.WithQueryName(ctx, "is_room_creator")
 	var exists bool
 	err := s.pool.QueryRow(ctx,
@@ -203,7 +203,7 @@ func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID Use
 	return exists, err
 }
 
-func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID UserID) (bool, bool, error) {
+func (s *roomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID UserID) (bool, bool, error) {
 	ctx = db.WithQueryName(ctx, "get_room_access")
 	var isCreator, isMember bool
 	err := s.pool.QueryRow(ctx,
@@ -215,7 +215,7 @@ func (s *RoomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID Use
 	return isCreator, isMember, err
 }
 
-func (s *RoomStore) JoinRoom(ctx context.Context, roomID RoomID, userID UserID) error {
+func (s *roomStore) JoinRoom(ctx context.Context, roomID RoomID, userID UserID) error {
 	ctx = db.WithQueryName(ctx, "join_room")
 	_, err := s.pool.Exec(ctx,
 		`INSERT INTO room_users (room_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -224,7 +224,7 @@ func (s *RoomStore) JoinRoom(ctx context.Context, roomID RoomID, userID UserID) 
 	return err
 }
 
-func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) ([]RoomMember, error) {
+func (s *roomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) ([]RoomMember, error) {
 	ctx = db.WithQueryName(ctx, "list_room_members_with_pgp")
 	rows, err := s.pool.Query(ctx,
 		`SELECT u.id,
@@ -273,7 +273,7 @@ func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) (
 	return out, rows.Err()
 }
 
-func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
+func (s *roomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
 	ctx = db.WithQueryName(ctx, "set_room_members_can_invite")
 	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET members_can_invite = $3 WHERE id = $1 AND creator_id = $2`,
@@ -281,7 +281,7 @@ func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, 
 	)
 }
 
-func (s *RoomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
+func (s *roomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
 	ctx = db.WithQueryName(ctx, "set_room_pgp_required")
 	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND creator_id = $2`,
@@ -289,7 +289,7 @@ func (s *RoomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creat
 	)
 }
 
-func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
+func (s *roomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
 	ctx = db.WithQueryName(ctx, "set_room_public")
 	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET is_public = $3 WHERE id = $1 AND creator_id = $2`,
@@ -298,7 +298,7 @@ func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID 
 }
 
 //nolint:cyclop,nestif,funlen
-func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID) error {
+func (s *roomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID) error {
 	ctx = db.WithQueryName(ctx, "leave_room")
 	// Start transaction to ensure atomicity
 	tx, err := s.pool.Begin(ctx)
@@ -391,7 +391,7 @@ func (s *RoomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 	return tx.Commit(ctx)
 }
 
-func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, creatorID UserID) error {
+func (s *roomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, creatorID UserID) error {
 	ctx = db.WithQueryName(ctx, "remove_member")
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -445,7 +445,7 @@ func (s *RoomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	return tx.Commit(ctx)
 }
 
-func (s *RoomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
+func (s *roomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
 	ctx = db.WithQueryName(ctx, "list_all_rooms")
 	rows, err := s.pool.Query(ctx,
 		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, r.is_dm, r.is_public, u.username
@@ -470,7 +470,7 @@ func (s *RoomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
 	return rooms, rows.Err()
 }
 
-func (s *RoomStore) AdminDeleteRoom(ctx context.Context, roomID RoomID) error {
+func (s *roomStore) AdminDeleteRoom(ctx context.Context, roomID RoomID) error {
 	ctx = db.WithQueryName(ctx, "admin_delete_room")
 	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
 		`DELETE FROM rooms WHERE id = $1`,

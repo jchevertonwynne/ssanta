@@ -6,7 +6,7 @@ import (
 )
 
 // DeleteExpiredInvites deletes invites whose expires_at is before now.
-func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (int64, error) {
+func (s *inviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
 	tx, err := s.pool.Begin(ctx)
@@ -40,7 +40,7 @@ func (s *InviteStore) DeleteExpiredInvites(ctx context.Context, now time.Time) (
 
 // ClearExpiredRoomPGPChallenges clears challenge fields for room members whose
 // challenge expiry is in the past.
-func (s *RoomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.Time) (int64, error) {
+func (s *roomStore) ClearExpiredRoomPGPChallenges(ctx context.Context, now time.Time) (int64, error) {
 	// Set a short lock timeout to avoid blocking on contended tables
 	// Use LIMIT to process in batches and avoid holding locks too long
 	tx, err := s.pool.Begin(ctx)
