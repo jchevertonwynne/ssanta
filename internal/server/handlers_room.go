@@ -282,6 +282,54 @@ func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.Ha
 	}
 }
 
+func handleSetRoomPublic(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
+		if !ok {
+			http.Error(w, "login required", http.StatusUnauthorized)
+			return
+		}
+		roomID, ok := pathRoomID(w, r, "id")
+		if !ok {
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		isPublic := r.FormValue("value") == formTrue
+		err := svc.SetRoomPublic(r.Context(), roomID, currentID, isPublic)
+		switch {
+		case errors.Is(err, store.ErrNotRoomCreator):
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
+			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
+			return
+		case err != nil:
+			loggerFromContext(r.Context()).Error("set is_public", "err", err)
+			http.Error(w, "failed to update room", http.StatusInternalServerError)
+			return
+		}
+		hub.NotifyContentUpdate(ws.MsgTypeRoomsUpdated)
+		if !isPublic {
+			members, err := svc.ListRoomMembersWithPGP(r.Context(), roomID)
+			if err != nil {
+				loggerFromContext(r.Context()).Error("list room members for spectator kick", "err", err)
+			} else {
+				memberIDs := make(map[model.UserID]struct{}, len(members))
+				for _, m := range members {
+					memberIDs[m.ID] = struct{}{}
+				}
+				memberIDs[currentID] = struct{}{} // creator is not in member list
+				hub.KickSpectators(roomID, memberIDs)
+			}
+		}
+		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
+	}
+}
+
 func makeRoomBoolHandler(
 	svc RoomHandlersService,
 	sessions SessionManager,

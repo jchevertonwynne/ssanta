@@ -470,7 +470,11 @@
             const resp = await fetch(url);
             if (!resp.ok) return;
             const messages = await resp.json();
-            if (!messages.length) return;
+            if (!messages.length) {
+                if (beforeId) noMoreHistory = true;
+                return;
+            }
+            if (beforeId && messages.length < 50) noMoreHistory = true;
 
             if (!beforeId) {
                 // Initial load: populate messageHistory chronologically and render all.
@@ -535,10 +539,14 @@
     }
 
     // Infinite scroll: load older messages when scrolling near the top
+    let noMoreHistory = false;
+    let scrollDebounceTimer = null;
     chatMessages.addEventListener('scroll', function() {
-        if (chatMessages.scrollTop < 100 && earliestMessageId && !loadingHistory) {
+        if (noMoreHistory || chatMessages.scrollTop >= 100 || !earliestMessageId || loadingHistory) return;
+        clearTimeout(scrollDebounceTimer);
+        scrollDebounceTimer = setTimeout(function() {
             loadServerHistory(earliestMessageId);
-        }
+        }, 200);
     });
 
     // Load server history first, then connect.

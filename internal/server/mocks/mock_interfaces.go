@@ -2804,6 +2804,45 @@ func (c *MockRoomHandlersServiceLeaveRoomCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
+// ListRoomMembersWithPGP mocks base method.
+func (m *MockRoomHandlersService) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomID) ([]model.RoomMember, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMembersWithPGP", ctx, roomID)
+	ret0, _ := ret[0].([]model.RoomMember)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMembersWithPGP indicates an expected call of ListRoomMembersWithPGP.
+func (mr *MockRoomHandlersServiceMockRecorder) ListRoomMembersWithPGP(ctx, roomID any) *MockRoomHandlersServiceListRoomMembersWithPGPCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMembersWithPGP", reflect.TypeOf((*MockRoomHandlersService)(nil).ListRoomMembersWithPGP), ctx, roomID)
+	return &MockRoomHandlersServiceListRoomMembersWithPGPCall{Call: call}
+}
+
+// MockRoomHandlersServiceListRoomMembersWithPGPCall wrap *gomock.Call
+type MockRoomHandlersServiceListRoomMembersWithPGPCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomHandlersServiceListRoomMembersWithPGPCall) Return(arg0 []model.RoomMember, arg1 error) *MockRoomHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomHandlersServiceListRoomMembersWithPGPCall) Do(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockRoomHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomHandlersServiceListRoomMembersWithPGPCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.RoomMember, error)) *MockRoomHandlersServiceListRoomMembersWithPGPCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // RemoveMember mocks base method.
 func (m *MockRoomHandlersService) RemoveMember(ctx context.Context, roomID model.RoomID, memberID, creatorID model.UserID) error {
 	m.ctrl.T.Helper()
@@ -7417,6 +7456,42 @@ func (c *MockHubDisconnectUserCall) Do(f func(model.RoomID, model.UserID)) *Mock
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockHubDisconnectUserCall) DoAndReturn(f func(model.RoomID, model.UserID)) *MockHubDisconnectUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// KickSpectators mocks base method.
+func (m *MockHub) KickSpectators(roomID model.RoomID, memberIDs map[model.UserID]struct{}) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "KickSpectators", roomID, memberIDs)
+}
+
+// KickSpectators indicates an expected call of KickSpectators.
+func (mr *MockHubMockRecorder) KickSpectators(roomID, memberIDs any) *MockHubKickSpectatorsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "KickSpectators", reflect.TypeOf((*MockHub)(nil).KickSpectators), roomID, memberIDs)
+	return &MockHubKickSpectatorsCall{Call: call}
+}
+
+// MockHubKickSpectatorsCall wrap *gomock.Call
+type MockHubKickSpectatorsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHubKickSpectatorsCall) Return() *MockHubKickSpectatorsCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHubKickSpectatorsCall) Do(f func(model.RoomID, map[model.UserID]struct{})) *MockHubKickSpectatorsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHubKickSpectatorsCall) DoAndReturn(f func(model.RoomID, map[model.UserID]struct{})) *MockHubKickSpectatorsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

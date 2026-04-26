@@ -154,6 +154,7 @@ type RoomHandlersService interface {
 	JoinRoomService
 	LeaveRoomService
 	RemoveMemberService
+	RoomMembersWithPGPService
 	RoomAccessService
 	SetRoomMembersCanInviteService
 	SetRoomPGPRequiredService
@@ -261,4 +262,5 @@ type Hub interface {
 	DisconnectUser(roomID model.RoomID, userID model.UserID)
 	DisconnectRoom(roomID model.RoomID)
 	BroadcastRoomPresence(roomID model.RoomID)
+	KickSpectators(roomID model.RoomID, memberIDs map[model.UserID]struct{})
 }

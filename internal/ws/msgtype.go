@@ -17,6 +17,7 @@ const (
 	MsgTypeMembershipGained MsgType = "membership_gained"
 	MsgTypeMembershipLost   MsgType = "membership_lost"
 	MsgTypeUsersUpdated     MsgType = "users_updated"
+	MsgTypeRoomsUpdated     MsgType = "rooms_updated"
 	MsgTypeInviteReceived   MsgType = "invite_received"
 	MsgTypeInviteCancelled  MsgType = "invite_cancelled"
 )

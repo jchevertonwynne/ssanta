@@ -356,6 +356,41 @@ func (h *ChatHub) DisconnectUser(roomID model.RoomID, userID model.UserID) {
 	}
 }
 
+// KickSpectators disconnects every client in the room whose userID is not in
+// memberIDs, sending them a kicked frame first.
+func (h *ChatHub) KickSpectators(roomID model.RoomID, memberIDs map[model.UserID]struct{}) {
+	h.mu.RLock()
+	room, ok := h.rooms[roomID]
+	h.mu.RUnlock()
+	if !ok {
+		return
+	}
+
+	kickedMsg := ChatMessagePayload{
+		Type:    MsgTypeKicked,
+		Message: "This room is no longer public",
+	}
+	msg, err := json.Marshal(kickedMsg)
+	if err != nil {
+		return
+	}
+
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	for client := range room.clients {
+		if _, isMember := memberIDs[client.userID]; isMember {
+			continue
+		}
+		select {
+		case client.send <- msg:
+		case <-time.After(time.Second):
+		}
+		client.closeOnce.Do(func() { close(client.send) })
+		delete(room.clients, client)
+	}
+}
+
 // DisconnectRoom notifies every client in a room that the room has been
 // deleted and then terminates their sockets. Used when the creator deletes a
 // room; mirrors DisconnectUser for a whole-room scope.
@@ -689,14 +724,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 				span.End()
 				continue
 			}
-			memberCtx, cancel := context.WithTimeout(baseCtx, 2*time.Second)
-			members, err := c.svc.ListRoomMembersWithPGP(memberCtx, c.roomID)
-			cancel()
-			if err != nil {
-				slog.ErrorContext(memberCtx, "list room members for chat encryption", "err", err, "room_id", c.roomID)
-				span.End()
-				continue
-			}
 
 			// Fetch room PGP requirement
 			pgpCtx, cancel := context.WithTimeout(baseCtx, 2*time.Second)
@@ -715,6 +742,14 @@ func (c *ChatClient) readPump(parent context.Context) {
 
 			// Validate whisper target is a room member
 			if isWhisper {
+				memberCtx, cancel := context.WithTimeout(baseCtx, 2*time.Second)
+				members, err := c.svc.ListRoomMembersWithPGP(memberCtx, c.roomID)
+				cancel()
+				if err != nil {
+					slog.ErrorContext(memberCtx, "list room members for whisper validation", "err", err, "room_id", c.roomID)
+					span.End()
+					continue
+				}
 				found := false
 				for _, m := range members {
 					if m.ID == targetUserID {
@@ -740,78 +775,31 @@ func (c *ChatClient) readPump(parent context.Context) {
 			}
 
 			// PGP-required rooms only accept client-pre-encrypted messages
-			if pgpRequired {
-				if !payload.PreEncrypted {
-					sys := ChatMessagePayload{
-						Type:      MsgTypeSystem,
-						Message:   "This room requires PGP encryption. Your client must encrypt messages before sending.",
-						CreatedAt: time.Now(),
-					}
-					if b, err := json.Marshal(sys); err == nil {
-						select {
-						case c.send <- b:
-						default:
-						}
-					}
-					span.End()
-					continue
+			if pgpRequired && !payload.PreEncrypted {
+				sys := ChatMessagePayload{
+					Type:      MsgTypeSystem,
+					Message:   "This room requires PGP encryption. Your client must encrypt messages before sending.",
+					CreatedAt: time.Now(),
 				}
-				var targetID *model.UserID
-				if isWhisper {
-					targetID = &targetUserID
-				}
-				msgID, err := persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
-				if err != nil {
-					span.End()
-					continue
-				}
-				out := ChatMessagePayload{
-					Type:        MsgTypeMessage,
-					ID:          msgID,
-					Username:    c.username,
-					Message:     plaintext,
-					CreatedAt:   createdAt,
-					Whisper:     isWhisper,
-					ClientMsgID: payload.ClientMsgID,
-				}
-				outBytes, err := json.Marshal(out)
-				if err != nil {
-					slog.Error("marshal pre-encrypted chat message", "err", err)
-					span.End()
-					continue
-				}
-				perUser := make(map[model.UserID][]byte, len(members))
-				if isWhisper {
-					perUser[c.userID] = outBytes
-					perUser[targetUserID] = outBytes
-				} else {
-					for _, m := range members {
-						perUser[m.ID] = outBytes
+				if b, err := json.Marshal(sys); err == nil {
+					select {
+					case c.send <- b:
+					default:
 					}
 				}
-				c.hub.SendToRoomUsers(c.roomID, perUser)
-				if metrics := observability.GetMetrics(); metrics != nil {
-					attrs := attribute.NewSet(
-						attribute.Int64("room_id", c.roomID.Int64()),
-					)
-					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
-				}
-				slog.InfoContext(ctx, "pre-encrypted chat message forwarded", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 				span.End()
 				continue
 			}
 
-			// PGP optional: send plaintext to all members
 			var targetID *model.UserID
 			if isWhisper {
 				targetID = &targetUserID
 			}
-			msgID, err := persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, false)
+			msgID, err := persistMessage(ctx, c.svc, c.roomID, c.userID, c.username, plaintext, isWhisper, targetID, payload.PreEncrypted)
 			if err != nil {
 				span.End()
 				continue
 			}
-			perUser := make(map[model.UserID][]byte, len(members))
 			out := ChatMessagePayload{
 				Type:        MsgTypeMessage,
 				ID:          msgID,
@@ -828,21 +816,21 @@ func (c *ChatClient) readPump(parent context.Context) {
 				continue
 			}
 			if isWhisper {
-				perUser[c.userID] = outBytes
-				perUser[targetUserID] = outBytes
-			} else {
-				for _, m := range members {
-					perUser[m.ID] = outBytes
+				perUser := map[model.UserID][]byte{c.userID: outBytes, targetUserID: outBytes}
+				c.hub.SendToRoomUsers(c.roomID, perUser)
+				if metrics := observability.GetMetrics(); metrics != nil {
+					attrs := attribute.NewSet(attribute.Int64("room_id", c.roomID.Int64()))
+					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
 				}
+				slog.InfoContext(ctx, "whisper sent", "room_id", c.roomID, "user_id", c.userID)
+			} else {
+				c.hub.BroadcastToRoom(c.roomID, outBytes)
+				if metrics := observability.GetMetrics(); metrics != nil {
+					attrs := attribute.NewSet(attribute.Int64("room_id", c.roomID.Int64()))
+					metrics.WSMessagesSent.Add(ctx, 1, metric.WithAttributeSet(attrs))
+				}
+				slog.InfoContext(ctx, "chat message broadcast", "room_id", c.roomID, "user_id", c.userID, "pgp_required", pgpRequired)
 			}
-			c.hub.SendToRoomUsers(c.roomID, perUser)
-			if metrics := observability.GetMetrics(); metrics != nil {
-				attrs := attribute.NewSet(
-					attribute.Int64("room_id", c.roomID.Int64()),
-				)
-				metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
-			}
-			slog.InfoContext(ctx, "plaintext chat message sent (pgp optional)", "room_id", c.roomID, "user_id", c.userID, "recipients", len(perUser))
 			span.End()
 		}
 	}

@@ -175,6 +175,9 @@
         if (data.type === 'users_updated') {
             htmx.ajax('GET', '/content/users', {target: '#content-users', swap: 'outerHTML'});
         }
+        if (data.type === 'rooms_updated') {
+            htmx.ajax('GET', '/content', {target: '#content', swap: 'innerHTML'});
+        }
     };
     
     ws.onerror = function(error) {
