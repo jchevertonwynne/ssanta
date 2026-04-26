@@ -209,7 +209,12 @@ func TracingMiddleware(serviceName string) func(http.Handler) http.Handler {
 			// Capture response status
 			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-			next.ServeHTTP(rw, r.WithContext(ctx))
+			newR := r.WithContext(ctx)
+			next.ServeHTTP(rw, newR)
+
+			if newR.Pattern != "" {
+				span.SetName(newR.Pattern)
+			}
 
 			// Record status code
 			span.SetAttributes(attribute.Int("http.status_code", rw.statusCode))
@@ -274,10 +279,15 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		duration := time.Since(start).Seconds()
 		statusCode := strconv.Itoa(rw.statusCode)
 
+		route := r.URL.Path
+		if r.Pattern != "" {
+			route = r.Pattern
+		}
+
 		// Common attributes
 		attrs := attribute.NewSet(
 			attribute.String("http.method", r.Method),
-			attribute.String("http.route", r.URL.Path),
+			attribute.String("http.route", route),
 			attribute.String("http.status_code", statusCode),
 		)
 

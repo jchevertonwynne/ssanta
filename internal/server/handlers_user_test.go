@@ -26,6 +26,7 @@ func TestHandleCreateUser_Success_SetsSessionAndRenders(t *testing.T) {
 	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(store.UserID(42), nil)
 	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(42)).Return(0, nil)
 	sessions.EXPECT().Set(gomock.Any(), store.UserID(42), 0)
+	sessions.EXPECT().Secret().Return(nil)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(42)).Return(stubContentView("Alice"), nil)
 	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 
@@ -192,6 +193,7 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 	svc.EXPECT().LoginUser(gomock.Any(), "alice", "correctpass").Return(store.UserID(5), nil)
 	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(5)).Return(0, nil)
 	sessions.EXPECT().Set(gomock.Any(), store.UserID(5), 0)
+	sessions.EXPECT().Secret().Return(nil)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(5)).Return(stubContentView("alice"), nil)
 
 	r := newFormRequest(t, "/login", url.Values{
@@ -213,6 +215,7 @@ func TestHandleLogout_ClearsSessionAndRendersLoggedOut(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
 	sessions.EXPECT().Clear(gomock.Any())
+	sessions.EXPECT().Secret().Return(nil)
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/logout", nil)
@@ -355,4 +358,109 @@ func TestHandleChangePassword_IncorrectCurrentPassword(t *testing.T) {
 func TestHandleChangePassword_PasswordTooShort(t *testing.T) {
 	t.Parallel()
 	testChangePasswordError(t, "oldpass12", "short", store.ErrPasswordTooShort)
+}
+
+func TestHandleLogin_Success_IncludesCsrfRefreshHeader(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	csrfSecret := []byte("csrf-secret")
+	csrfID := "test-csrf-id"
+	userID := store.UserID(5)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "pass").Return(userID, nil)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+	sessions.EXPECT().Set(gomock.Any(), userID, 0)
+	sessions.EXPECT().Secret().Return(csrfSecret)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
+
+	r := newFormRequest(t, "/login", url.Values{"username": {"alice"}, "password": {"pass"}})
+	r = r.WithContext(withCSRFID(r.Context(), csrfID))
+	w := serve(t, handleLogin(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	gotToken := w.Header().Get("X-CSRF-Token")
+	if gotToken == "" {
+		t.Fatal("expected X-CSRF-Token response header after login")
+	}
+	wantToken := computeCSRFToken(csrfSecret, csrfID, &userID)
+	if gotToken != wantToken {
+		t.Fatalf("X-CSRF-Token = %q, want %q", gotToken, wantToken)
+	}
+}
+
+func TestHandleCreateUser_Success_IncludesCsrfRefreshHeader(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	csrfSecret := []byte("csrf-secret")
+	csrfID := "test-csrf-id"
+	userID := store.UserID(42)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	svc.EXPECT().CreateUser(gomock.Any(), "Alice", "secret123").Return(userID, nil)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+	sessions.EXPECT().Set(gomock.Any(), userID, 0)
+	sessions.EXPECT().Secret().Return(csrfSecret)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("Alice"), nil)
+	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
+
+	r := newFormRequest(t, "/users", url.Values{
+		"username":         {"Alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
+	r = r.WithContext(withCSRFID(r.Context(), csrfID))
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	gotToken := w.Header().Get("X-CSRF-Token")
+	if gotToken == "" {
+		t.Fatal("expected X-CSRF-Token response header after register")
+	}
+	wantToken := computeCSRFToken(csrfSecret, csrfID, &userID)
+	if gotToken != wantToken {
+		t.Fatalf("X-CSRF-Token = %q, want %q", gotToken, wantToken)
+	}
+}
+
+func TestHandleLogout_IncludesCsrfRefreshHeader(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	csrfSecret := []byte("csrf-secret")
+	csrfID := "test-csrf-id"
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	sessions.EXPECT().Clear(gomock.Any())
+	sessions.EXPECT().Secret().Return(csrfSecret)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/logout", nil)
+	r = r.WithContext(withCSRFID(r.Context(), csrfID))
+	w := serve(t, handleLogout(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	gotToken := w.Header().Get("X-CSRF-Token")
+	if gotToken == "" {
+		t.Fatal("expected X-CSRF-Token response header after logout")
+	}
+	wantToken := computeCSRFToken(csrfSecret, csrfID, nil)
+	if gotToken != wantToken {
+		t.Fatalf("X-CSRF-Token = %q, want %q", gotToken, wantToken)
+	}
 }

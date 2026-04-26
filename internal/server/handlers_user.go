@@ -71,6 +71,7 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			return
 		}
 		sessions.Set(w, id, version)
+		setCSRFRefreshHeader(w, ctx, sessions.Secret(), &id)
 		renderContent(w, ctx, svc, id)
 		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 	}
@@ -174,6 +175,7 @@ func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerF
 			return
 		}
 		sessions.Set(w, id, version)
+		setCSRFRefreshHeader(w, ctx, sessions.Secret(), &id)
 		renderContent(w, ctx, svc, id)
 	}
 }
@@ -181,6 +183,7 @@ func handleLogin(svc UserHandlersService, sessions SessionManager) http.HandlerF
 func handleLogout(svc UserHandlersService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessions.Clear(w)
+		setCSRFRefreshHeader(w, r.Context(), sessions.Secret(), nil)
 		renderContent(w, r.Context(), svc, 0)
 	}
 }

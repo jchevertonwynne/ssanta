@@ -89,6 +89,9 @@ func handleAdminDeleteUser(svc AdminHandlersService, sessions SessionManager, hu
 			}
 			return
 		}
+		if notifier, ok := hub.(interface{ HandleAccountDeletion(userID model.UserID) }); ok {
+			notifier.HandleAccountDeletion(targetID)
+		}
 		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 		renderAdmin(w, r, svc, adminID)
 	}

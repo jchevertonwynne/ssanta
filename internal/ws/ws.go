@@ -68,10 +68,11 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.Us
 		return
 	}
 
-	hub.wg.Add(2)
-	go client.writePump()
-	//nolint: contextcheck // this is fine
-	go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
+	hub.wg.Go(client.writePump)
+	hub.wg.Go(func() {
+		//nolint: contextcheck // this is fine
+		client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
+	})
 }
 
 func RunContentWS(hub *ChatHub, sessions SessionReader, currentID model.UserID, username string, w http.ResponseWriter, r *http.Request) {
@@ -96,9 +97,11 @@ func RunContentWS(hub *ChatHub, sessions SessionReader, currentID model.UserID, 
 		return
 	}
 
-	hub.wg.Add(2)
-	go client.writePump()
-	go client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
+	hub.wg.Go(client.writePump)
+	hub.wg.Go(func() {
+		//nolint: contextcheck // this is fine
+		client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
+	})
 }
 
 func websocketUpgrader(secure bool) *websocket.Upgrader {

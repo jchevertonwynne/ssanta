@@ -709,6 +709,39 @@ func (s *Service) GetOrCreateDMRoom(
 	return roomID, nil
 }
 
+// resolveDMPartner extracts the partner name and ID from a DM room display name
+// ("dm:user1:user2") given the calling user's ID and a username→user map.
+// Returns false if the room name is malformed, the partner cannot be identified,
+// or the partner is not in the user map.
+func resolveDMPartner(displayName string, selfID model.UserID, userByName map[string]model.User) (string, model.UserID, bool) {
+	parts := strings.Split(displayName, ":")
+	if len(parts) != dmRoomNameParts {
+		return "", 0, false
+	}
+
+	partnerName := parts[1]
+	if partnerName == "" {
+		partnerName = parts[2]
+	} else if parts[2] != "" {
+		if user, ok := userByName[parts[1]]; ok {
+			if user.ID != selfID {
+				partnerName = parts[1]
+			} else if user2, ok2 := userByName[parts[2]]; ok2 {
+				if user2.ID == selfID {
+					return "", 0, false
+				}
+				partnerName = parts[2]
+			}
+		}
+	}
+
+	partner, ok := userByName[partnerName]
+	if !ok {
+		return "", 0, false
+	}
+	return partnerName, partner.ID, true
+}
+
 // getDMRoomsForUser returns a list of DM rooms for a user with partner info.
 //
 //nolint:cyclop,nestif,funcorder
@@ -727,37 +760,10 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID model.UserID, us
 	var dmRooms []DMRoomInfo
 
 	for _, room := range memberRooms {
-		// Extract partner username from DM name format "dm:user1:user2"
-		parts := strings.Split(room.DisplayName, ":")
-		if len(parts) != dmRoomNameParts {
+		partnerName, partnerID, ok := resolveDMPartner(room.DisplayName, userID, userByName)
+		if !ok {
 			continue
 		}
-
-		partnerName := parts[1]
-		if partnerName == "" {
-			partnerName = parts[2]
-		} else if parts[2] != "" {
-			// Pick the one that's not the current user
-			if user, ok := userByName[parts[1]]; ok {
-				if user.ID != userID {
-					partnerName = parts[1]
-				} else if user2, ok2 := userByName[parts[2]]; ok2 {
-					partnerName = parts[2]
-					if user2.ID == userID {
-						continue
-					}
-				}
-			}
-		}
-
-		// Find the partner in the user list
-		var partnerID model.UserID
-		if partner, ok := userByName[partnerName]; ok {
-			partnerID = partner.ID
-		} else {
-			continue
-		}
-
 		dmRooms = append(dmRooms, DMRoomInfo{
 			RoomID:      room.ID,
 			PartnerID:   partnerID,

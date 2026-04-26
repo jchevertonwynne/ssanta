@@ -616,7 +616,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 			// Hub is stopping; avoid blocking if Run has exited.
 		}
 		c.conn.Close() //nolint:errcheck,gosec
-		c.hub.wg.Done()
 	}()
 
 	c.conn.SetReadLimit(maxMessageLength * 2)
@@ -639,7 +638,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 		if metrics := observability.GetMetrics(); metrics != nil {
 			attrs := attribute.NewSet(
 				attribute.Int64("room_id", c.roomID.Int64()),
-				attribute.Int64("user_id", c.userID.Int64()),
 			)
 			metrics.WSMessagesReceived.Add(ctx, 1, metric.WithAttributeSet(attrs))
 		}
@@ -658,7 +656,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
 						attribute.Int64("room_id", c.roomID.Int64()),
-						attribute.Int64("user_id", c.userID.Int64()),
 						attribute.Bool("dropped", true),
 					)
 					metrics.WSMessagesReceived.Add(ctx, 1, metric.WithAttributeSet(attrs))
@@ -796,7 +793,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(
 						attribute.Int64("room_id", c.roomID.Int64()),
-						attribute.Int64("user_id", c.userID.Int64()),
 					)
 					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
 				}
@@ -843,7 +839,6 @@ func (c *ChatClient) readPump(parent context.Context) {
 			if metrics := observability.GetMetrics(); metrics != nil {
 				attrs := attribute.NewSet(
 					attribute.Int64("room_id", c.roomID.Int64()),
-					attribute.Int64("user_id", c.userID.Int64()),
 				)
 				metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
 			}
@@ -868,7 +863,6 @@ func (c *ChatClient) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close() //nolint:errcheck,gosec
-		c.hub.wg.Done()
 	}()
 
 	for {

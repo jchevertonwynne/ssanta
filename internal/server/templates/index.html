@@ -17,6 +17,29 @@
         }
     });
 
+    document.addEventListener('htmx:afterRequest', function(evt) {
+        var token = evt.detail.xhr && evt.detail.xhr.getResponseHeader('X-CSRF-Token');
+        if (token) {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', token);
+        }
+    });
+
+    document.addEventListener('htmx:confirm', function(evt) {
+        if (!evt.detail.question) return;
+        evt.preventDefault();
+        if (localStorage.getItem('admin_skip_confirm') === 'true') {
+            evt.detail.issueRequest();
+            return;
+        }
+        var d = document.getElementById('htmx-confirm-dialog');
+        document.getElementById('htmx-confirm-msg').textContent = evt.detail.question;
+        var dontAsk = document.getElementById('htmx-confirm-dont-ask');
+        if (dontAsk) dontAsk.checked = false;
+        d._htmxIssueRequest = function() { evt.detail.issueRequest(); };
+        d.showModal();
+    });
+
     // Delegated event handlers — declared once so HTMX-swapped fragments
     // pick them up automatically. Fragments use data-* attrs instead of
     // inline event attributes so we can keep script-src-attr locked down.
@@ -43,6 +66,28 @@
         }
 
         document.addEventListener('click', function(evt) {
+            var confirmOk = evt.target.closest('#htmx-confirm-ok');
+            if (confirmOk) {
+                var d = document.getElementById('htmx-confirm-dialog');
+                d.close();
+                var dontAsk = document.getElementById('htmx-confirm-dont-ask');
+                if (dontAsk && dontAsk.checked) {
+                    localStorage.setItem('admin_skip_confirm', 'true');
+                    var adminToggle = document.getElementById('admin-skip-confirm-toggle');
+                    if (adminToggle) adminToggle.checked = true;
+                }
+                var fn = d._htmxIssueRequest;
+                d._htmxIssueRequest = null;
+                if (fn) fn();
+                return;
+            }
+            var confirmCancel = evt.target.closest('#htmx-confirm-cancel');
+            if (confirmCancel) {
+                var d2 = document.getElementById('htmx-confirm-dialog');
+                d2.close();
+                d2._htmxIssueRequest = null;
+                return;
+            }
             var showDel = evt.target.closest('[data-action="show-delete-form"]');
             if (showDel) {
                 var delUi = showDel.closest('#delete-account-ui');
@@ -142,5 +187,15 @@
 <body>
     <h1>ssanta</h1>
     <div id="content" hx-get="{{if .BootstrapURL}}{{.BootstrapURL}}{{else}}/content{{end}}" hx-trigger="load"></div>
+    <dialog id="htmx-confirm-dialog">
+        <p id="htmx-confirm-msg"></p>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">
+            <input type="checkbox" id="htmx-confirm-dont-ask"> Don't ask again
+        </label>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem">
+            <button id="htmx-confirm-cancel">Cancel</button>
+            <button id="htmx-confirm-ok">Confirm</button>
+        </div>
+    </dialog>
 </body>
 </html>

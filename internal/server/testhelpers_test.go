@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +16,13 @@ import (
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
+
+// withCSRFID injects a csrf_id into the context so handlers that call
+// setCSRFRefreshHeader (login, logout, register) can be tested without the
+// full CSRF middleware.
+func withCSRFID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, ctxKeyCSRFID, id)
+}
 
 func newFormRequest(t *testing.T, target string, values url.Values) *http.Request {
 	t.Helper()

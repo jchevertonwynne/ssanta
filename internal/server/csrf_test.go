@@ -70,6 +70,80 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 	}
 }
 
+// TestCSRF_LoginResponseProvidesRefreshedToken is the mirror of
+// TestCSRF_InvalidatesTokenAfterLogin: it verifies that the token returned in
+// the X-CSRF-Token response header after a session change is valid for the new
+// session state, so the client can stay in sync without a full page reload.
+func TestCSRF_LoginResponseProvidesRefreshedToken(t *testing.T) {
+	t.Parallel()
+	secret := []byte("test-secret")
+	sessions := session.NewManager("session-secret", false, time.Hour)
+
+	// Phase 1 — anonymous GET: obtain the csrf_id cookie.
+	getHandler := CSRF(sessions, secret, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	r1 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	w1 := httptest.NewRecorder()
+	getHandler.ServeHTTP(w1, r1)
+
+	var csrfCookie *http.Cookie
+	for _, c := range w1.Result().Cookies() {
+		if c.Name == "csrf_id" {
+			csrfCookie = c
+		}
+	}
+	if csrfCookie == nil {
+		t.Fatal("expected csrf_id cookie on GET")
+	}
+
+	// Phase 2 — POST /login: use the anonymous token; handler sets session and
+	// writes a refreshed CSRF token header.
+	loginHandler := CSRF(sessions, secret, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := store.UserID(42)
+		sessions.Set(w, userID, 0)
+		setCSRFRefreshHeader(w, r.Context(), secret, &userID)
+		w.WriteHeader(http.StatusOK)
+	}))
+	anonToken := computeCSRFToken(secret, csrfCookie.Value, nil)
+	r2 := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/login", nil)
+	r2.Header.Set("X-Csrf-Token", anonToken)
+	r2.AddCookie(csrfCookie)
+	w2 := httptest.NewRecorder()
+	loginHandler.ServeHTTP(w2, r2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("login POST: expected 200, got %d", w2.Code)
+	}
+	refreshedToken := w2.Header().Get("X-CSRF-Token")
+	if refreshedToken == "" {
+		t.Fatal("login response must include X-CSRF-Token header")
+	}
+
+	// Phase 3 — authenticated POST: the refreshed token must be accepted.
+	var sessionCookie *http.Cookie
+	for _, c := range w2.Result().Cookies() {
+		if c.Name == "session" {
+			sessionCookie = c
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatal("expected session cookie after login")
+	}
+
+	authedHandler := CSRF(sessions, secret, false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	r3 := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/action", nil)
+	r3.Header.Set("X-Csrf-Token", refreshedToken)
+	r3.AddCookie(csrfCookie)
+	r3.AddCookie(sessionCookie)
+	w3 := httptest.NewRecorder()
+	authedHandler.ServeHTTP(w3, r3)
+	if w3.Code == http.StatusForbidden {
+		t.Fatal("refreshed token must be accepted for authenticated requests after login")
+	}
+}
+
 func TestCSRF_InvalidatesTokenAfterLogin(t *testing.T) {
 	t.Parallel()
 	secret := []byte("test-secret")

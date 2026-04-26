@@ -99,6 +99,22 @@ func CSRFTokenFromContext(ctx context.Context) string {
 	return token
 }
 
+func csrfIDFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(ctxKeyCSRFID).(string)
+	return id
+}
+
+// setCSRFRefreshHeader writes a fresh CSRF token to the X-CSRF-Token response
+// header so the client can update its meta tag after a session state change
+// (login / logout / register).
+func setCSRFRefreshHeader(w http.ResponseWriter, ctx context.Context, secret []byte, userID *model.UserID) {
+	id := csrfIDFromContext(ctx)
+	if id == "" {
+		return
+	}
+	w.Header().Set("X-CSRF-Token", computeCSRFToken(secret, id, userID))
+}
+
 func computeCSRFToken(secret []byte, csrfID string, userID *model.UserID) string {
 	h := hmac.New(sha256.New, secret)
 	hashable := csrfID

@@ -46,14 +46,12 @@ func TestInviteStore_AcceptInvite_Concurrent(t *testing.T) {
 	start := make(chan struct{})
 	errCh := make(chan error, 2)
 	var wg sync.WaitGroup
-	wg.Add(2)
 	for range 2 {
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			_, err := st.Invites.AcceptInvite(ctx, inviteID, inviteeID)
 			errCh <- err
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()
