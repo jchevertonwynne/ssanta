@@ -103,6 +103,17 @@ else
   log "generated new SESSION_SECRET, saved to $SESSION_SECRET_FILE"
 fi
 
+METRICS_SECRET_FILE=".secrets/ssanta_metrics_secret"
+if [[ -s "$METRICS_SECRET_FILE" ]]; then
+  METRICS_SECRET_VAL="$(cat "$METRICS_SECRET_FILE")"
+  log "loaded METRICS_SECRET from $METRICS_SECRET_FILE"
+else
+  METRICS_SECRET_VAL="$(openssl rand -hex 32)"
+  printf "%s" "$METRICS_SECRET_VAL" > "$METRICS_SECRET_FILE"
+  chmod 600 "$METRICS_SECRET_FILE"
+  log "generated new METRICS_SECRET, saved to $METRICS_SECRET_FILE"
+fi
+
 SPEC_FILE="$(mktemp -t ssanta-appspec.XXXXXX.json)"
 APP_GET_JSON_FILE="$(mktemp -t ssanta-appget.XXXXXX.json)"
 APP_GET_ERR_FILE="$(mktemp -t ssanta-appget.XXXXXX.err)"
@@ -145,6 +156,7 @@ SERVICE_NAME="$SERVICE_NAME" \
 JOB_NAME="$JOB_NAME" \
 SESSION_SECRET_VAL="$SESSION_SECRET_VAL" \
 RUNTIME_DB_PASS="$RUNTIME_DB_PASS" \
+METRICS_SECRET_VAL="$METRICS_SECRET_VAL" \
 python3 - "$APP_GET_JSON_FILE" <<'PY' >"$SPEC_FILE"
 import json
 import os
@@ -156,6 +168,7 @@ service_name = os.environ["SERVICE_NAME"]
 job_name = os.environ["JOB_NAME"]
 session_secret_val = os.environ["SESSION_SECRET_VAL"]
 runtime_db_pass = os.environ["RUNTIME_DB_PASS"]
+metrics_secret_val = os.environ["METRICS_SECRET_VAL"]
 
 with open(sys.argv[1], "r", encoding="utf-8") as f:
   apps = json.load(f)
@@ -198,11 +211,12 @@ remove_env(envs, "MIGRATE_DATABASE_URL")
 # submit a plaintext value (DO rejects re-submitting its own EV[…] ciphertext,
 # and omitting the value clears the secret).
 upsert_env(envs, "SESSION_SECRET", session_secret_val, env_type="SECRET")
+upsert_env(envs, "METRICS_SECRET", metrics_secret_val, env_type="SECRET")
 
 # Strip EV[…]-encrypted values from any other SECRET envs we haven't explicitly
 # set — DO rejects re-submitting its own ciphertext. Omitting value for
 # non-managed secrets is the least-bad option.
-explicitly_set = {"DATABASE_URL", "SESSION_SECRET"}
+explicitly_set = {"DATABASE_URL", "SESSION_SECRET", "METRICS_SECRET"}
 for e in envs:
     if e.get("type") == "SECRET" and e.get("key") not in explicitly_set:
         v = e.get("value", "")

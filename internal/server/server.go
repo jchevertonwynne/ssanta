@@ -116,9 +116,9 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	// Health & pages
 	mux.HandleFunc("GET /healthz", handleHealth(svc))
 	if metricsSecret != "" {
-		metricsHandler = metricsWithSecret(metricsHandler, metricsSecret)
+		metricsHandler= bearerAuthMiddleware(metricsHandler, metricsSecret)
 	}
-	mux.Handle("GET /metrics", metricsHandler)
+	mux.Handle("/metrics", metricsHandler)
 	mux.HandleFunc("GET /{$}", handleIndex)
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
@@ -205,9 +205,9 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		SecurityHeaders(sessions.Secure()),
 		MaxRequestBody,
 		TracingMiddleware(serviceName),
-		MetricsMiddleware,
 		CSRF(sessions, sessions.Secret(), sessions.Secure()),
 		WithRequestLogger(nil),
+		MetricsMiddleware,
 	)
 
 	closeFn := func() {

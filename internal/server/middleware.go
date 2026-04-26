@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -302,5 +303,25 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 		if rw.written > 0 {
 			metrics.HTTPResponseSize.Record(r.Context(), rw.written, metric.WithAttributeSet(attrs))
 		}
+	})
+}
+
+func bearerAuthMiddleware(next http.Handler, expectedToken string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+
+		if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		token := strings.TrimPrefix(auth, "Bearer ")
+
+		if token != expectedToken {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
