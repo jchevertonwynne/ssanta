@@ -143,7 +143,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	inviteRL := makeLimiter(opts.RateLimitInvite)
 	wsRL := makeLimiter(opts.RateLimitWS)
 	dmRL := makeLimiter(opts.RateLimitDM)
-	limited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(authRL, h) }
+	usersLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(authRL, h) }
 	searchLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(searchRL, h) }
 	roomLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(roomRL, h) }
 	inviteLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(inviteRL, h) }
@@ -153,11 +153,11 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content/ws", wsLimited(handleContentWebSocket(hub, svc, sessions)))
 
 	// Users
-	mux.HandleFunc("POST /users", limited(handleCreateUser(svc, sessions, hubAPI)))
-	mux.HandleFunc("DELETE /users/{id}", limited(handleDeleteUser(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /login", limited(handleLogin(svc, sessions)))
+	mux.HandleFunc("POST /users", usersLimited(handleCreateUser(svc, sessions, hubAPI)))
+	mux.HandleFunc("DELETE /users/{id}", usersLimited(handleDeleteUser(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /login", usersLimited(handleLogin(svc, sessions)))
 	mux.HandleFunc("POST /logout", handleLogout(svc, sessions))
-	mux.HandleFunc("POST /password", limited(handleChangePassword(svc, sessions)))
+	mux.HandleFunc("POST /password", usersLimited(handleChangePassword(svc, sessions)))
 
 	// Rooms
 	mux.HandleFunc("POST /rooms", roomLimited(handleCreateRoom(svc, sessions)))

@@ -49,21 +49,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-}
-
-func run(cfg config) error {
+	var clients []*userClient
+	var roomID int64
+	var setupErr error
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	_, _ = fmt.Fprintf(os.Stdout, "setting up %d users...\n", cfg.numUsers)
-	clients, roomID, err := setup(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("setup failed: %w", err)
+	clients, roomID, setupErr = setup(ctx, cfg)
+	if setupErr != nil {
+		// Attempt cleanup of any clients that were created before setup failed
+		if len(clients) > 0 {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			cleanup(cleanupCtx, clients)
+		}
+		fmt.Fprintf(os.Stderr, "setup failed: %v\n", setupErr)
+		os.Exit(1)
 	}
+
+	defer func() {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		cleanup(cleanupCtx, clients)
+	}()
+
 	_, _ = fmt.Fprintf(os.Stdout, "setup complete, room ID: %d — starting simulation\n", roomID)
 
 	stats := make([]*userStats, cfg.numUsers)
@@ -85,11 +95,7 @@ func run(cfg config) error {
 	_, _ = fmt.Fprintf(os.Stdout, "\nshutting down...\n")
 	wg.Wait()
 
-	cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	cleanup(cleanupCtx, clients)
 	printStats(stats)
-	return nil
 }
 
 func validateConfig(cfg config) error {
@@ -124,24 +130,24 @@ func setup(ctx context.Context, cfg config) ([]*userClient, int64, error) {
 	}
 
 	if err := registerClients(ctx, clients); err != nil {
-		return nil, 0, err
+		return clients, 0, err
 	}
 
 	roomName := fmt.Sprintf("loadgen_%06x", rng.Int31n(1<<24))
 	roomID, err := clients[0].createRoom(ctx, roomName)
 	if err != nil {
-		return nil, 0, fmt.Errorf("create room: %w", err)
+		return clients, 0, fmt.Errorf("create room: %w", err)
 	}
 
 	for _, c := range clients[1:] {
 		if err := clients[0].inviteUser(ctx, roomID, c.username); err != nil {
-			return nil, 0, fmt.Errorf("invite %s: %w", c.username, err)
+			return clients, roomID, fmt.Errorf("invite %s: %w", c.username, err)
 		}
 	}
 
 	if cfg.numUsers > 1 {
 		if err := acceptAllInvites(ctx, clients[1:]); err != nil {
-			return nil, 0, err
+			return clients, roomID, err
 		}
 	}
 
