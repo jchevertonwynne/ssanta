@@ -28,8 +28,15 @@ func handleWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions Ses
 		}
 
 		if !isCreator && !isMember {
-			http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
-			return
+			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+			if err != nil {
+				http.Error(w, "failed to check room access", http.StatusInternalServerError)
+				return
+			}
+			if !isPublic {
+				http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
+				return
+			}
 		}
 
 		// Get username

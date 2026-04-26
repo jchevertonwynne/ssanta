@@ -59,8 +59,16 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 			return
 		}
 		if !isCreator && !isMember {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
+			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+			if err != nil {
+				slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
+				http.Error(w, "failed to check room access", http.StatusInternalServerError)
+				return
+			}
+			if !isPublic {
+				http.Error(w, "not a member of this room", http.StatusForbidden)
+				return
+			}
 		}
 
 		limitStr := r.URL.Query().Get("limit")
@@ -111,8 +119,16 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 			return
 		}
 		if !isCreator && !isMember {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
+			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+			if err != nil {
+				slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
+				http.Error(w, "failed to check room access", http.StatusInternalServerError)
+				return
+			}
+			if !isPublic {
+				http.Error(w, "not a member of this room", http.StatusForbidden)
+				return
+			}
 		}
 
 		query := r.URL.Query().Get("q")

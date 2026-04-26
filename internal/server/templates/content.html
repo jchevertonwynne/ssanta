@@ -105,6 +105,18 @@
             <p>None yet.</p>
         {{end}}
 
+        {{if .PublicRooms}}
+        <h3>Public rooms</h3>
+        <ul>
+        {{range .PublicRooms}}
+            <li>
+                {{.DisplayName}}
+                <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">View</button>
+            </li>
+        {{end}}
+        </ul>
+        {{end}}
+
         {{template "content_invites.html" .}}
     </section>
 

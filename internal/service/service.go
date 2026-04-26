@@ -76,6 +76,7 @@ type ContentView struct {
 	Users           []model.User
 	CreatedRooms    []model.Room
 	MemberRooms     []model.Room
+	PublicRooms     []model.Room
 	DMRooms         []DMRoomInfo
 	Invites         []model.InviteForUser
 }
@@ -179,7 +180,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, us
 			break
 		}
 	}
-	if !isCreator && !isMember {
+	if !isCreator && !isMember && !room.IsPublic {
 		return nil, store.ErrNotRoomMember
 	}
 
@@ -613,6 +614,11 @@ func (s *Service) IsRoomPGPRequired(ctx context.Context, roomID model.RoomID) (b
 	return s.store.Rooms.IsRoomPGPRequired(ctx, roomID)
 }
 
+// IsRoomPublic reports whether a room is publicly visible.
+func (s *Service) IsRoomPublic(ctx context.Context, roomID model.RoomID) (bool, error) {
+	return s.store.Rooms.IsRoomPublic(ctx, roomID)
+}
+
 // GetUsername resolves a user ID to a username.
 func (s *Service) GetUsername(ctx context.Context, userID model.UserID) (string, error) {
 	user, err := s.store.Users.GetUserByID(ctx, userID)
@@ -960,6 +966,12 @@ func (s *Service) loadAuthenticatedContentView(ctx context.Context, userID model
 	g.Go(func() error {
 		var err error
 		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.PublicRooms, err = s.store.Rooms.ListPublicRooms(gCtx, userID)
 		return err
 	})
 

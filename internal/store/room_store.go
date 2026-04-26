@@ -153,6 +153,37 @@ func (s *RoomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool,
 	return required, err
 }
 
+func (s *RoomStore) IsRoomPublic(ctx context.Context, roomID RoomID) (bool, error) {
+	var public bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT is_public FROM rooms WHERE id = $1`,
+		roomID,
+	).Scan(&public)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrRoomNotFound
+	}
+	return public, err
+}
+
+func (s *RoomStore) ListPublicRooms(ctx context.Context, userID UserID) ([]Room, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, display_name, created_at, pgp_required, is_dm, is_public
+		 FROM rooms
+		 WHERE is_public = TRUE
+		   AND is_dm = FALSE
+		   AND creator_id != $1
+		   AND NOT EXISTS (
+		       SELECT 1 FROM room_users WHERE room_id = rooms.id AND user_id = $1
+		   )
+		 ORDER BY display_name ASC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanRooms(rows)
+}
+
 func (s *RoomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID UserID) (bool, error) {
 	var exists bool
 	err := s.pool.QueryRow(ctx,

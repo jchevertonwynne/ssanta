@@ -106,6 +106,10 @@ type SetRoomPublicService interface {
 	SetRoomPublic(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error
 }
 
+type IsRoomPublicService interface {
+	IsRoomPublic(ctx context.Context, roomID model.RoomID) (bool, error)
+}
+
 type RoomPGPService interface {
 	SetRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, armoredPublicKey string) error
 	VerifyRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, decryptedChallenge string) error
@@ -154,6 +158,7 @@ type RoomHandlersService interface {
 	SetRoomMembersCanInviteService
 	SetRoomPGPRequiredService
 	SetRoomPublicService
+	IsRoomPublicService
 	RoomPGPService
 }
 
@@ -177,6 +182,7 @@ type MessageListService interface {
 	UserExistsService
 	MessageHistoryService
 	RoomAccessService
+	IsRoomPublicService
 }
 
 type WebSocketHandlersService interface {
@@ -185,6 +191,7 @@ type WebSocketHandlersService interface {
 	IsRoomMemberService
 	RoomMembersWithPGPService
 	IsRoomPGPRequiredService
+	IsRoomPublicService
 	RoomAccessService
 	MessageHistoryService
 }

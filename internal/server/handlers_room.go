@@ -101,6 +101,7 @@ func handleDeleteRoom(svc RoomHandlersService, sessions SessionManager, hub Hub)
 	}
 }
 
+//nolint:cyclop
 func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -121,8 +122,16 @@ func handleJoinRoom(svc RoomHandlersService, sessions SessionManager, hub Hub) h
 		}
 
 		if !isCreator && !isMember {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
+			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+			if err != nil {
+				loggerFromContext(r.Context()).Error("check room public", "err", err)
+				http.Error(w, "failed to check room", http.StatusInternalServerError)
+				return
+			}
+			if !isPublic {
+				http.Error(w, "not a member of this room", http.StatusForbidden)
+				return
+			}
 		}
 
 		username, err := svc.GetUsername(r.Context(), currentID)
@@ -438,8 +447,10 @@ type MembersListService interface {
 	UserExistsService
 	RoomMembersWithPGPService
 	IsRoomPGPRequiredService
+	IsRoomPublicService
 }
 
+//nolint:cyclop,funlen
 func handleRoomMembersList(svc MembersListService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -482,8 +493,15 @@ func handleRoomMembersList(svc MembersListService, sessions SessionManager) http
 			resp.Members = append(resp.Members, entry)
 		}
 		if !isMember {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
-			return
+			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+			if err != nil {
+				http.Error(w, "failed to check room access", http.StatusInternalServerError)
+				return
+			}
+			if !isPublic {
+				http.Error(w, "not a member of this room", http.StatusForbidden)
+				return
+			}
 		}
 
 		pgpRequired, err := svc.IsRoomPGPRequired(r.Context(), roomID)

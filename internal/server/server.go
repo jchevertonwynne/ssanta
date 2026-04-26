@@ -38,6 +38,7 @@ type contentData struct {
 	Users               []model.User
 	CreatedRooms        []model.Room
 	MemberRooms         []model.Room
+	PublicRooms         []model.Room
 	DMRooms             []service.DMRoomInfo
 	Invites             []model.InviteForUser
 	RoomFormError       string
@@ -492,6 +493,7 @@ func renderContentData(w http.ResponseWriter, ctx context.Context, svc ContentVi
 	data.Users = view.Users
 	data.CreatedRooms = view.CreatedRooms
 	data.MemberRooms = view.MemberRooms
+	data.PublicRooms = view.PublicRooms
 	data.DMRooms = view.DMRooms
 	data.Invites = view.Invites
 	data.ScriptNonce = scriptNonceFromContext(ctx)
