@@ -820,11 +820,12 @@ func (c *ChatClient) readPump(parent context.Context) {
 			}
 			if isWhisper {
 				c.hub.SendToRoomUser(c.roomID, c.userID, outBytes)
+				c.hub.SendToRoomUser(c.roomID, targetUserID, outBytes)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(attribute.Int64("room_id", c.roomID.Int64()))
 					metrics.WSMessagesSent.Add(ctx, 1, metric.WithAttributeSet(attrs))
 				}
-				slog.InfoContext(ctx, "whisper sent", "room_id", c.roomID, "user_id", c.userID)
+				slog.InfoContext(ctx, "whisper sent", "room_id", c.roomID, "user_id", c.userID, "target_user_id", targetUserID)
 			} else {
 				c.hub.BroadcastToRoom(c.roomID, outBytes)
 				if metrics := observability.GetMetrics(); metrics != nil {
