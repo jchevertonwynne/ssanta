@@ -14,9 +14,9 @@
 /dist/
 /build/
 /.kilo/
-server
-migrate
-loadgen
+/server
+/migrate
+/loadgen
 
 # Coverage / profiling
 *.coverprofile
