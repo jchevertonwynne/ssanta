@@ -100,6 +100,7 @@ func TestHandleSetRoomPGPKey_InvalidKey_RendersSidebarWithError(t *testing.T) {
 	}
 }
 
+//nolint:dupl // success path for set-key; structurally similar to verify success but tests a different handler
 func TestHandleSetRoomPGPKey_Success_NotifiesHubAndRendersSidebar(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -164,72 +165,43 @@ func TestHandleVerifyRoomPGPKey_NotMember_Returns403(t *testing.T) {
 	}
 }
 
-func TestHandleVerifyRoomPGPKey_ChallengeMissing_RendersSidebarWithError(t *testing.T) {
+func TestHandleVerifyRoomPGPKey_ChallengeErrors_RenderSidebar(t *testing.T) {
 	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-	hub := servermocks.NewMockHub(ctrl)
+	tests := []struct {
+		name      string
+		challenge string
+		err       error
+	}{
+		{name: "missing", challenge: "abc", err: store.ErrPGPChallengeMissing},
+		{name: "expired", challenge: "abc", err: store.ErrPGPChallengeExpired},
+		{name: "incorrect", challenge: "wrong", err: store.ErrPGPChallengeIncorrect},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			svc := servermocks.NewMockServerService(ctrl)
+			sessions := servermocks.NewMockSessionManager(ctrl)
+			hub := servermocks.NewMockHub(ctrl)
 
-	userID := store.UserID(1)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().VerifyRoomPGPKey(gomock.Any(), roomID, userID, "abc").Return(store.ErrPGPChallengeMissing)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
+			userID := store.UserID(1)
+			roomID := store.RoomID(10)
+			expectLoggedIn(t, svc, sessions, userID)
+			svc.EXPECT().VerifyRoomPGPKey(gomock.Any(), roomID, userID, tc.challenge).Return(tc.err)
+			svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
 
-	r := newFormRequest(t, "/rooms/10/pgp/verify", url.Values{"decrypted_challenge": {"abc"}})
-	r.SetPathValue("id", "10")
-	w := serve(t, handleVerifyRoomPGPKey(svc, sessions, hub), r)
+			r := newFormRequest(t, "/rooms/10/pgp/verify", url.Values{"decrypted_challenge": {tc.challenge}})
+			r.SetPathValue("id", "10")
+			w := serve(t, handleVerifyRoomPGPKey(svc, sessions, hub), r)
 
-	if w.Code == http.StatusForbidden || w.Code == http.StatusNotFound {
-		t.Fatalf("expected sidebar render (non-4xx), got %d", w.Code)
+			if w.Code == http.StatusForbidden || w.Code == http.StatusNotFound {
+				t.Fatalf("expected sidebar render (non-4xx), got %d", w.Code)
+			}
+		})
 	}
 }
 
-func TestHandleVerifyRoomPGPKey_ChallengeExpired_RendersSidebarWithError(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-	hub := servermocks.NewMockHub(ctrl)
-
-	userID := store.UserID(1)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().VerifyRoomPGPKey(gomock.Any(), roomID, userID, "abc").Return(store.ErrPGPChallengeExpired)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
-
-	r := newFormRequest(t, "/rooms/10/pgp/verify", url.Values{"decrypted_challenge": {"abc"}})
-	r.SetPathValue("id", "10")
-	w := serve(t, handleVerifyRoomPGPKey(svc, sessions, hub), r)
-
-	if w.Code == http.StatusForbidden || w.Code == http.StatusNotFound {
-		t.Fatalf("expected sidebar render (non-4xx), got %d", w.Code)
-	}
-}
-
-func TestHandleVerifyRoomPGPKey_ChallengeIncorrect_RendersSidebarWithError(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-	hub := servermocks.NewMockHub(ctrl)
-
-	userID := store.UserID(1)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().VerifyRoomPGPKey(gomock.Any(), roomID, userID, "wrong").Return(store.ErrPGPChallengeIncorrect)
-	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
-
-	r := newFormRequest(t, "/rooms/10/pgp/verify", url.Values{"decrypted_challenge": {"wrong"}})
-	r.SetPathValue("id", "10")
-	w := serve(t, handleVerifyRoomPGPKey(svc, sessions, hub), r)
-
-	if w.Code == http.StatusForbidden || w.Code == http.StatusNotFound {
-		t.Fatalf("expected sidebar render (non-4xx), got %d", w.Code)
-	}
-}
-
+//nolint:dupl // success path for verify; structurally similar to set-key success but tests a different handler
 func TestHandleVerifyRoomPGPKey_Success_NotifiesHubAndRendersSidebar(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -338,49 +310,40 @@ func TestHandleRemoveMemberPGPKey_Unauthorized_Returns401(t *testing.T) {
 	}
 }
 
-func TestHandleRemoveMemberPGPKey_NotCreator_Returns403(t *testing.T) {
+func TestHandleRemoveMemberPGPKey_ErrorCases(t *testing.T) {
 	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-	hub := servermocks.NewMockHub(ctrl)
-
-	actingID := store.UserID(1)
-	targetID := store.UserID(2)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, actingID)
-	svc.EXPECT().RemoveRoomUserPGPKey(gomock.Any(), roomID, targetID, actingID).Return(store.ErrNotRoomCreator)
-
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/2/pgp", nil)
-	r.SetPathValue("id", "10")
-	r.SetPathValue("memberid", "2")
-	w := serve(t, handleRemoveMemberPGPKey(svc, sessions, hub), r)
-
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", w.Code)
+	tests := []struct {
+		name         string
+		targetID     store.UserID
+		memberPath   string
+		err          error
+		expectedCode int
+	}{
+		{name: "not creator returns 403", targetID: store.UserID(2), memberPath: "2", err: store.ErrNotRoomCreator, expectedCode: http.StatusForbidden},
+		{name: "member not found returns 404", targetID: store.UserID(99), memberPath: "99", err: store.ErrNotRoomMember, expectedCode: http.StatusNotFound},
 	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			svc := servermocks.NewMockServerService(ctrl)
+			sessions := servermocks.NewMockSessionManager(ctrl)
+			hub := servermocks.NewMockHub(ctrl)
 
-func TestHandleRemoveMemberPGPKey_MemberNotFound_Returns404(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-	hub := servermocks.NewMockHub(ctrl)
+			actingID := store.UserID(1)
+			roomID := store.RoomID(10)
+			expectLoggedIn(t, svc, sessions, actingID)
+			svc.EXPECT().RemoveRoomUserPGPKey(gomock.Any(), roomID, tc.targetID, actingID).Return(tc.err)
 
-	actingID := store.UserID(1)
-	targetID := store.UserID(99)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, actingID)
-	svc.EXPECT().RemoveRoomUserPGPKey(gomock.Any(), roomID, targetID, actingID).Return(store.ErrNotRoomMember)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/"+tc.memberPath+"/pgp", nil)
+			r.SetPathValue("id", "10")
+			r.SetPathValue("memberid", tc.memberPath)
+			w := serve(t, handleRemoveMemberPGPKey(svc, sessions, hub), r)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/99/pgp", nil)
-	r.SetPathValue("id", "10")
-	r.SetPathValue("memberid", "99")
-	w := serve(t, handleRemoveMemberPGPKey(svc, sessions, hub), r)
-
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
+			if w.Code != tc.expectedCode {
+				t.Fatalf("expected %d, got %d", tc.expectedCode, w.Code)
+			}
+		})
 	}
 }
 

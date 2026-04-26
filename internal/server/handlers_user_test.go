@@ -360,12 +360,14 @@ func TestHandleChangePassword_PasswordTooShort(t *testing.T) {
 	testChangePasswordError(t, "oldpass12", "short", store.ErrPasswordTooShort)
 }
 
+const testCSRFID = "test-csrf-id"
+
 func TestHandleLogin_Success_IncludesCsrfRefreshHeader(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 
 	csrfSecret := []byte("csrf-secret")
-	csrfID := "test-csrf-id"
+	csrfID := testCSRFID
 	userID := store.UserID(5)
 
 	svc := servermocks.NewMockServerService(ctrl)
@@ -384,7 +386,7 @@ func TestHandleLogin_Success_IncludesCsrfRefreshHeader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	gotToken := w.Header().Get("X-CSRF-Token")
+	gotToken := w.Header().Get(csrfHeaderName)
 	if gotToken == "" {
 		t.Fatal("expected X-CSRF-Token response header after login")
 	}
@@ -399,7 +401,7 @@ func TestHandleCreateUser_Success_IncludesCsrfRefreshHeader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	csrfSecret := []byte("csrf-secret")
-	csrfID := "test-csrf-id"
+	csrfID := testCSRFID
 	userID := store.UserID(42)
 
 	svc := servermocks.NewMockServerService(ctrl)
@@ -424,7 +426,7 @@ func TestHandleCreateUser_Success_IncludesCsrfRefreshHeader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	gotToken := w.Header().Get("X-CSRF-Token")
+	gotToken := w.Header().Get(csrfHeaderName)
 	if gotToken == "" {
 		t.Fatal("expected X-CSRF-Token response header after register")
 	}
@@ -439,7 +441,7 @@ func TestHandleLogout_IncludesCsrfRefreshHeader(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	csrfSecret := []byte("csrf-secret")
-	csrfID := "test-csrf-id"
+	csrfID := testCSRFID
 
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
@@ -455,7 +457,7 @@ func TestHandleLogout_IncludesCsrfRefreshHeader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	gotToken := w.Header().Get("X-CSRF-Token")
+	gotToken := w.Header().Get(csrfHeaderName)
 	if gotToken == "" {
 		t.Fatal("expected X-CSRF-Token response header after logout")
 	}

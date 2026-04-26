@@ -17,10 +17,12 @@ func stubAdminView() *service.AdminView {
 	return &service.AdminView{CurrentUsername: "admin", Users: nil, Rooms: nil}
 }
 
-func expectAdminLoggedIn(t *testing.T, svc *servermocks.MockServerService, sessions *servermocks.MockSessionManager, adminID store.UserID) {
+const testAdminID = store.UserID(1)
+
+func expectAdminLoggedIn(t *testing.T, svc *servermocks.MockServerService, sessions *servermocks.MockSessionManager) {
 	t.Helper()
-	expectLoggedIn(t, svc, sessions, adminID)
-	svc.EXPECT().IsUserAdmin(gomock.Any(), adminID).Return(true, nil)
+	expectLoggedIn(t, svc, sessions, testAdminID)
+	svc.EXPECT().IsUserAdmin(gomock.Any(), testAdminID).Return(true, nil)
 }
 
 // handleAdminPage — non-HTMX path skips auth entirely.
@@ -80,8 +82,8 @@ func TestHandleAdminPage_Success_SetsHxPushUrl(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	adminID := store.UserID(1)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	adminID := testAdminID
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().GetAdminView(gomock.Any(), adminID).Return(stubAdminView(), nil)
 
 	r, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "/admin", nil)
@@ -142,9 +144,9 @@ func TestHandleAdminDeleteUser_UserNotFound_Returns404(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	targetID := store.UserID(99)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().AdminDeleteUser(gomock.Any(), adminID, targetID).Return(store.ErrUserNotFound)
 
 	r, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/99", nil)
@@ -163,9 +165,9 @@ func TestHandleAdminDeleteUser_Success_NotifiesHubAndRendersAdmin(t *testing.T) 
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	targetID := store.UserID(99)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().AdminDeleteUser(gomock.Any(), adminID, targetID).Return(nil)
 	// MockHub does not implement HandleAccountDeletion — the type assertion silently fails, which is fine.
 	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
@@ -207,9 +209,9 @@ func TestHandleAdminDeleteRoom_RoomNotFound_Returns404(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	roomID := store.RoomID(10)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().AdminDeleteRoom(gomock.Any(), adminID, roomID).Return(store.ErrRoomNotFound)
 
 	r, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/rooms/10", nil)
@@ -228,9 +230,9 @@ func TestHandleAdminDeleteRoom_DMRoom_Returns400(t *testing.T) {
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	roomID := store.RoomID(10)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().AdminDeleteRoom(gomock.Any(), adminID, roomID).Return(store.ErrOperationNotAllowedOnDM)
 
 	r, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/rooms/10", nil)
@@ -249,9 +251,9 @@ func TestHandleAdminDeleteRoom_Success_DisconnectsRoomAndRendersAdmin(t *testing
 	sessions := servermocks.NewMockSessionManager(ctrl)
 	hub := servermocks.NewMockHub(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	roomID := store.RoomID(10)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().AdminDeleteRoom(gomock.Any(), adminID, roomID).Return(nil)
 	hub.EXPECT().DisconnectRoom(roomID)
 	svc.EXPECT().GetAdminView(gomock.Any(), adminID).Return(stubAdminView(), nil)
@@ -273,9 +275,9 @@ func TestHandleAdminSetUserAdmin_Grant_Success_RendersAdmin(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	targetID := store.UserID(2)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().SetUserAdmin(gomock.Any(), adminID, targetID, true).Return(nil)
 	svc.EXPECT().GetAdminView(gomock.Any(), adminID).Return(stubAdminView(), nil)
 
@@ -294,8 +296,8 @@ func TestHandleAdminSetUserAdmin_Revoke_Self_Returns400(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	adminID := store.UserID(1)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	adminID := testAdminID
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().SetUserAdmin(gomock.Any(), adminID, adminID, false).Return(store.ErrCannotSelfDemote)
 
 	r := newFormRequest(t, "/admin/users/1/admin", map[string][]string{"grant": {"false"}})
@@ -313,9 +315,9 @@ func TestHandleAdminSetUserAdmin_UserNotFound_Returns404(t *testing.T) {
 	svc := servermocks.NewMockServerService(ctrl)
 	sessions := servermocks.NewMockSessionManager(ctrl)
 
-	adminID := store.UserID(1)
+	adminID := testAdminID
 	targetID := store.UserID(99)
-	expectAdminLoggedIn(t, svc, sessions, adminID)
+	expectAdminLoggedIn(t, svc, sessions)
 	svc.EXPECT().SetUserAdmin(gomock.Any(), adminID, targetID, true).Return(store.ErrUserNotFound)
 
 	r := newFormRequest(t, "/admin/users/99/admin", map[string][]string{"grant": {"true"}})

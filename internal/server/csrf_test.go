@@ -43,7 +43,7 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 	cookies := w1.Result().Cookies()
 	var csrfID string
 	for _, c := range cookies {
-		if c.Name == "csrf_id" {
+		if c.Name == csrfCookieName {
 			csrfID = c.Value
 			break
 		}
@@ -74,6 +74,8 @@ func TestCSRF_AllowsRequestWithValidToken(t *testing.T) {
 // TestCSRF_InvalidatesTokenAfterLogin: it verifies that the token returned in
 // the X-CSRF-Token response header after a session change is valid for the new
 // session state, so the client can stay in sync without a full page reload.
+//
+//nolint:funlen
 func TestCSRF_LoginResponseProvidesRefreshedToken(t *testing.T) {
 	t.Parallel()
 	secret := []byte("test-secret")
@@ -89,7 +91,7 @@ func TestCSRF_LoginResponseProvidesRefreshedToken(t *testing.T) {
 
 	var csrfCookie *http.Cookie
 	for _, c := range w1.Result().Cookies() {
-		if c.Name == "csrf_id" {
+		if c.Name == csrfCookieName {
 			csrfCookie = c
 		}
 	}
@@ -114,7 +116,7 @@ func TestCSRF_LoginResponseProvidesRefreshedToken(t *testing.T) {
 	if w2.Code != http.StatusOK {
 		t.Fatalf("login POST: expected 200, got %d", w2.Code)
 	}
-	refreshedToken := w2.Header().Get("X-CSRF-Token")
+	refreshedToken := w2.Header().Get(csrfHeaderName)
 	if refreshedToken == "" {
 		t.Fatal("login response must include X-CSRF-Token header")
 	}
@@ -160,7 +162,7 @@ func TestCSRF_InvalidatesTokenAfterLogin(t *testing.T) {
 	cookies := w1.Result().Cookies()
 	var csrfID string
 	for _, c := range cookies {
-		if c.Name == "csrf_id" {
+		if c.Name == csrfCookieName {
 			csrfID = c.Value
 			break
 		}

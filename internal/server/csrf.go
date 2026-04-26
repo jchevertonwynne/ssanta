@@ -112,7 +112,7 @@ func setCSRFRefreshHeader(w http.ResponseWriter, ctx context.Context, secret []b
 	if id == "" {
 		return
 	}
-	w.Header().Set("X-CSRF-Token", computeCSRFToken(secret, id, userID))
+	w.Header().Set(csrfHeaderName, computeCSRFToken(secret, id, userID))
 }
 
 func computeCSRFToken(secret []byte, csrfID string, userID *model.UserID) string {

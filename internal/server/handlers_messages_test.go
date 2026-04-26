@@ -85,46 +85,37 @@ func TestHandleListMessages_Success_ReturnsJSON(t *testing.T) {
 	}
 }
 
-func TestHandleListMessages_LimitParam_Clamped(t *testing.T) {
+func TestHandleListMessages_QueryParams(t *testing.T) {
 	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
-
-	userID := store.UserID(1)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(true, false, nil)
-	// limit=999 exceeds 200 cap, so default 50 should be used.
-	svc.EXPECT().ListMessages(gomock.Any(), roomID, userID, model.MessageID(0), 50).Return(nil, nil)
-
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/messages?limit=999", nil)
-	r.SetPathValue("id", "10")
-	w := serve(t, handleListMessages(svc, sessions), r)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+	tests := []struct {
+		name     string
+		query    string
+		beforeID model.MessageID
+	}{
+		{name: "limit clamped to 50 when over 200", query: "?limit=999", beforeID: 0},
+		{name: "before_id parsed correctly", query: "?before_id=42", beforeID: 42},
 	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			svc := servermocks.NewMockServerService(ctrl)
+			sessions := servermocks.NewMockSessionManager(ctrl)
 
-func TestHandleListMessages_BeforeIDParam_Parsed(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	svc := servermocks.NewMockServerService(ctrl)
-	sessions := servermocks.NewMockSessionManager(ctrl)
+			userID := store.UserID(1)
+			roomID := store.RoomID(10)
+			expectLoggedIn(t, svc, sessions, userID)
+			svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(true, false, nil)
+			svc.EXPECT().ListMessages(gomock.Any(), roomID, userID, tc.beforeID, 50).Return(nil, nil)
 
-	userID := store.UserID(1)
-	roomID := store.RoomID(10)
-	expectLoggedIn(t, svc, sessions, userID)
-	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(true, false, nil)
-	svc.EXPECT().ListMessages(gomock.Any(), roomID, userID, model.MessageID(42), 50).Return(nil, nil)
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/messages"+tc.query, nil)
+			r.SetPathValue("id", "10")
+			w := serve(t, handleListMessages(svc, sessions), r)
 
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/messages?before_id=42", nil)
-	r.SetPathValue("id", "10")
-	w := serve(t, handleListMessages(svc, sessions), r)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
+			if w.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d", w.Code)
+			}
+		})
 	}
 }
 

@@ -134,6 +134,11 @@ func handleAdminSetUserAdmin(svc AdminHandlersService, sessions SessionManager) 
 		if !ok {
 			return
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1024)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
 		grant := r.FormValue("grant") == "true"
 		if err := svc.SetUserAdmin(r.Context(), adminID, targetID, grant); err != nil {
 			switch {

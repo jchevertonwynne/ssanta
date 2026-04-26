@@ -713,6 +713,8 @@ func (s *Service) GetOrCreateDMRoom(
 // ("dm:user1:user2") given the calling user's ID and a username→user map.
 // Returns false if the room name is malformed, the partner cannot be identified,
 // or the partner is not in the user map.
+//
+//nolint:nestif
 func resolveDMPartner(displayName string, selfID model.UserID, userByName map[string]model.User) (string, model.UserID, bool) {
 	parts := strings.Split(displayName, ":")
 	if len(parts) != dmRoomNameParts {
@@ -744,7 +746,7 @@ func resolveDMPartner(displayName string, selfID model.UserID, userByName map[st
 
 // getDMRoomsForUser returns a list of DM rooms for a user with partner info.
 //
-//nolint:cyclop,nestif,funcorder
+//nolint:funcorder
 func (s *Service) getDMRoomsForUser(ctx context.Context, userID model.UserID, users []model.User) ([]DMRoomInfo, error) {
 	memberRooms, err := s.store.Rooms.ListDMRoomsByMember(ctx, userID)
 	if err != nil {
