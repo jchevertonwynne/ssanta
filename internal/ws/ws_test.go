@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
 const (
@@ -215,6 +217,9 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	drainAll(t, c1.send)
+	drainAll(t, c2.send)
+
 	hub.NotifyUser(10, "invite_received", "")
 
 	readOne := func(ch <-chan []byte) ChatMessagePayload {
@@ -233,5 +238,353 @@ func TestChatHub_NotifyUser_FanoutToAllConnections(t *testing.T) {
 	p2 := readOne(c2.send)
 	if p1.Type != "invite_received" || p2.Type != "invite_received" {
 		t.Fatalf("expected fanout type invite_received")
+	}
+}
+
+func TestChatHub_SendToRoomUser_TargetsOnlyMatchingUser(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	c2 := &ChatClient{hub: hub, roomID: 1, userID: 20, send: make(chan []byte, 4)}
+	hub.register <- c1
+	hub.register <- c2
+
+	waitForRoomClients(t, hub, 1, 2)
+	drainAll(t, c1.send)
+	drainAll(t, c2.send)
+
+	payload := []byte(`{"type":"system","message":"hi"}`)
+	hub.SendToRoomUser(1, 20, payload)
+
+	select {
+	case got := <-c2.send:
+		if string(got) != string(payload) {
+			t.Fatalf("unexpected payload for c2: %q", string(got))
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for c2 message")
+	}
+
+	select {
+	case <-c1.send:
+		t.Fatalf("c1 should not have received a message")
+	case <-time.After(100 * time.Millisecond):
+		// expected
+	}
+
+	hub.unregister <- c1
+	hub.unregister <- c2
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_DisconnectUser_SendsKickedAndRemoves(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	waitForRoomClients(t, hub, 1, 1)
+	drainAll(t, c1.send)
+
+	hub.DisconnectUser(1, 10)
+
+	select {
+	case msg, ok := <-c1.send:
+		if !ok {
+			t.Fatalf("expected kicked frame before channel close")
+		}
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeKicked {
+			t.Fatalf("expected kicked, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for kicked frame")
+	}
+
+	select {
+	case _, ok := <-c1.send:
+		if ok {
+			t.Fatalf("expected channel closed")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for channel close")
+	}
+
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_KickSpectators_RemovesNonMembers(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	member := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	spectator := &ChatClient{hub: hub, roomID: 1, userID: 20, send: make(chan []byte, 4)}
+	hub.register <- member
+	hub.register <- spectator
+
+	waitForRoomClients(t, hub, 1, 2)
+	drainAll(t, member.send)
+	drainAll(t, spectator.send)
+
+	members := map[model.UserID]struct{}{10: {}}
+	hub.KickSpectators(1, members)
+
+	select {
+	case msg, ok := <-spectator.send:
+		if !ok {
+			t.Fatalf("expected kicked frame before channel close")
+		}
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeKicked {
+			t.Fatalf("expected kicked, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for spectator kicked")
+	}
+
+	select {
+	case <-member.send:
+		t.Fatalf("member should not have been kicked")
+	case <-time.After(100 * time.Millisecond):
+		// expected
+	}
+
+	hub.unregister <- member
+	hub.unregister <- spectator
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_BroadcastSystemMessage(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	waitForRoomClients(t, hub, 1, 1)
+	drainAll(t, c1.send)
+
+	hub.BroadcastSystemMessage(1, "hello world")
+
+	select {
+	case msg := <-c1.send:
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeSystem || p.Message != "hello world" {
+			t.Fatalf("unexpected frame: type=%q msg=%q", p.Type, p.Message)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out")
+	}
+
+	hub.unregister <- c1
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_NotifyRoomUpdate(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	waitForRoomClients(t, hub, 1, 1)
+	drainAll(t, c1.send)
+
+	hub.NotifyRoomUpdate(1)
+
+	select {
+	case msg := <-c1.send:
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeRefresh {
+			t.Fatalf("expected refresh, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out")
+	}
+
+	hub.unregister <- c1
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_NotifyContentUpdate(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 0, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	// Wait for connection tracking.
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		hub.mu.RLock()
+		conns := len(hub.userConnections[10])
+		hub.mu.RUnlock()
+		if conns == 1 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	hub.NotifyContentUpdate(MsgTypeUsersUpdated)
+
+	select {
+	case msg := <-c1.send:
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeUsersUpdated {
+			t.Fatalf("expected content_update, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out")
+	}
+
+	hub.unregister <- c1
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_HandleAccountDeletion(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	waitForRoomClients(t, hub, 1, 1)
+	drainAll(t, c1.send)
+
+	hub.HandleAccountDeletion(10)
+
+	select {
+	case _, ok := <-c1.send:
+		if ok {
+			t.Fatalf("expected channel closed")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out")
+	}
+
+	hub.mu.RLock()
+	_, stillThere := hub.userConnections[10]
+	hub.mu.RUnlock()
+	if stillThere {
+		t.Fatalf("user connections should be removed")
+	}
+
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_SetTypingStatus(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	hub.register <- c1
+
+	waitForRoomClients(t, hub, 1, 1)
+	drainAll(t, c1.send)
+
+	hub.SetTypingStatus(t.Context(), 1, 10, "alice", true)
+
+	select {
+	case msg := <-c1.send:
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeTyping {
+			t.Fatalf("expected typing, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for typing")
+	}
+
+	hub.SetTypingStatus(t.Context(), 1, 10, "alice", false)
+
+	select {
+	case msg := <-c1.send:
+		var p ChatMessagePayload
+		_ = json.Unmarshal(msg, &p)
+		if p.Type != MsgTypeStoppedTyping {
+			t.Fatalf("expected stopped_typing, got %q", p.Type)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for stopped_typing")
+	}
+
+	hub.unregister <- c1
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+//nolint:unparam
+func waitForRoomEmpty(t *testing.T, hub *ChatHub, roomID model.RoomID) {
+	t.Helper()
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		hub.mu.RLock()
+		room, ok := hub.rooms[roomID]
+		hub.mu.RUnlock()
+		if !ok {
+			return
+		}
+		room.mu.RLock()
+		count := len(room.clients)
+		room.mu.RUnlock()
+		if count == 0 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for room %d to be empty", roomID)
+}
+
+//nolint:unparam
+func waitForRoomClients(t *testing.T, hub *ChatHub, roomID model.RoomID, want int) {
+	t.Helper()
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		hub.mu.RLock()
+		room, ok := hub.rooms[roomID]
+		hub.mu.RUnlock()
+		if ok {
+			room.mu.RLock()
+			count := len(room.clients)
+			room.mu.RUnlock()
+			if count == want {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %d clients in room %d", want, roomID)
+}
+
+func drainAll(t *testing.T, ch <-chan []byte) {
+	t.Helper()
+	for {
+		select {
+		case <-ch:
+		case <-time.After(100 * time.Millisecond):
+			return
+		}
 	}
 }
