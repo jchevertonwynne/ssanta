@@ -588,3 +588,53 @@ func drainAll(t *testing.T, ch <-chan []byte) {
 		}
 	}
 }
+
+func TestChatHub_BroadcastRoomPresence_SendsToAllClients(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+
+	c1 := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	c2 := &ChatClient{hub: hub, roomID: 1, userID: 20, send: make(chan []byte, 4)}
+	hub.register <- c1
+	hub.register <- c2
+
+	waitForRoomClients(t, hub, 1, 2)
+	drainAll(t, c1.send)
+	drainAll(t, c2.send)
+
+	hub.BroadcastRoomPresence(1)
+
+	readPresence := func(ch <-chan []byte) {
+		t.Helper()
+		select {
+		case msg := <-ch:
+			var p ChatMessagePayload
+			_ = json.Unmarshal(msg, &p)
+			if p.Type != MsgTypePresence {
+				t.Fatalf("expected presence, got %q", p.Type)
+			}
+		case <-time.After(500 * time.Millisecond):
+			t.Fatalf("timed out")
+		}
+	}
+	readPresence(c1.send)
+	readPresence(c2.send)
+
+	hub.unregister <- c1
+	hub.unregister <- c2
+	waitForRoomEmpty(t, hub, 1)
+	hub.Stop()
+}
+
+func TestChatHub_TryRegister_ReturnsFalseWhenStopped(t *testing.T) {
+	t.Parallel()
+	hub := NewChatHubWithLimits(DefaultWSBurst, DefaultWSRefillPerSec)
+	go hub.Run()
+	hub.Stop()
+
+	client := &ChatClient{hub: hub, roomID: 1, userID: 10, send: make(chan []byte, 4)}
+	if hub.tryRegister(client) {
+		t.Fatal("expected tryRegister to return false when hub is stopped")
+	}
+}

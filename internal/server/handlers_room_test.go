@@ -370,3 +370,213 @@ func TestHandleRoomMembersList_Success_IncludesAllMembers(t *testing.T) {
 		t.Fatalf("expected all members in response, got %s", body)
 	}
 }
+
+func TestHandleDeleteRoom_Unauthorized_Returns401(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/delete", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleDeleteRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestHandleDeleteRoom_RoomNotFound_Returns404(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().DeleteRoom(gomock.Any(), store.RoomID(10), userID).Return(store.ErrRoomNotFound)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/delete", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleDeleteRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleDeleteRoom_DMRoom_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().DeleteRoom(gomock.Any(), store.RoomID(10), userID).Return(store.ErrOperationNotAllowedOnDM)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/delete", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleDeleteRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestHandleDeleteRoom_Success_DisconnectsAndRendersContent(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(1)
+	roomID := store.RoomID(10)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().DeleteRoom(gomock.Any(), roomID, userID).Return(nil)
+	hub.EXPECT().DisconnectRoom(roomID)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/delete", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleDeleteRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestHandleSetRoomPublic_Unauthorized_Returns401(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
+
+	r := newFormRequest(t, "/rooms/10/public", url.Values{"value": {"true"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetRoomPublic(svc, sessions, hub), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestHandleSetRoomPublic_NotCreator_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().SetRoomPublic(gomock.Any(), store.RoomID(10), userID, true).Return(store.ErrNotRoomCreator)
+
+	r := newFormRequest(t, "/rooms/10/public", url.Values{"value": {"true"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetRoomPublic(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestHandleSetRoomPublic_DMRoom_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().SetRoomPublic(gomock.Any(), store.RoomID(10), userID, true).Return(store.ErrOperationNotAllowedOnDM)
+
+	r := newFormRequest(t, "/rooms/10/public", url.Values{"value": {"true"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetRoomPublic(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestHandleSetRoomPublic_Success_KicksSpectatorsWhenMadePrivate(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(1)
+	roomID := store.RoomID(10)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().SetRoomPublic(gomock.Any(), roomID, userID, false).Return(nil)
+	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeRoomsUpdated)
+	svc.EXPECT().ListRoomMembersWithPGP(gomock.Any(), roomID).Return([]store.RoomMember{
+		{ID: store.UserID(2), Username: "bob"},
+	}, nil)
+	hub.EXPECT().KickSpectators(roomID, gomock.Any())
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
+
+	r := newFormRequest(t, "/rooms/10/public", url.Values{"value": {"false"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleSetRoomPublic(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+}
+
+func TestHandleRoomDynamic_Unauthorized_Returns401(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/dynamic", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleRoomDynamic(svc, sessions), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestHandleRoomSidebar_Unauthorized_Returns401(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/sidebar", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleRoomSidebar(svc, sessions), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
