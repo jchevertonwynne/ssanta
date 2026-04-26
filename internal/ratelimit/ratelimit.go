@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
@@ -33,6 +34,7 @@ func Middleware(rl *RateLimiter) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r, rl.trustProxy)
 			if !rl.Allow(ip) {
+				slog.WarnContext(r.Context(), "rate limit exceeded", "ip", ip, "path", r.URL.Path, "method", r.Method)
 				w.Header().Set("Retry-After", strconv.Itoa(int(rl.window.Seconds())))
 				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 				return

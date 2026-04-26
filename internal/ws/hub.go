@@ -290,6 +290,7 @@ func (h *ChatHub) BroadcastToRoom(roomID model.RoomID, message []byte) {
 		select {
 		case client.send <- message:
 		default:
+			slog.Warn("websocket client dropped: send buffer full", "user_id", client.userID, "room_id", roomID)
 			client.closeOnce.Do(func() { close(client.send) })
 			delete(room.clients, client)
 		}
@@ -314,6 +315,7 @@ func (h *ChatHub) SendToRoomUser(roomID model.RoomID, user model.UserID, msg []b
 		select {
 		case client.send <- msg:
 		default:
+			slog.Warn("websocket client dropped: send buffer full", "user_id", client.userID, "room_id", roomID)
 			client.closeOnce.Do(func() { close(client.send) })
 			delete(room.clients, client)
 		}
@@ -665,7 +667,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				slog.Error("websocket error", "err", err)
+				slog.Error("websocket error", "err", err, "user_id", c.userID, "room_id", c.roomID)
 			}
 			break
 		}
@@ -680,7 +682,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 
 		var payload ChatMessagePayload
 		if err := json.Unmarshal(message, &payload); err != nil {
-			slog.Error("unmarshal message", "err", err)
+			slog.Error("unmarshal message", "err", err, "user_id", c.userID, "room_id", c.roomID)
 			continue
 		}
 
@@ -812,7 +814,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 			}
 			outBytes, err := json.Marshal(out)
 			if err != nil {
-				slog.Error("marshal chat message", "err", err)
+				slog.Error("marshal chat message", "err", err, "user_id", c.userID, "room_id", c.roomID)
 				span.End()
 				continue
 			}

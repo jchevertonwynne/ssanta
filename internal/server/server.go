@@ -291,6 +291,7 @@ func resolveSessionUser(ctx context.Context, svc UserExistsService, sessions Ses
 		return 0, false
 	}
 	if cookieVersion != serverVersion {
+		slog.WarnContext(ctx, "session version mismatch", "user_id", id, "cookie_version", cookieVersion, "server_version", serverVersion)
 		sessions.Clear(w)
 		return 0, false
 	}

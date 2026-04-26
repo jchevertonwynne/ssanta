@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/jchevertonwynne/ssanta/internal/model"
@@ -53,6 +54,7 @@ func CSRF(sessions SessionManager, secret []byte, secure bool) func(http.Handler
 				}
 			}
 			if provided == "" || !hmac.Equal([]byte(provided), []byte(expected)) {
+				slog.WarnContext(r.Context(), "csrf validation failed", "method", r.Method, "path", r.URL.Path)
 				http.Error(w, "invalid csrf token", http.StatusForbidden)
 				return
 			}

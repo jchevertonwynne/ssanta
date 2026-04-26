@@ -95,6 +95,7 @@ func handleAdminDeleteUser(svc AdminHandlersService, sessions SessionManager, hu
 			notifier.HandleAccountDeletion(targetID)
 		}
 		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
+		slog.InfoContext(r.Context(), "admin deleted user", "admin_id", adminID, "target_user_id", targetID)
 		renderAdmin(w, r, svc, adminID)
 	}
 }
@@ -122,6 +123,7 @@ func handleAdminDeleteRoom(svc AdminHandlersService, sessions SessionManager, hu
 			return
 		}
 		hub.DisconnectRoom(roomID)
+		slog.InfoContext(r.Context(), "admin deleted room", "admin_id", adminID, "room_id", roomID)
 		renderAdmin(w, r, svc, adminID)
 	}
 }
@@ -154,6 +156,7 @@ func handleAdminSetUserAdmin(svc AdminHandlersService, sessions SessionManager) 
 			}
 			return
 		}
+		slog.InfoContext(r.Context(), "admin set user admin status", "admin_id", adminID, "target_user_id", targetID, "granted", grant)
 		renderAdmin(w, r, svc, adminID)
 	}
 }

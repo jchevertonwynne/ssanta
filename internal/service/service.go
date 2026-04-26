@@ -249,7 +249,7 @@ func (s *Service) SetRoomPGPKey(
 	expiresAt := now.Add(s.roomPGPChallengeTTL)
 	hash := pgp.HashChallenge(challenge)
 
-	return s.store.Rooms.UpsertRoomUserPGPKeyWithChallenge(
+	if err := s.store.Rooms.UpsertRoomUserPGPKeyWithChallenge(
 		ctx,
 		roomID,
 		userID,
@@ -258,7 +258,11 @@ func (s *Service) SetRoomPGPKey(
 		ciphertext,
 		hash,
 		expiresAt,
-	)
+	); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "pgp challenge issued", "user_id", userID, "room_id", roomID, "fingerprint", fingerprint)
+	return nil
 }
 
 // VerifyRoomPGPKey verifies a decrypted challenge for a room member.
@@ -272,7 +276,12 @@ func (s *Service) VerifyRoomPGPKey(
 	if plaintext == "" {
 		return store.ErrPGPChallengeIncorrect
 	}
-	return s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now())
+	if err := s.store.Rooms.VerifyRoomUserPGPChallenge(ctx, roomID, userID, plaintext, time.Now()); err != nil {
+		slog.WarnContext(ctx, "pgp challenge verification failed", "user_id", userID, "room_id", roomID, "err", err)
+		return err
+	}
+	slog.InfoContext(ctx, "pgp challenge verified", "user_id", userID, "room_id", roomID)
+	return nil
 }
 
 // RemoveRoomUserPGPKey clears a member's PGP key.
@@ -455,12 +464,20 @@ func (s *Service) DeleteRoom(ctx context.Context, roomID model.RoomID, creatorID
 
 // LeaveRoom removes a user from a room.
 func (s *Service) LeaveRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
-	return s.store.Rooms.LeaveRoom(ctx, roomID, userID)
+	if err := s.store.Rooms.LeaveRoom(ctx, roomID, userID); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "user left room", "user_id", userID, "room_id", roomID)
+	return nil
 }
 
 // JoinRoom adds a user to a room.
 func (s *Service) JoinRoom(ctx context.Context, roomID model.RoomID, userID model.UserID) error {
-	return s.store.Rooms.JoinRoom(ctx, roomID, userID)
+	if err := s.store.Rooms.JoinRoom(ctx, roomID, userID); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "user joined room", "user_id", userID, "room_id", roomID)
+	return nil
 }
 
 // IsRoomCreator reports whether a user created the room.
@@ -518,7 +535,11 @@ func (s *Service) RemoveMember(ctx context.Context, roomID model.RoomID, memberI
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
 	}
-	return s.store.Rooms.RemoveMember(ctx, roomID, memberID, creatorID)
+	if err := s.store.Rooms.RemoveMember(ctx, roomID, memberID, creatorID); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "member removed from room", "member_id", memberID, "room_id", roomID, "removed_by", creatorID)
+	return nil
 }
 
 // Invite operations
@@ -675,6 +696,7 @@ func (s *Service) GetOrCreateDMRoom(
 		return 0, err
 	}
 
+	slog.InfoContext(ctx, "dm room ready", "room_id", roomID, "user1_id", user1ID, "user2_id", user2ID)
 	return roomID, nil
 }
 
