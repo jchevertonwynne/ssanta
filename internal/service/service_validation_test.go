@@ -69,3 +69,18 @@ func TestGetOrCreateDMRoom_SameUser(t *testing.T) {
 		t.Fatalf("expected ErrCannotInviteSelf, got %v", err)
 	}
 }
+
+func TestVerifyRoomPGPKey_EmptyChallenge_ReturnsError(t *testing.T) {
+	t.Parallel()
+	svc := New(nil)
+	err := svc.VerifyRoomPGPKey(t.Context(), model.RoomID(1), model.UserID(1), "")
+	if !errors.Is(err, store.ErrPGPChallengeIncorrect) {
+		t.Fatalf("expected ErrPGPChallengeIncorrect, got %v", err)
+	}
+
+	// Whitespace-only should also be rejected.
+	err = svc.VerifyRoomPGPKey(t.Context(), model.RoomID(1), model.UserID(1), "   ")
+	if !errors.Is(err, store.ErrPGPChallengeIncorrect) {
+		t.Fatalf("expected ErrPGPChallengeIncorrect for whitespace, got %v", err)
+	}
+}

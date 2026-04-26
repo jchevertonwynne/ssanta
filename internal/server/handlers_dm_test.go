@@ -11,6 +11,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/jchevertonwynne/ssanta/internal/service"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
@@ -96,5 +97,107 @@ func TestHandleCreateOrGetDM_Multipart_Redirects303(t *testing.T) {
 	}
 	if loc := w.Header().Get("Location"); loc != "/rooms/10" {
 		t.Fatalf("expected redirect to /rooms/10, got %q", loc)
+	}
+}
+
+func TestEscapeHTML(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"", ""},
+		{"hello", "hello"},
+		{"<script>", "&lt;script&gt;"},
+		{"foo & bar", "foo &amp; bar"},
+		{`"quoted"`, "&quot;quoted&quot;"},
+		{"it's", "it&#39;s"},
+		{"<>&\"'", "&lt;&gt;&amp;&quot;&#39;"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+			if got := escapeHTML(tt.input); got != tt.want {
+				t.Fatalf("escapeHTML(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHandleListDMs_Unauthorized_Returns401(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	sessions.EXPECT().UserID(gomock.Any()).Return(store.UserID(0), 0, false)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/dms", nil)
+	w := serve(t, handleListDMs(svc, sessions), r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestHandleListDMs_JSONFormat_ReturnsDMRooms(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(&service.ContentView{
+		DMRooms: []service.DMRoomInfo{
+			{RoomID: store.RoomID(10), PartnerName: "bob"},
+			{RoomID: store.RoomID(11), PartnerName: "charlie"},
+		},
+	}, nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/dms?format=json", nil)
+	w := serve(t, handleListDMs(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	ct := w.Header().Get("Content-Type")
+	if !strings.Contains(ct, "application/json") {
+		t.Fatalf("expected json content-type, got %q", ct)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `"bob"`) {
+		t.Fatalf("expected bob in response, got %q", body)
+	}
+}
+
+func TestHandleListDMs_HTMLFormat_RendersList(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(&service.ContentView{
+		DMRooms: []service.DMRoomInfo{
+			{RoomID: store.RoomID(10), PartnerName: "<bob>"},
+		},
+	}, nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/dms", nil)
+	w := serve(t, handleListDMs(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `&lt;bob&gt;`) {
+		t.Fatalf("expected escaped bob in response, got %q", body)
 	}
 }
