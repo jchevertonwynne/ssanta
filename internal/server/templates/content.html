@@ -1,51 +1,50 @@
 <div class="bar">
     {{if .CurrentUserID}}
-        <span>Logged in as {{.CurrentUsername}}</span>
-        {{if .CurrentUserIsAdmin}}<button hx-get="/admin" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Admin</button>{{end}}
-        <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
-        <span id="delete-account-ui">
-            <button data-action="show-delete-form">Delete account</button>
-            <form hx-delete="/users/{{.CurrentUserID}}"
-                  hx-target="#content"
-                  hx-swap="innerHTML"
-                  hx-confirm="Delete your account? Rooms you created will also be removed."
-                  style="display:none; margin:0;">
-                <input name="current_password" type="password" placeholder="Password to confirm" required style="padding:0.25rem;">
-                <button type="submit">Delete account</button>
-                <button type="button" data-action="hide-delete-form">Cancel</button>
-            </form>
-        </span>
-        <div id="change-password-ui" style="width: 100%; margin-top: 0.5rem;">
-            <button data-action="show-change-password-form"{{if or .PasswordFormError .PasswordFormSuccess}} style="display:none;"{{end}}>Change password</button>
-            <div{{if not (or .PasswordFormError .PasswordFormSuccess)}} style="display:none;"{{end}}>
-                <form hx-post="/password" hx-target="#content" hx-swap="innerHTML" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
-                    <input name="current_password" type="password" placeholder="Current password" required>
-                    <input name="new_password" type="password" placeholder="New password" required>
-                    <input name="new_password_confirm" type="password" placeholder="Confirm new password" required>
-                    <button type="submit">Change password</button>
-                    <button type="button" data-action="hide-change-password-form">Cancel</button>
-                </form>
-                {{if .PasswordFormError}}<p class="error">{{.PasswordFormError}}</p>{{end}}
-                {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
-            </div>
-        </div>
-    {{else}}
-        <form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" data-prevent-default-submit>
-            <input name="username" placeholder="Username" required
-                   pattern="[a-zA-Z0-9_]{3,32}" maxlength="32"
-                   value="{{if .UserFormAttempted}}{{.UserFormAttempted}}{{else}}{{.LoginFormAttempted}}{{end}}">
-            <input name="password" type="password" placeholder="Password" required
-                   data-enter-click="login-btn">
-            <input name="password_confirm" type="password" placeholder="Confirm password (register only)"
-                   data-enter-click="register-btn">
-            <div style="flex-basis: 100%; display: flex; gap: 0.5rem;">
-                <button id="login-btn" type="button" hx-post="/login" hx-include="closest form">Log in</button>
-                <button id="register-btn" type="button" hx-post="/users" hx-include="closest form">Register</button>
-            </div>
+    <span>Logged in as {{.CurrentUsername}}</span>
+    {{if .CurrentUserIsAdmin}}<button hx-get="/admin" hx-target="#content" hx-swap="innerHTML"
+        hx-push-url="true">Admin</button>{{end}}
+    <button hx-post="/logout" hx-target="#content" hx-swap="innerHTML">Log out</button>
+    <span id="delete-account-ui">
+        <button data-action="show-delete-form">Delete account</button>
+        <form hx-delete="/users/{{.CurrentUserID}}" hx-target="#content" hx-swap="innerHTML"
+            hx-confirm="Delete your account? Rooms you created will also be removed." style="display:none; margin:0;">
+            <input name="current_password" type="password" placeholder="Password to confirm" required
+                style="padding:0.25rem;">
+            <button type="submit">Delete account</button>
+            <button type="button" data-action="hide-delete-form">Cancel</button>
         </form>
-        {{if .LoginFormError}}<p class="error">{{.LoginFormError}}</p>{{end}}
-        {{if .UserFormError}}<p class="error">{{.UserFormError}}</p>{{end}}
-    {{end}}
+    </span>
+    <div id="change-password-ui" style="width: 100%; margin-top: 0.5rem;">
+        <button data-action="show-change-password-form" {{if or .PasswordFormError .PasswordFormSuccess}}
+            style="display:none;" {{end}}>Change password</button>
+        <div{{if not (or .PasswordFormError .PasswordFormSuccess)}} style="display:none;" {{end}}>
+            <form hx-post="/password" hx-target="#content" hx-swap="innerHTML"
+                style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                <input name="current_password" type="password" placeholder="Current password" required>
+                <input name="new_password" type="password" placeholder="New password" required>
+                <input name="new_password_confirm" type="password" placeholder="Confirm new password" required>
+                <button type="submit">Change password</button>
+                <button type="button" data-action="hide-change-password-form">Cancel</button>
+            </form>
+            {{if .PasswordFormError}}<p class="error">{{.PasswordFormError}}</p>{{end}}
+            {{if .PasswordFormSuccess}}<p class="success">Password changed successfully.</p>{{end}}
+    </div>
+</div>
+{{else}}
+<form hx-target="#content" hx-swap="innerHTML" style="flex-wrap: wrap;" data-prevent-default-submit>
+    <input name="username" placeholder="Username" required pattern="[a-zA-Z0-9_]{3,32}" maxlength="32"
+        value="{{if .UserFormAttempted}}{{.UserFormAttempted}}{{else}}{{.LoginFormAttempted}}{{end}}">
+    <input name="password" type="password" placeholder="Password" required data-enter-click="login-btn">
+    <input name="password_confirm" type="password" placeholder="Confirm password (register only)"
+        data-enter-click="register-btn">
+    <div style="flex-basis: 100%; display: flex; gap: 0.5rem;">
+        <button id="login-btn" type="button" hx-post="/login" hx-include="closest form">Log in</button>
+        <button id="register-btn" type="button" hx-post="/users" hx-include="closest form">Register</button>
+    </div>
+</form>
+{{if .LoginFormError}}<p class="error">{{.LoginFormError}}</p>{{end}}
+{{if .UserFormError}}<p class="error">{{.UserFormError}}</p>{{end}}
+{{end}}
 </div>
 
 <div class="cols">
@@ -60,61 +59,72 @@
         <h2>Rooms</h2>
 
         <form hx-post="/rooms" hx-target="#content" hx-swap="innerHTML">
-            <input name="display_name" placeholder="Room name" required maxlength="64"
-                   value="{{.RoomFormAttempted}}" autofocus>
+            <input name="display_name" placeholder="Room name" required maxlength="64" value="{{.RoomFormAttempted}}"
+                autofocus>
             <button type="submit">Create room</button>
         </form>
         {{if .RoomFormError}}
-            <p class="error">{{.RoomFormError}}</p>
+        <p class="error">{{.RoomFormError}}</p>
         {{end}}
 
         <h3>Rooms I created</h3>
+
         {{if .CreatedRooms}}
-            <ul>
+        <table>
             {{range .CreatedRooms}}
-                <li>
-                    {{.DisplayName}}
-                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Enter</button>
-                    <button hx-delete="/rooms/{{.ID}}"
-                            hx-target="#content"
-                            hx-swap="innerHTML"
-                            hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
+            <tr>
+                <td>{{.DisplayName}}</td>
+                <td>
+                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML"
+                        hx-push-url="true">Enter</button>
+                </td>
+                <td>
+                    <button hx-delete="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML"
+                        hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
+                </td>
                 </li>
-            {{end}}
-            </ul>
+                {{end}}
+            </tr>
+        </table>
         {{else}}
-            <p>None yet.</p>
+        <p>None yet.</p>
         {{end}}
 
         <h3>Rooms I'm a member of</h3>
         {{if .MemberRooms}}
-            <ul>
+        <table>
             {{range .MemberRooms}}
-                <li>
-                    {{.DisplayName}}
-                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Enter</button>
-                    <button hx-post="/rooms/{{.ID}}/leave"
-                            hx-target="#content"
-                            hx-swap="innerHTML"
-                            hx-push-url="/"
-                            hx-confirm="Leave {{.DisplayName}}?">Leave</button>
-                </li>
+            <tr>
+                <td></td>
+                <td>{{.DisplayName}}</td>
+                <td>
+                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML"
+                        hx-push-url="true">Enter</button>
+                </td>
+                <td>
+                    <button hx-post="/rooms/{{.ID}}/leave" hx-target="#content" hx-swap="innerHTML" hx-push-url="/"
+                        hx-confirm="Leave {{.DisplayName}}?">Leave</button>
+                </td>
+            </tr>
             {{end}}
-            </ul>
+        </table>
         {{else}}
-            <p>None yet.</p>
+        <p>None yet.</p>
         {{end}}
 
         {{if .PublicRooms}}
         <h3>Public rooms</h3>
-        <ul>
-        {{range .PublicRooms}}
-            <li>
-                {{.DisplayName}}
-                <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">View</button>
-            </li>
-        {{end}}
-        </ul>
+        <table>
+            {{range .PublicRooms}}
+            <tr>
+                <td>{{.DisplayName}}</td>
+                <td>
+                    <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML"
+                        hx-push-url="true">View</button>
+                </td>
+            </tr>
+            {{end}}
+        </table>
         {{end}}
 
         {{template "content_invites.html" .}}
@@ -128,9 +138,9 @@
                 <select id="dm-partner-select" required>
                     <option value="">Select user to message...</option>
                     {{range .Users}}
-                        {{if ne .ID $.CurrentUserID}}
-                            <option value="{{.ID}}">{{.Username}}</option>
-                        {{end}}
+                    {{if ne .ID $.CurrentUserID}}
+                    <option value="{{.ID}}">{{.Username}}</option>
+                    {{end}}
                     {{end}}
                 </select>
                 <button type="button" data-action="start-dm">Start DM</button>
@@ -138,16 +148,19 @@
         </div>
 
         {{if .DMRooms}}
-            <ul>
+        <table>
             {{range .DMRooms}}
-                <li>
-                    {{.PartnerName}}
-                    <button hx-get="/rooms/{{.RoomID}}" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Open</button>
-                </li>
+            <tr>
+                <td>{{.PartnerName}}</td>
+                <td>
+                    <button hx-get="/rooms/{{.RoomID}}" hx-target="#content" hx-swap="innerHTML"
+                        hx-push-url="true">Open</button>
+                </td>
+            </tr>
             {{end}}
-            </ul>
+        </table>
         {{else}}
-            <p>No conversations yet.</p>
+        <p>No conversations yet.</p>
         {{end}}
     </section>
     {{end}}
@@ -155,38 +168,38 @@
 
 {{if .CurrentUserID}}
 <script nonce="{{.ScriptNonce}}">
-(function() {
-    const currentUserID = {{.CurrentUserID}};
-    
-    // Connect to WebSocket for notifications
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(protocol + '//' + window.location.host + '/content/ws');
-    
-    ws.onopen = function() {
-        console.log('Connected to notification service');
-    };
-    
-    ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'invite_received' || data.type === 'invite_cancelled') {
-            htmx.ajax('GET', '/content/invites', {target: '#content-invites', swap: 'outerHTML'});
-        }
-        if (data.type === 'users_updated') {
-            htmx.ajax('GET', '/content/users', {target: '#content-users', swap: 'outerHTML'});
-        }
-        if (data.type === 'rooms_updated') {
-            htmx.ajax('GET', '/content', {target: '#content', swap: 'innerHTML'});
-        }
-    };
-    
-    ws.onerror = function(error) {
-        console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = function() {
-        console.log('Disconnected from notification service');
-    };
-})();
+    (function () {
+        const currentUserID = {{.CurrentUserID }}
+
+        // Connect to WebSocket for notifications
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(protocol + '//' + window.location.host + '/content/ws');
+
+        ws.onopen = function () {
+            console.log('Connected to notification service');
+        };
+
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'invite_received' || data.type === 'invite_cancelled') {
+                htmx.ajax('GET', '/content/invites', { target: '#content-invites', swap: 'outerHTML' });
+            }
+            if (data.type === 'users_updated') {
+                htmx.ajax('GET', '/content/users', { target: '#content-users', swap: 'outerHTML' });
+            }
+            if (data.type === 'rooms_updated') {
+                htmx.ajax('GET', '/content', { target: '#content', swap: 'innerHTML' });
+            }
+        };
+
+        ws.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = function () {
+            console.log('Disconnected from notification service');
+        };
+    })();
 </script>
 {{end}}
