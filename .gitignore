@@ -9,14 +9,13 @@
 
 # Binaries / build output
 /server
+/migrate
+/loadgen
 /out
 /bin/
 /dist/
 /build/
 /.kilo/
-/server
-/migrate
-/loadgen
 
 # Coverage / profiling
 *.coverprofile
