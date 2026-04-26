@@ -49,23 +49,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	var clients []*userClient
-	var roomID int64
-	var setupErr error
+	if err := run(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(cfg config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	_, _ = fmt.Fprintf(os.Stdout, "setting up %d users...\n", cfg.numUsers)
-	clients, roomID, setupErr = setup(ctx, cfg)
-	if setupErr != nil {
-		// Attempt cleanup of any clients that were created before setup failed
+	clients, roomID, err := setup(ctx, cfg)
+	if err != nil {
 		if len(clients) > 0 {
 			cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
 			cleanup(cleanupCtx, clients)
+			cancel()
 		}
-		fmt.Fprintf(os.Stderr, "setup failed: %v\n", setupErr)
-		os.Exit(1)
+		return fmt.Errorf("setup failed: %w", err)
 	}
 
 	defer func() {
@@ -75,7 +77,11 @@ func main() {
 	}()
 
 	_, _ = fmt.Fprintf(os.Stdout, "setup complete, room ID: %d — starting simulation\n", roomID)
+	runSimulation(ctx, clients, roomID, cfg)
+	return nil
+}
 
+func runSimulation(ctx context.Context, clients []*userClient, roomID int64, cfg config) {
 	stats := make([]*userStats, cfg.numUsers)
 	for i, c := range clients {
 		stats[i] = &userStats{username: c.username}

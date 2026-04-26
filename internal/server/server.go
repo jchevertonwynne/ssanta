@@ -116,7 +116,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	// Health & pages
 	mux.HandleFunc("GET /healthz", handleHealth(svc))
 	if metricsSecret != "" {
-		metricsHandler= bearerAuthMiddleware(metricsHandler, metricsSecret)
+		metricsHandler = bearerAuthMiddleware(metricsHandler, metricsSecret)
 	}
 	mux.Handle("/metrics", metricsHandler)
 	mux.HandleFunc("GET /{$}", handleIndex)
@@ -219,18 +219,6 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 		hub.Stop()
 	}
 	return handler, closeFn
-}
-
-func metricsWithSecret(next http.Handler, secret string) http.Handler {
-	// Header-only: a query-string fallback would leak the secret into proxy
-	// access logs / APM trace attributes.
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Metrics-Secret") != secret {
-			http.NotFound(w, r)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 func handleHealth(svc HealthService) http.HandlerFunc {
