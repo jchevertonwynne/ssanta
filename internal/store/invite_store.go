@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
 type InviteStore struct {
@@ -18,6 +20,7 @@ type InviteStore struct {
 
 //nolint:cyclop,funlen
 func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID UserID, inviteeUsername string, expiresAt time.Time) error {
+	ctx = db.WithQueryName(ctx, "create_invite")
 	inviteeName := strings.TrimSpace(inviteeUsername)
 	if inviteeName == "" {
 		return ErrInviteeNotFound
@@ -93,6 +96,7 @@ func (s *InviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 }
 
 func (s *InviteStore) ListInvitesForUser(ctx context.Context, userID UserID) ([]InviteForUser, error) {
+	ctx = db.WithQueryName(ctx, "list_invites_for_user")
 	rows, err := s.pool.Query(ctx,
 		`SELECT i.id, r.id, r.display_name, u.id, u.username, i.created_at
 		 FROM room_invites i
@@ -118,6 +122,7 @@ func (s *InviteStore) ListInvitesForUser(ctx context.Context, userID UserID) ([]
 }
 
 func (s *InviteStore) ListInvitesForRoom(ctx context.Context, roomID RoomID) ([]InviteForRoom, error) {
+	ctx = db.WithQueryName(ctx, "list_invites_for_room")
 	rows, err := s.pool.Query(ctx,
 		`SELECT i.id, inviter.id, inviter.username, invitee.id, invitee.username, i.created_at
 		 FROM room_invites i
@@ -143,6 +148,7 @@ func (s *InviteStore) ListInvitesForRoom(ctx context.Context, roomID RoomID) ([]
 }
 
 func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userID UserID) (RoomID, error) {
+	ctx = db.WithQueryName(ctx, "accept_invite")
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return 0, err
@@ -192,6 +198,7 @@ func (s *InviteStore) AcceptInvite(ctx context.Context, inviteID InviteID, userI
 }
 
 func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID InviteID, userID UserID) error {
+	ctx = db.WithQueryName(ctx, "decline_invite")
 	tag, err := s.pool.Exec(ctx,
 		`DELETE FROM room_invites WHERE id = $1 AND invitee_id = $2`,
 		inviteID, userID,
@@ -206,6 +213,7 @@ func (s *InviteStore) DeclineInvite(ctx context.Context, inviteID InviteID, user
 }
 
 func (s *InviteStore) CancelInvite(ctx context.Context, inviteID InviteID, actingUserID UserID) (RoomID, UserID, error) {
+	ctx = db.WithQueryName(ctx, "cancel_invite")
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return 0, 0, err
@@ -245,6 +253,7 @@ func (s *InviteStore) CancelInvite(ctx context.Context, inviteID InviteID, actin
 }
 
 func (s *InviteStore) RoomIDForInvite(ctx context.Context, inviteID InviteID) (RoomID, error) {
+	ctx = db.WithQueryName(ctx, "room_id_for_invite")
 	var roomID RoomID
 	err := s.pool.QueryRow(ctx,
 		`SELECT room_id FROM room_invites WHERE id = $1`,

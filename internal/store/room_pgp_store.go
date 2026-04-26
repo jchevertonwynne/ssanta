@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
 func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomID RoomID, userID UserID, publicKey, fingerprint, challengeCiphertext string, challengeHash []byte, challengeExpiresAt time.Time) error {
+	ctx = db.WithQueryName(ctx, "upsert_room_user_pgp_key")
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users
 		 SET pgp_public_key = $3,
@@ -32,6 +35,7 @@ func (s *RoomStore) UpsertRoomUserPGPKeyWithChallenge(ctx context.Context, roomI
 }
 
 func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomID, userID UserID, providedPlaintext string, now time.Time) error {
+	ctx = db.WithQueryName(ctx, "verify_room_user_pgp_challenge")
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -82,6 +86,7 @@ func (s *RoomStore) VerifyRoomUserPGPChallenge(ctx context.Context, roomID RoomI
 }
 
 func (s *RoomStore) ClearRoomUserPGPKey(ctx context.Context, roomID RoomID, userID UserID) error {
+	ctx = db.WithQueryName(ctx, "clear_room_user_pgp_key")
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE room_users
 		 SET pgp_public_key = NULL,

@@ -126,10 +126,10 @@ func WithScriptNonce(next http.Handler) http.Handler {
 	})
 }
 
-// pathInt64 parses a numeric path parameter and writes a 400 on failure.
-func pathInt64(w http.ResponseWriter, r *http.Request, name string) (int64, bool) {
+// pathUserID parses a user ID from a path parameter.
+func pathUserID(w http.ResponseWriter, r *http.Request, name string) (model.UserID, bool) {
 	raw := r.PathValue(name)
-	id, err := strconv.ParseInt(raw, 10, 64)
+	id, err := model.ParseUserID(raw)
 	if err != nil {
 		http.Error(w, "invalid "+name, http.StatusBadRequest)
 		return 0, false
@@ -137,22 +137,26 @@ func pathInt64(w http.ResponseWriter, r *http.Request, name string) (int64, bool
 	return id, true
 }
 
-// pathUserID parses a user ID from a path parameter.
-func pathUserID(w http.ResponseWriter, r *http.Request, name string) (model.UserID, bool) {
-	v, ok := pathInt64(w, r, name)
-	return model.UserID(v), ok
-}
-
 // pathRoomID parses a room ID from a path parameter.
 func pathRoomID(w http.ResponseWriter, r *http.Request, _ string) (model.RoomID, bool) {
-	v, ok := pathInt64(w, r, "id")
-	return model.RoomID(v), ok
+	raw := r.PathValue("id")
+	id, err := model.ParseRoomID(raw)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
 }
 
 // pathInviteID parses an invite ID from a path parameter.
 func pathInviteID(w http.ResponseWriter, r *http.Request, name string) (model.InviteID, bool) {
-	v, ok := pathInt64(w, r, name)
-	return model.InviteID(v), ok
+	raw := r.PathValue(name)
+	id, err := model.ParseInviteID(raw)
+	if err != nil {
+		http.Error(w, "invalid "+name, http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
 }
 
 // responseWriter captures status code and response size.

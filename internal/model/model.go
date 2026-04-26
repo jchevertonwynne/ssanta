@@ -2,7 +2,9 @@
 package model
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,6 +18,15 @@ func (id UserID) String() string {
 	return "user_id:" + strconv.FormatInt(int64(id), 10)
 }
 
+func ParseUserID(s string) (UserID, error) {
+	const prefix = "user_id:"
+	if !strings.HasPrefix(s, prefix) {
+		return 0, fmt.Errorf("invalid user id: %q", s)
+	}
+	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	return UserID(id), err
+}
+
 // RoomID is a typed database identifier for a room.
 type RoomID int64
 
@@ -24,6 +35,15 @@ func (id RoomID) Int64() int64 { return int64(id) }
 
 func (id RoomID) String() string {
 	return "room_id:" + strconv.FormatInt(int64(id), 10)
+}
+
+func ParseRoomID(s string) (RoomID, error) {
+	const prefix = "room_id:"
+	if !strings.HasPrefix(s, prefix) {
+		return 0, fmt.Errorf("invalid room id: %q", s)
+	}
+	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	return RoomID(id), err
 }
 
 // InviteID is a typed database identifier for an invite.
@@ -36,6 +56,15 @@ func (id InviteID) String() string {
 	return "invite_id:" + strconv.FormatInt(int64(id), 10)
 }
 
+func ParseInviteID(s string) (InviteID, error) {
+	const prefix = "invite_id:"
+	if !strings.HasPrefix(s, prefix) {
+		return 0, fmt.Errorf("invalid invite id: %q", s)
+	}
+	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	return InviteID(id), err
+}
+
 // MessageID is a typed database identifier for a message.
 type MessageID int64
 
@@ -44,6 +73,15 @@ func (id MessageID) Int64() int64 { return int64(id) }
 
 func (id MessageID) String() string {
 	return "message_id:" + strconv.FormatInt(int64(id), 10)
+}
+
+func ParseMessageID(s string) (MessageID, error) {
+	const prefix = "message_id:"
+	if !strings.HasPrefix(s, prefix) {
+		return 0, fmt.Errorf("invalid message id: %q", s)
+	}
+	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	return MessageID(id), err
 }
 
 type User struct {

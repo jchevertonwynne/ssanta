@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -81,6 +82,73 @@ func quoteIdent(ident string) string {
 	return `"` + strings.ReplaceAll(ident, `"`, `""`) + `"`
 }
 
+type queryNameKey struct{}
+
+// WithQueryName annotates ctx with a short name used as the OTel span name for
+// the next database query executed with that context.
+func WithQueryName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, queryNameKey{}, name)
+}
+
+var reWhitespace = regexp.MustCompile(`\s+`)
+
+// sqlSlug converts a raw SQL statement into a short "verb.table" slug for span names.
+func sqlSlug(stmt string) string {
+	norm := strings.ToUpper(reWhitespace.ReplaceAllString(strings.TrimSpace(stmt), " "))
+
+	verb, rest, _ := strings.Cut(norm, " ")
+
+	// For CTEs, skip past the WITH clause to find the real verb and table.
+	if verb == "WITH" {
+		if idx := strings.Index(rest, ") "); idx >= 0 {
+			inner := strings.TrimSpace(rest[idx+2:])
+			verb, rest, _ = strings.Cut(inner, " ")
+		}
+	}
+
+	lv := strings.ToLower(verb)
+	switch verb {
+	case "SELECT":
+		return lv + "." + tableAfterKeyword(rest, "FROM")
+	case "INSERT":
+		return lv + "." + tableAfterKeyword(rest, "INTO")
+	case "UPDATE":
+		return lv + "." + firstWord(rest)
+	case "DELETE":
+		return lv + "." + tableAfterKeyword(rest, "FROM")
+	default:
+		if verb == "" {
+			return "unknown"
+		}
+		return lv
+	}
+}
+
+// tableAfterKeyword finds the first word after keyword in s, strips any schema
+// prefix (e.g. "public.users" → "users") and returns it lowercased.
+func tableAfterKeyword(s, keyword string) string {
+	kw := keyword + " "
+	idx := strings.Index(s, kw)
+	if idx < 0 {
+		return strings.ToLower(strings.TrimSpace(strings.Fields(s)[0]))
+	}
+	return firstWord(s[idx+len(kw):])
+}
+
+func firstWord(s string) string {
+	s = strings.TrimSpace(s)
+	end := strings.IndexAny(s, " \t\n(,;")
+	if end < 0 {
+		end = len(s)
+	}
+	word := s[:end]
+	// Strip schema prefix
+	if dot := strings.LastIndex(word, "."); dot >= 0 {
+		word = word[dot+1:]
+	}
+	return strings.ToLower(word)
+}
+
 // Connect opens a PostgreSQL connection pool with observability enabled.
 func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
@@ -99,7 +167,12 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg.MaxConnLifetime = 30 * time.Minute
 
 	// Configure OpenTelemetry tracer for pgx
-	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithSpanNameCtxFunc(func(ctx context.Context, stmt string) string {
+		if name, ok := ctx.Value(queryNameKey{}).(string); ok && name != "" {
+			return name
+		}
+		return sqlSlug(stmt)
+	}))
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

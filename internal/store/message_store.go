@@ -6,6 +6,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/jchevertonwynne/ssanta/internal/db"
 )
 
 type MessageStore struct {
@@ -17,6 +19,7 @@ type MessageStore struct {
 }
 
 func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID UserID, username, message string, whisper bool, targetUserID *UserID, preEncrypted bool) (MessageID, error) {
+	ctx = db.WithQueryName(ctx, "create_message")
 	var id MessageID
 	err := s.pool.QueryRow(ctx,
 		`INSERT INTO messages (room_id, user_id, username, message, whisper, target_user_id, pre_encrypted)
@@ -28,6 +31,7 @@ func (s *MessageStore) CreateMessage(ctx context.Context, roomID RoomID, userID 
 }
 
 func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID UserID, beforeID MessageID, limit int) ([]Message, error) {
+	ctx = db.WithQueryName(ctx, "list_messages")
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -76,6 +80,7 @@ func (s *MessageStore) ListMessages(ctx context.Context, roomID RoomID, userID U
 }
 
 func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, userID UserID, afterID MessageID, limit int) ([]Message, error) {
+	ctx = db.WithQueryName(ctx, "list_messages_after_id")
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
@@ -110,6 +115,7 @@ func (s *MessageStore) ListMessagesAfterID(ctx context.Context, roomID RoomID, u
 }
 
 func (s *MessageStore) SearchMessages(ctx context.Context, roomID RoomID, userID UserID, query string, limit int) ([]Message, error) {
+	ctx = db.WithQueryName(ctx, "search_messages")
 	if limit <= 0 || limit > 200 {
 		limit = 50
 	}
