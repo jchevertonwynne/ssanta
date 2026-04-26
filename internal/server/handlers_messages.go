@@ -95,8 +95,8 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 		beforeIDStr := r.URL.Query().Get("before_id")
 		var beforeID model.MessageID
 		if beforeIDStr != "" {
-			if v, err := strconv.ParseInt(beforeIDStr, 10, 64); err == nil {
-				beforeID = model.MessageID(v)
+			if _beforeID, err := model.ParseMessageID(beforeIDStr); err == nil {
+				beforeID = _beforeID
 			}
 		}
 

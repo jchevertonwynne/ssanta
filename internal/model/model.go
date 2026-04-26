@@ -2,7 +2,6 @@
 package model
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -19,11 +18,7 @@ func (id UserID) String() string {
 }
 
 func ParseUserID(s string) (UserID, error) {
-	const prefix = "user_id:"
-	if !strings.HasPrefix(s, prefix) {
-		return 0, fmt.Errorf("invalid user id: %q", s)
-	}
-	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	id, err := strconv.ParseInt(strings.TrimPrefix(s, "user_id:"), 10, 64)
 	return UserID(id), err
 }
 
@@ -38,11 +33,7 @@ func (id RoomID) String() string {
 }
 
 func ParseRoomID(s string) (RoomID, error) {
-	const prefix = "room_id:"
-	if !strings.HasPrefix(s, prefix) {
-		return 0, fmt.Errorf("invalid room id: %q", s)
-	}
-	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	id, err := strconv.ParseInt(strings.TrimPrefix(s, "room_id:"), 10, 64)
 	return RoomID(id), err
 }
 
@@ -57,11 +48,7 @@ func (id InviteID) String() string {
 }
 
 func ParseInviteID(s string) (InviteID, error) {
-	const prefix = "invite_id:"
-	if !strings.HasPrefix(s, prefix) {
-		return 0, fmt.Errorf("invalid invite id: %q", s)
-	}
-	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	id, err := strconv.ParseInt(strings.TrimPrefix(s, "invite_id:"), 10, 64)
 	return InviteID(id), err
 }
 
@@ -76,11 +63,7 @@ func (id MessageID) String() string {
 }
 
 func ParseMessageID(s string) (MessageID, error) {
-	const prefix = "message_id:"
-	if !strings.HasPrefix(s, prefix) {
-		return 0, fmt.Errorf("invalid message id: %q", s)
-	}
-	id, err := strconv.ParseInt(s[len(prefix):], 10, 64)
+	id, err := strconv.ParseInt(strings.TrimPrefix(s, "message_id:"), 10, 64)
 	return MessageID(id), err
 }
 

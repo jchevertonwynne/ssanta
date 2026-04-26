@@ -100,8 +100,8 @@ func sqlSlug(stmt string) string {
 
 	// For CTEs, skip past the WITH clause to find the real verb and table.
 	if verb == "WITH" {
-		if idx := strings.Index(rest, ") "); idx >= 0 {
-			inner := strings.TrimSpace(rest[idx+2:])
+		if _, after, ok := strings.Cut(rest, ") "); ok {
+			inner := strings.TrimSpace(after)
 			verb, rest, _ = strings.Cut(inner, " ")
 		}
 	}
@@ -128,11 +128,11 @@ func sqlSlug(stmt string) string {
 // prefix (e.g. "public.users" → "users") and returns it lowercased.
 func tableAfterKeyword(s, keyword string) string {
 	kw := keyword + " "
-	idx := strings.Index(s, kw)
-	if idx < 0 {
+	_, after, ok := strings.Cut(s, kw)
+	if !ok {
 		return strings.ToLower(strings.TrimSpace(strings.Fields(s)[0]))
 	}
-	return firstWord(s[idx+len(kw):])
+	return firstWord(after)
 }
 
 func firstWord(s string) string {

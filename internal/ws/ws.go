@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/gorilla/websocket"
 
@@ -23,11 +22,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.Us
 	lastSeenStr := r.URL.Query().Get("last_seen_id")
 	var lastSeenID model.MessageID
 	if lastSeenStr != "" {
-		lastSeenID = 0
-	} else {
-		var parsed int64
-		parsed, err = strconv.ParseInt(lastSeenStr, 10, 64)
-		lastSeenID = model.MessageID(parsed)
+		lastSeenID, err = model.ParseMessageID(lastSeenStr)
 	}
 	if err == nil && lastSeenID > 0 {
 		catchUp, err := svc.ListMessagesAfterID(r.Context(), roomID, currentID, lastSeenID, 200)

@@ -108,7 +108,7 @@ func (m *Manager) UserID(r *http.Request) (model.UserID, int, bool) {
 	if len(parts) != 3 {
 		return 0, 0, false
 	}
-	userID, err := strconv.ParseInt(parts[0], 10, 64)
+	userID, err := model.ParseUserID(parts[0])
 	if err != nil || userID <= 0 {
 		return 0, 0, false
 	}
