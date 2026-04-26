@@ -123,7 +123,7 @@ func (m *Manager) UserID(r *http.Request) (model.UserID, int, bool) {
 	if m.now().Sub(time.Unix(issuedUnix, 0)) > m.ttl {
 		return 0, 0, false
 	}
-	return model.UserID(userID), version, true
+	return userID, version, true
 }
 
 func (m *Manager) sign(payload string) string {
