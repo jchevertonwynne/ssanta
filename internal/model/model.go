@@ -1,7 +1,10 @@
 // Package model defines the core domain types shared across application layers.
 package model
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 // UserID is a typed database identifier for a user.
 type UserID int64
@@ -9,11 +12,19 @@ type UserID int64
 // Int64 returns the underlying int64 value.
 func (id UserID) Int64() int64 { return int64(id) }
 
+func (id UserID) String() string {
+	return "user_id:" + strconv.FormatInt(int64(id), 10)
+}
+
 // RoomID is a typed database identifier for a room.
 type RoomID int64
 
 // Int64 returns the underlying int64 value.
 func (id RoomID) Int64() int64 { return int64(id) }
+
+func (id RoomID) String() string {
+	return "room_id:" + strconv.FormatInt(int64(id), 10)
+}
 
 // InviteID is a typed database identifier for an invite.
 type InviteID int64
@@ -21,11 +32,19 @@ type InviteID int64
 // Int64 returns the underlying int64 value.
 func (id InviteID) Int64() int64 { return int64(id) }
 
+func (id InviteID) String() string {
+	return "invite_id:" + strconv.FormatInt(int64(id), 10)
+}
+
 // MessageID is a typed database identifier for a message.
 type MessageID int64
 
 // Int64 returns the underlying int64 value.
 func (id MessageID) Int64() int64 { return int64(id) }
+
+func (id MessageID) String() string {
+	return "message_id:" + strconv.FormatInt(int64(id), 10)
+}
 
 type User struct {
 	ID        UserID
