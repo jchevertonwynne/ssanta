@@ -296,7 +296,7 @@ func (h *ChatHub) BroadcastToRoom(roomID model.RoomID, message []byte) {
 	}
 }
 
-func (h *ChatHub) SendToRoomUsers(roomID model.RoomID, perUserMessage map[model.UserID][]byte) {
+func (h *ChatHub) SendToRoomUser(roomID model.RoomID, user model.UserID, msg []byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
@@ -308,8 +308,7 @@ func (h *ChatHub) SendToRoomUsers(roomID model.RoomID, perUserMessage map[model.
 	defer room.mu.Unlock()
 
 	for client := range room.clients {
-		msg, ok := perUserMessage[client.userID]
-		if !ok {
+		if client.userID != user {
 			continue
 		}
 		select {
@@ -318,6 +317,8 @@ func (h *ChatHub) SendToRoomUsers(roomID model.RoomID, perUserMessage map[model.
 			client.closeOnce.Do(func() { close(client.send) })
 			delete(room.clients, client)
 		}
+
+		return
 	}
 }
 
@@ -816,11 +817,10 @@ func (c *ChatClient) readPump(parent context.Context) {
 				continue
 			}
 			if isWhisper {
-				perUser := map[model.UserID][]byte{c.userID: outBytes, targetUserID: outBytes}
-				c.hub.SendToRoomUsers(c.roomID, perUser)
+				c.hub.SendToRoomUser(c.roomID, c.userID, outBytes)
 				if metrics := observability.GetMetrics(); metrics != nil {
 					attrs := attribute.NewSet(attribute.Int64("room_id", c.roomID.Int64()))
-					metrics.WSMessagesSent.Add(ctx, int64(len(perUser)), metric.WithAttributeSet(attrs))
+					metrics.WSMessagesSent.Add(ctx, 1, metric.WithAttributeSet(attrs))
 				}
 				slog.InfoContext(ctx, "whisper sent", "room_id", c.roomID, "user_id", c.userID)
 			} else {
