@@ -4,6 +4,8 @@ WORKDIR /src
 
 RUN apk add --no-cache ca-certificates
 
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
+
 # Copy the module files first to allow better caching in the non-vendored path.
 COPY go.mod go.sum ./
 

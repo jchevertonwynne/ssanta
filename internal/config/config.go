@@ -43,6 +43,14 @@ type Config struct {
 	RateLimitAuthWindow   time.Duration `env:"RATE_LIMIT_AUTH_WINDOW,1m"`
 	RateLimitSearchMax    int           `env:"RATE_LIMIT_SEARCH_MAX,30"`
 	RateLimitSearchWindow time.Duration `env:"RATE_LIMIT_SEARCH_WINDOW,1m"`
+	RateLimitRoomMax      int           `env:"RATE_LIMIT_ROOM_MAX,10"`
+	RateLimitRoomWindow   time.Duration `env:"RATE_LIMIT_ROOM_WINDOW,1m"`
+	RateLimitInviteMax    int           `env:"RATE_LIMIT_INVITE_MAX,20"`
+	RateLimitInviteWindow time.Duration `env:"RATE_LIMIT_INVITE_WINDOW,1m"`
+	RateLimitWSMax        int           `env:"RATE_LIMIT_WS_MAX,10"`
+	RateLimitWSWindow     time.Duration `env:"RATE_LIMIT_WS_WINDOW,1m"`
+	RateLimitDMMax        int           `env:"RATE_LIMIT_DM_MAX,10"`
+	RateLimitDMWindow     time.Duration `env:"RATE_LIMIT_DM_WINDOW,1m"`
 
 	WSMessageBurst        int     `env:"WS_MSG_BURST,10"`
 	WSMessageRefillPerSec float64 `env:"WS_MSG_REFILL_PER_SEC,5"`

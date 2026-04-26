@@ -92,12 +92,16 @@ func run() error {
 	svc.SetInviteMaxAge(cfg.InviteMaxAge)
 	startJanitor(ctx, svc, cfg.JanitorInterval)
 
-	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler, cfg.MetricsSecret, cfg.RateLimitAuthMax, cfg.RateLimitAuthWindow, server.Options{
+	handler, closeHub := server.New(svc, sessions, cfg.ServiceName, otelResult.MetricsHandler, cfg.MetricsSecret, server.Options{
 		WSMessageBurst:        cfg.WSMessageBurst,
 		WSMessageRefillPerSec: cfg.WSMessageRefillPerSec,
 		TrustProxyHeaders:     cfg.TrustProxyHeaders,
-		RateLimitSearchMax:    cfg.RateLimitSearchMax,
-		RateLimitSearchWindow: cfg.RateLimitSearchWindow,
+		RateLimitAuth:         server.RateLimiterConfig{Max: cfg.RateLimitAuthMax, Window: cfg.RateLimitAuthWindow},
+		RateLimitSearch:       server.RateLimiterConfig{Max: cfg.RateLimitSearchMax, Window: cfg.RateLimitSearchWindow},
+		RateLimitRoom:         server.RateLimiterConfig{Max: cfg.RateLimitRoomMax, Window: cfg.RateLimitRoomWindow},
+		RateLimitInvite:       server.RateLimiterConfig{Max: cfg.RateLimitInviteMax, Window: cfg.RateLimitInviteWindow},
+		RateLimitWS:           server.RateLimiterConfig{Max: cfg.RateLimitWSMax, Window: cfg.RateLimitWSWindow},
+		RateLimitDM:           server.RateLimiterConfig{Max: cfg.RateLimitDMMax, Window: cfg.RateLimitDMWindow},
 	})
 	defer closeHub()
 

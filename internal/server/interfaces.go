@@ -102,6 +102,10 @@ type SetRoomPGPRequiredService interface {
 	SetRoomPGPRequired(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error
 }
 
+type SetRoomPublicService interface {
+	SetRoomPublic(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error
+}
+
 type RoomPGPService interface {
 	SetRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, armoredPublicKey string) error
 	VerifyRoomPGPKey(ctx context.Context, roomID model.RoomID, userID model.UserID, decryptedChallenge string) error
@@ -149,6 +153,7 @@ type RoomHandlersService interface {
 	RoomAccessService
 	SetRoomMembersCanInviteService
 	SetRoomPGPRequiredService
+	SetRoomPublicService
 	RoomPGPService
 }
 

@@ -65,6 +65,7 @@ type Room struct {
 	CreatedAt   time.Time
 	PGPRequired bool
 	IsDM        bool
+	IsPublic    bool
 }
 
 type RoomDetail struct {

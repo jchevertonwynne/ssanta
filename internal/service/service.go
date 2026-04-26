@@ -489,6 +489,16 @@ func (s *Service) SetRoomMembersCanInvite(
 	return s.store.Rooms.SetRoomMembersCanInvite(ctx, roomID, creatorID, value)
 }
 
+// SetRoomPublic toggles whether a room is publicly visible.
+func (s *Service) SetRoomPublic(
+	ctx context.Context,
+	roomID model.RoomID,
+	creatorID model.UserID,
+	value bool,
+) error {
+	return s.store.Rooms.SetRoomPublic(ctx, roomID, creatorID, value)
+}
+
 // SetRoomPGPRequired toggles whether a room requires PGP.
 func (s *Service) SetRoomPGPRequired(
 	ctx context.Context,
@@ -728,9 +738,8 @@ func (s *Service) getDMRoomsForUser(ctx context.Context, userID model.UserID, us
 		})
 	}
 
-	// Sort by created_at DESC (newest first)
 	sort.Slice(dmRooms, func(i, j int) bool {
-		return dmRooms[i].CreatedAt.After(dmRooms[j].CreatedAt)
+		return dmRooms[i].PartnerName < dmRooms[j].PartnerName
 	})
 
 	return dmRooms, nil

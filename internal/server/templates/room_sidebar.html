@@ -78,6 +78,20 @@
             Require PGP encryption
         </label>
         </form>
+
+        <form hx-post="/rooms/{{.Room.ID}}/public"
+            hx-target="#room-sidebar"
+            hx-swap="outerHTML"
+            hx-trigger="change">
+        <label>
+            <input type="checkbox"
+                   name="value"
+                   value="true"
+                   {{if .Room.IsPublic}}checked{{end}}
+                   data-checkbox-value>
+            Public room
+        </label>
+        </form>
     </section>
     {{end}}
 

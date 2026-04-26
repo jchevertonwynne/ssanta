@@ -85,17 +85,27 @@ type roomRenderOpts struct {
 	pgpRemoveErr       string
 }
 
+// RateLimiterConfig holds per-limiter settings. Max <= 0 or Window <= 0 disables the limiter.
+type RateLimiterConfig struct {
+	Max    int
+	Window time.Duration
+}
+
 // Options holds optional server wiring parameters with sensible defaults.
 type Options struct {
 	WSMessageBurst        int
 	WSMessageRefillPerSec float64
 	TrustProxyHeaders     bool
-	RateLimitSearchMax    int
-	RateLimitSearchWindow time.Duration
+	RateLimitAuth         RateLimiterConfig
+	RateLimitSearch       RateLimiterConfig
+	RateLimitRoom         RateLimiterConfig
+	RateLimitInvite       RateLimiterConfig
+	RateLimitWS           RateLimiterConfig
+	RateLimitDM           RateLimiterConfig
 }
 
 //nolint:funlen
-func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, rateLimitMax int, rateLimitWindow time.Duration, opts Options) (http.Handler, func()) {
+func New(svc ServerService, sessions SessionManager, serviceName string, metricsHandler http.Handler, metricsSecret string, opts Options) (http.Handler, func()) {
 	hub := ws.NewChatHubWithLimits(opts.WSMessageBurst, opts.WSMessageRefillPerSec)
 	go hub.Run()
 	hubAPI := Hub(hub)
@@ -112,31 +122,34 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /content", handleContent(svc, sessions))
 	mux.HandleFunc("GET /content/invites", handleContentInvites(svc, sessions))
 	mux.HandleFunc("GET /content/users", handleContentUsers(svc, sessions))
-	var authLimiter *ratelimit.RateLimiter
-	if rateLimitMax > 0 && rateLimitWindow > 0 {
-		authLimiter = ratelimit.New(rateLimitMax, rateLimitWindow, opts.TrustProxyHeaders)
+	makeLimiter := func(cfg RateLimiterConfig) *ratelimit.RateLimiter {
+		if cfg.Max <= 0 || cfg.Window <= 0 {
+			return nil
+		}
+		return ratelimit.New(cfg.Max, cfg.Window, opts.TrustProxyHeaders)
 	}
-	limited := func(h http.HandlerFunc) http.HandlerFunc {
-		if authLimiter == nil {
+	wrap := func(rl *ratelimit.RateLimiter, h http.HandlerFunc) http.HandlerFunc {
+		if rl == nil {
 			return h
 		}
-		return http.HandlerFunc(ratelimit.Middleware(authLimiter)(h).ServeHTTP)
+		return http.HandlerFunc(ratelimit.Middleware(rl)(h).ServeHTTP)
 	}
-	// Search is cheap compared to auth but does a per-room full scan on ILIKE.
-	// Use a more generous independent bucket so legitimate typing doesn't
-	// trip the limit, while a tight loop still gets throttled.
-	var searchLimiter *ratelimit.RateLimiter
-	if opts.RateLimitSearchMax > 0 && opts.RateLimitSearchWindow > 0 {
-		searchLimiter = ratelimit.New(opts.RateLimitSearchMax, opts.RateLimitSearchWindow, opts.TrustProxyHeaders)
-	}
-	searchLimited := func(h http.HandlerFunc) http.HandlerFunc {
-		if searchLimiter == nil {
-			return h
-		}
-		return http.HandlerFunc(ratelimit.Middleware(searchLimiter)(h).ServeHTTP)
-	}
+	authRL := makeLimiter(opts.RateLimitAuth)
+	// Search does a per-room full scan on ILIKE; keep it in its own bucket so
+	// legitimate typing doesn't consume the auth budget.
+	searchRL := makeLimiter(opts.RateLimitSearch)
+	roomRL := makeLimiter(opts.RateLimitRoom)
+	inviteRL := makeLimiter(opts.RateLimitInvite)
+	wsRL := makeLimiter(opts.RateLimitWS)
+	dmRL := makeLimiter(opts.RateLimitDM)
+	limited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(authRL, h) }
+	searchLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(searchRL, h) }
+	roomLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(roomRL, h) }
+	inviteLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(inviteRL, h) }
+	wsLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(wsRL, h) }
+	dmLimited := func(h http.HandlerFunc) http.HandlerFunc { return wrap(dmRL, h) }
 
-	mux.HandleFunc("GET /content/ws", limited(handleContentWebSocket(hub, svc, sessions)))
+	mux.HandleFunc("GET /content/ws", wsLimited(handleContentWebSocket(hub, svc, sessions)))
 
 	// Users
 	mux.HandleFunc("POST /users", limited(handleCreateUser(svc, sessions, hubAPI)))
@@ -146,7 +159,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("POST /password", limited(handleChangePassword(svc, sessions)))
 
 	// Rooms
-	mux.HandleFunc("POST /rooms", limited(handleCreateRoom(svc, sessions)))
+	mux.HandleFunc("POST /rooms", roomLimited(handleCreateRoom(svc, sessions)))
 	mux.HandleFunc("GET /rooms/{id}", handleRoomDetail(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}", handleDeleteRoom(svc, sessions, hubAPI))
 	mux.HandleFunc("GET /rooms/{id}/sidebar", handleRoomSidebar(svc, sessions))
@@ -154,11 +167,12 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /rooms/{id}/members-list", handleRoomMembersList(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/messages", handleListMessages(svc, sessions))
 	mux.HandleFunc("GET /rooms/{id}/messages/search", searchLimited(handleSearchMessages(svc, sessions)))
-	mux.HandleFunc("GET /rooms/{id}/ws", limited(handleWebSocket(hub, svc, sessions)))
-	mux.HandleFunc("POST /rooms/{id}/join", limited(handleJoinRoom(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /rooms/{id}/leave", limited(handleLeaveRoom(svc, sessions, hubAPI)))
+	mux.HandleFunc("GET /rooms/{id}/ws", wsLimited(handleWebSocket(hub, svc, sessions)))
+	mux.HandleFunc("POST /rooms/{id}/join", roomLimited(handleJoinRoom(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /rooms/{id}/leave", roomLimited(handleLeaveRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
 	mux.HandleFunc("POST /rooms/{id}/pgp-required", handleSetPGPRequired(svc, sessions, hubAPI))
+	mux.HandleFunc("POST /rooms/{id}/public", handleSetRoomPublic(svc, sessions))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
 
 	// PGP keys
@@ -168,13 +182,13 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}/pgp-key", handleRemoveMemberPGPKey(svc, sessions, hubAPI))
 
 	// Invites
-	mux.HandleFunc("POST /rooms/{id}/invites", limited(handleCreateInvite(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /invites/{id}/accept", limited(handleAcceptInvite(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /invites/{id}/decline", limited(handleDeclineInvite(svc, sessions)))
-	mux.HandleFunc("POST /invites/{id}/cancel", limited(handleCancelInvite(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /rooms/{id}/invites", inviteLimited(handleCreateInvite(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /invites/{id}/accept", inviteLimited(handleAcceptInvite(svc, sessions, hubAPI)))
+	mux.HandleFunc("POST /invites/{id}/decline", inviteLimited(handleDeclineInvite(svc, sessions)))
+	mux.HandleFunc("POST /invites/{id}/cancel", inviteLimited(handleCancelInvite(svc, sessions, hubAPI)))
 
 	// Direct Messages
-	mux.HandleFunc("POST /dms", limited(handleCreateOrGetDM(svc, sessions)))
+	mux.HandleFunc("POST /dms", dmLimited(handleCreateOrGetDM(svc, sessions)))
 	mux.HandleFunc("GET /dms", handleListDMs(svc, sessions))
 
 	// Admin
@@ -196,11 +210,10 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	)
 
 	closeFn := func() {
-		if authLimiter != nil {
-			authLimiter.Close()
-		}
-		if searchLimiter != nil {
-			searchLimiter.Close()
+		for _, rl := range []*ratelimit.RateLimiter{authRL, searchRL, roomRL, inviteRL, wsRL, dmRL} {
+			if rl != nil {
+				rl.Close()
+			}
 		}
 		hub.Stop()
 	}
