@@ -37,13 +37,16 @@ fmt:
 generate:
 	go generate ./...
 
-## run: Start the local development stack with docker compose.
-run:
-	docker compose up --build
+## start: Start the local development stack with docker compose.
+start:
+	docker compose up server --build -d
+
+stop:
+	docker compose down
 
 ## migrate: Run database migrations in docker compose.
 migrate:
-	docker compose up migrate --build
+	docker compose up migrate --build -d
 
 ## clean: Remove build artifacts and docker volumes.
 clean:

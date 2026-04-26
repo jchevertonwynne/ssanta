@@ -12,9 +12,6 @@ import (
 
 const (
 	msgTypePresence = "presence"
-	msgTypeMessage  = "message"
-	usernameAlice   = "alice"
-	usernameBob     = "bob"
 )
 
 func TestUpgraderCheckOrigin_AllowsEmptyOrigin(t *testing.T) {
