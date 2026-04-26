@@ -267,6 +267,16 @@ func TestWebSocket_E2E_PlaintextRejectedInPGPRoom(t *testing.T) {
 	connB := dial(usernameBob)
 	defer connB.Close() //nolint:errcheck
 
+	// Wait for initial presence so both clients are registered before sending.
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on alice: %v", err)
+	}
+	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connB.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on bob: %v", err)
+	}
+
 	// Send without pre_encrypted: true — server must reject this.
 	msg := ws.ChatMessagePayload{Type: msgTypeMessage, Message: "hello plaintext"}
 	b, err := json.Marshal(msg)
@@ -468,6 +478,20 @@ func TestWebSocket_E2E_WhisperPlaintext_OnlySenderAndTargetReceive(t *testing.T)
 	connC := dial("charlie")
 	defer connC.Close() //nolint:errcheck
 
+	// Wait for initial presence so all clients are registered before sending.
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on alice: %v", err)
+	}
+	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connB.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on bob: %v", err)
+	}
+	_ = connC.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connC.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on charlie: %v", err)
+	}
+
 	// Alice whispers to bob
 	msg := ws.ChatMessagePayload{Type: msgTypeMessage, Message: "secret", TargetUserID: userB}
 	b, err := json.Marshal(msg)
@@ -562,6 +586,16 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 	defer connA.Close() //nolint:errcheck
 	connB := dial(usernameBob)
 	defer connB.Close() //nolint:errcheck
+
+	// Wait for initial presence so both clients are registered before sending.
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on alice: %v", err)
+	}
+	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connB.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on bob: %v", err)
+	}
 
 	// Alice whispers to a non-existent user
 	msg := ws.ChatMessagePayload{Type: msgTypeMessage, Message: "secret", TargetUserID: 999}
