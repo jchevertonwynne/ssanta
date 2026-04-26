@@ -49,7 +49,7 @@ func handleCreateOrGetDM(svc DMHandlersService, sessions SessionManager) http.Ha
 			return
 		}
 
-		partnerID,err  := model.ParseUserID(partnerIDStr)
+		partnerID, err := model.ParseUserID(partnerIDStr)
 		if err != nil {
 			logger.Warn("dm invalid partner_id format", "partner_id", partnerIDStr)
 			http.Error(w, "invalid partner_id format", http.StatusBadRequest)
