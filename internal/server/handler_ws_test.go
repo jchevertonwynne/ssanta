@@ -160,6 +160,18 @@ func TestWebSocket_E2E_PreEncryptedMessageForwardedToAllMembers(t *testing.T) {
 	connB := dial(usernameBob)
 	defer connB.Close() //nolint:errcheck
 
+	// Wait for the initial presence broadcast on both connections so we know
+	// each client is fully registered with the hub before sending messages.
+	// This prevents a race where the broadcast runs before registration completes.
+	_ = connA.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connA.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on alice: %v", err)
+	}
+	_ = connB.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, _, err := connB.ReadMessage(); err != nil {
+		t.Fatalf("read initial presence on bob: %v", err)
+	}
+
 	const ciphertext = "-----BEGIN PGP MESSAGE-----\nfakeciphertext\n-----END PGP MESSAGE-----"
 	msg := ws.ChatMessagePayload{Type: msgTypeMessage, Message: ciphertext, PreEncrypted: true}
 	b, err := json.Marshal(msg)
