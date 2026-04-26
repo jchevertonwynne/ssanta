@@ -90,8 +90,6 @@ func (m *Manager) Clear(w http.ResponseWriter) {
 // UserID extracts and validates the current session user ID and the session
 // version carried by the cookie. Callers must compare the version against the
 // persisted server-side value before trusting the session.
-//
-//nolint:cyclop
 func (m *Manager) UserID(r *http.Request) (model.UserID, int, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
@@ -109,7 +107,7 @@ func (m *Manager) UserID(r *http.Request) (model.UserID, int, bool) {
 		return 0, 0, false
 	}
 	userID, err := model.ParseUserID(parts[0])
-	if err != nil || userID <= 0 {
+	if err != nil {
 		return 0, 0, false
 	}
 	issuedUnix, err := strconv.ParseInt(parts[1], 10, 64)

@@ -30,10 +30,12 @@ func TestParseUserID(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid", "user_id:42", 42, false},
-		{"valid zero", "user_id:0", 0, false},
-		{"valid negative", "user_id:-1", -1, false},
+		{"zero is invalid", "user_id:0", 0, true},
+		{"negative is invalid", "user_id:-1", 0, true},
 		{"valid max", "user_id:" + strconv.FormatInt(int64(^uint64(0)>>1), 10), UserID(^uint64(0) >> 1), false},
 		{"missing prefix", "42", 42, false},
+		{"no prefix zero", "0", 0, true},
+		{"no prefix negative", "-1", 0, true},
 		{"empty", "", 0, true},
 		{"invalid number", "user_id:abc", 0, true},
 		{"prefix only", "user_id:", 0, true},
@@ -68,6 +70,7 @@ func TestRoomID_Int64(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestParseRoomID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -77,7 +80,11 @@ func TestParseRoomID(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid", "room_id:7", 7, false},
+		{"zero is invalid", "room_id:0", 0, true},
+		{"negative is invalid", "room_id:-1", 0, true},
 		{"missing prefix", "7", 7, false},
+		{"no prefix zero", "0", 0, true},
+		{"no prefix negative", "-1", 0, true},
 		{"empty", "", 0, true},
 		{"invalid", "room_id:xyz", 0, true},
 	}
@@ -111,6 +118,7 @@ func TestInviteID_Int64(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestParseInviteID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -120,7 +128,11 @@ func TestParseInviteID(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid", "invite_id:99", 99, false},
+		{"zero is invalid", "invite_id:0", 0, true},
+		{"negative is invalid", "invite_id:-1", 0, true},
 		{"missing prefix", "99", 99, false},
+		{"no prefix zero", "0", 0, true},
+		{"no prefix negative", "-1", 0, true},
 		{"empty", "", 0, true},
 		{"invalid", "invite_id:abc", 0, true},
 	}
@@ -154,6 +166,7 @@ func TestMessageID_Int64(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestParseMessageID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -163,7 +176,11 @@ func TestParseMessageID(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid", "message_id:1001", 1001, false},
+		{"zero is invalid", "message_id:0", 0, true},
+		{"negative is invalid", "message_id:-1", 0, true},
 		{"missing prefix", "1001", 1001, false},
+		{"no prefix zero", "0", 0, true},
+		{"no prefix negative", "-1", 0, true},
 		{"empty", "", 0, true},
 		{"invalid", "message_id:abc", 0, true},
 	}

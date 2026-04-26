@@ -2,9 +2,17 @@
 package model
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
+)
+
+var (
+	ErrInvalidUserID    = errors.New("invalid user id")
+	ErrInvalidRoomID    = errors.New("invalid room id")
+	ErrInvalidInviteID  = errors.New("invalid invite id")
+	ErrInvalidMessageID = errors.New("invalid message id")
 )
 
 // UserID is a typed database identifier for a user.
@@ -19,7 +27,13 @@ func (id UserID) String() string {
 
 func ParseUserID(s string) (UserID, error) {
 	id, err := strconv.ParseInt(strings.TrimPrefix(s, "user_id:"), 10, 64)
-	return UserID(id), err
+	if err != nil {
+		return 0, err
+	}
+	if id < 1 {
+		return 0, ErrInvalidUserID
+	}
+	return UserID(id), nil
 }
 
 // RoomID is a typed database identifier for a room.
@@ -34,7 +48,13 @@ func (id RoomID) String() string {
 
 func ParseRoomID(s string) (RoomID, error) {
 	id, err := strconv.ParseInt(strings.TrimPrefix(s, "room_id:"), 10, 64)
-	return RoomID(id), err
+	if err != nil {
+		return 0, err
+	}
+	if id < 1 {
+		return 0, ErrInvalidRoomID
+	}
+	return RoomID(id), nil
 }
 
 // InviteID is a typed database identifier for an invite.
@@ -49,7 +69,13 @@ func (id InviteID) String() string {
 
 func ParseInviteID(s string) (InviteID, error) {
 	id, err := strconv.ParseInt(strings.TrimPrefix(s, "invite_id:"), 10, 64)
-	return InviteID(id), err
+	if err != nil {
+		return 0, err
+	}
+	if id < 1 {
+		return 0, ErrInvalidInviteID
+	}
+	return InviteID(id), nil
 }
 
 // MessageID is a typed database identifier for a message.
@@ -64,7 +90,13 @@ func (id MessageID) String() string {
 
 func ParseMessageID(s string) (MessageID, error) {
 	id, err := strconv.ParseInt(strings.TrimPrefix(s, "message_id:"), 10, 64)
-	return MessageID(id), err
+	if err != nil {
+		return 0, err
+	}
+	if id < 1 {
+		return 0, ErrInvalidMessageID
+	}
+	return MessageID(id), nil
 }
 
 type User struct {
