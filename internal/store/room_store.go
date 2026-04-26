@@ -63,15 +63,11 @@ func (s *RoomStore) CreateRoom(ctx context.Context, displayName string, creatorI
 }
 
 func (s *RoomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
-	tag, err := s.pool.Exec(ctx,
+	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
 		`DELETE FROM rooms WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID,
-	)
-	if err != nil {
+	); err != nil {
 		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrRoomNotFound
 	}
 	slog.InfoContext(ctx, "room deleted from db", "room_id", roomID, "creator_id", creatorID)
 	return nil
@@ -261,45 +257,24 @@ func (s *RoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) (
 }
 
 func (s *RoomStore) SetRoomMembersCanInvite(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
-	tag, err := s.pool.Exec(ctx,
+	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET members_can_invite = $3 WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID, value,
 	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotRoomCreator
-	}
-	return nil
 }
 
 func (s *RoomStore) SetRoomPGPRequired(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
-	tag, err := s.pool.Exec(ctx,
+	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET pgp_required = $3 WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID, value,
 	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotRoomCreator
-	}
-	return nil
 }
 
 func (s *RoomStore) SetRoomPublic(ctx context.Context, roomID RoomID, creatorID UserID, value bool) error {
-	tag, err := s.pool.Exec(ctx,
+	return execAssertRows(ctx, s.pool, ErrNotRoomCreator,
 		`UPDATE rooms SET is_public = $3 WHERE id = $1 AND creator_id = $2`,
 		roomID, creatorID, value,
 	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotRoomCreator
-	}
-	return nil
 }
 
 //nolint:cyclop,nestif,funlen
@@ -473,14 +448,24 @@ func (s *RoomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
 }
 
 func (s *RoomStore) AdminDeleteRoom(ctx context.Context, roomID RoomID) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM rooms WHERE id = $1`, roomID)
+	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
+		`DELETE FROM rooms WHERE id = $1`,
+		roomID,
+	); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "room admin-deleted from db", "room_id", roomID)
+	return nil
+}
+
+func execAssertRows(ctx context.Context, pool *pgxpool.Pool, notFoundErr error, sql string, args ...any) error {
+	tag, err := pool.Exec(ctx, sql, args...)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrRoomNotFound
+		return notFoundErr
 	}
-	slog.InfoContext(ctx, "room admin-deleted from db", "room_id", roomID)
 	return nil
 }
 

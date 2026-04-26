@@ -208,7 +208,7 @@ func TestHandleSetMembersCanInvite_NonCreator_Returns403(t *testing.T) {
 
 	r := newFormRequest(t, "/rooms/10/members-can-invite", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
-	w := serve(t, handleSetMembersCanInvite(svc, sessions), r)
+	w := serve(t, makeRoomBoolHandler(svc, sessions, svc.SetRoomMembersCanInvite, "set members_can_invite", nil), r)
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
@@ -230,7 +230,7 @@ func TestHandleSetPGPRequired_NonCreator_Returns403(t *testing.T) {
 
 	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
-	w := serve(t, handleSetPGPRequired(svc, sessions, hub), r)
+	w := serve(t, makeRoomBoolHandler(svc, sessions, svc.SetRoomPGPRequired, "set pgp_required", hub.NotifyRoomUpdate), r)
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
@@ -254,7 +254,7 @@ func TestHandleSetPGPRequired_Success_RendersSidebar(t *testing.T) {
 
 	r := newFormRequest(t, "/rooms/10/pgp-required", url.Values{"value": {"true"}})
 	r.SetPathValue("id", "10")
-	w := serve(t, handleSetPGPRequired(svc, sessions, hub), r)
+	w := serve(t, makeRoomBoolHandler(svc, sessions, svc.SetRoomPGPRequired, "set pgp_required", hub.NotifyRoomUpdate), r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
@@ -326,6 +326,7 @@ func TestHandleRoomMembersList_NonMember_Returns403(t *testing.T) {
 		{ID: 1, Username: "alice"},
 		{ID: 3, Username: "charlie"},
 	}, nil)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/members-list", nil)
 	r.SetPathValue("id", "10")

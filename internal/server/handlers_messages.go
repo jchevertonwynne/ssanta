@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -39,6 +40,33 @@ func messagesToResponse(msgs []model.Message) []messageResponse {
 	return out
 }
 
+// checkRoomReadAccess returns false and writes the error response if the user
+// cannot read messages in the room (not creator/member of a non-public room).
+func checkRoomReadAccess(w http.ResponseWriter, r *http.Request, svc interface {
+	GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error)
+	IsRoomPublic(ctx context.Context, roomID model.RoomID) (bool, error)
+}, roomID model.RoomID, userID model.UserID) bool {
+	isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, userID)
+	if err != nil {
+		slog.Error("check room access", "err", err, "room_id", roomID) //nolint:gosec
+		http.Error(w, "failed to check room access", http.StatusInternalServerError)
+		return false
+	}
+	if !isCreator && !isMember {
+		isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+		if err != nil {
+			slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
+			http.Error(w, "failed to check room access", http.StatusInternalServerError)
+			return false
+		}
+		if !isPublic {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return false
+		}
+	}
+	return true
+}
+
 //nolint:cyclop
 func handleListMessages(svc MessageListService, sessions SessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -52,23 +80,8 @@ func handleListMessages(svc MessageListService, sessions SessionManager) http.Ha
 			return
 		}
 
-		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
-		if err != nil {
-			slog.Error("check room access", "err", err, "room_id", roomID) //nolint:gosec
-			http.Error(w, "failed to check room access", http.StatusInternalServerError)
+		if !checkRoomReadAccess(w, r, svc, roomID, currentID) {
 			return
-		}
-		if !isCreator && !isMember {
-			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
-			if err != nil {
-				slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
-				http.Error(w, "failed to check room access", http.StatusInternalServerError)
-				return
-			}
-			if !isPublic {
-				http.Error(w, "not a member of this room", http.StatusForbidden)
-				return
-			}
 		}
 
 		limitStr := r.URL.Query().Get("limit")
@@ -112,23 +125,8 @@ func handleSearchMessages(svc MessageListService, sessions SessionManager) http.
 			return
 		}
 
-		isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, currentID)
-		if err != nil {
-			slog.Error("check room access", "err", err, "room_id", roomID) //nolint:gosec
-			http.Error(w, "failed to check room access", http.StatusInternalServerError)
+		if !checkRoomReadAccess(w, r, svc, roomID, currentID) {
 			return
-		}
-		if !isCreator && !isMember {
-			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
-			if err != nil {
-				slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
-				http.Error(w, "failed to check room access", http.StatusInternalServerError)
-				return
-			}
-			if !isPublic {
-				http.Error(w, "not a member of this room", http.StatusForbidden)
-				return
-			}
 		}
 
 		query := r.URL.Query().Get("q")

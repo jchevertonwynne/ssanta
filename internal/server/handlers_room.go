@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -281,8 +282,13 @@ func handleRoomSidebar(svc RoomHandlersService, sessions SessionManager) http.Ha
 	}
 }
 
-//nolint:dupl
-func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
+func makeRoomBoolHandler(
+	svc RoomHandlersService,
+	sessions SessionManager,
+	setter func(context.Context, model.RoomID, model.UserID, bool) error,
+	logLabel string,
+	onSuccess func(model.RoomID),
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
 		if !ok {
@@ -298,8 +304,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		value := r.FormValue("value") == formTrue
-		err := svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
+		err := setter(r.Context(), roomID, currentID, r.FormValue("value") == formTrue)
 		switch {
 		case errors.Is(err, store.ErrNotRoomCreator):
 			http.Error(w, err.Error(), http.StatusForbidden)
@@ -308,81 +313,13 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
 			return
 		case err != nil:
-			loggerFromContext(r.Context()).Error("set members_can_invite", "err", err)
+			loggerFromContext(r.Context()).Error(logLabel, "err", err)
 			http.Error(w, "failed to update room", http.StatusInternalServerError)
 			return
 		}
-		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
-	}
-}
-
-//nolint:dupl
-func handleSetRoomPublic(svc RoomHandlersService, sessions SessionManager) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-		if !ok {
-			http.Error(w, "login required", http.StatusUnauthorized)
-			return
+		if onSuccess != nil {
+			onSuccess(roomID)
 		}
-		roomID, ok := pathRoomID(w, r, "id")
-		if !ok {
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form", http.StatusBadRequest)
-			return
-		}
-		value := r.FormValue("value") == formTrue
-		err := svc.SetRoomPublic(r.Context(), roomID, currentID, value)
-		switch {
-		case errors.Is(err, store.ErrNotRoomCreator):
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
-			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
-			return
-		case err != nil:
-			loggerFromContext(r.Context()).Error("set is_public", "err", err)
-			http.Error(w, "failed to update room", http.StatusInternalServerError)
-			return
-		}
-		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
-	}
-}
-
-func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
-		if !ok {
-			http.Error(w, "login required", http.StatusUnauthorized)
-			return
-		}
-		roomID, ok := pathRoomID(w, r, "id")
-		if !ok {
-			return
-		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form", http.StatusBadRequest)
-			return
-		}
-		value := r.FormValue("value") == formTrue
-		err := svc.SetRoomPGPRequired(r.Context(), roomID, currentID, value)
-		switch {
-		case errors.Is(err, store.ErrNotRoomCreator):
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		case errors.Is(err, store.ErrOperationNotAllowedOnDM):
-			http.Error(w, "not supported for DM rooms", http.StatusForbidden)
-			return
-		case err != nil:
-			loggerFromContext(r.Context()).Error("set pgp_required", "err", err)
-			http.Error(w, "failed to update room", http.StatusInternalServerError)
-			return
-		}
-
-		hub.NotifyRoomUpdate(roomID)
 		renderRoomSidebar(w, r.Context(), svc, currentID, roomID)
 	}
 }

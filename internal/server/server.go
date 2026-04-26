@@ -171,9 +171,9 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /rooms/{id}/ws", wsLimited(handleWebSocket(hub, svc, sessions)))
 	mux.HandleFunc("POST /rooms/{id}/join", roomLimited(handleJoinRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/leave", roomLimited(handleLeaveRoom(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /rooms/{id}/members-can-invite", handleSetMembersCanInvite(svc, sessions))
-	mux.HandleFunc("POST /rooms/{id}/pgp-required", handleSetPGPRequired(svc, sessions, hubAPI))
-	mux.HandleFunc("POST /rooms/{id}/public", handleSetRoomPublic(svc, sessions))
+	mux.HandleFunc("POST /rooms/{id}/members-can-invite", makeRoomBoolHandler(svc, sessions, svc.SetRoomMembersCanInvite, "set members_can_invite", nil))
+	mux.HandleFunc("POST /rooms/{id}/pgp-required", makeRoomBoolHandler(svc, sessions, svc.SetRoomPGPRequired, "set pgp_required", hubAPI.NotifyRoomUpdate))
+	mux.HandleFunc("POST /rooms/{id}/public", makeRoomBoolHandler(svc, sessions, svc.SetRoomPublic, "set is_public", nil))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
 
 	// PGP keys

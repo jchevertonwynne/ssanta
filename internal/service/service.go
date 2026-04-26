@@ -834,12 +834,8 @@ func (s *Service) IsUserAdmin(ctx context.Context, id model.UserID) (bool, error
 
 // GetAdminView loads all data needed for the admin page.
 func (s *Service) GetAdminView(ctx context.Context, adminID model.UserID) (*AdminView, error) {
-	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
-	if err != nil {
+	if err := s.requireAdmin(ctx, adminID); err != nil {
 		return nil, err
-	}
-	if !isAdmin {
-		return nil, store.ErrNotAdmin
 	}
 
 	view := &AdminView{}
@@ -874,12 +870,8 @@ func (s *Service) GetAdminView(ctx context.Context, adminID model.UserID) (*Admi
 
 // AdminDeleteUser removes any user account. The acting admin cannot delete themselves.
 func (s *Service) AdminDeleteUser(ctx context.Context, adminID, targetID model.UserID) error {
-	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
-	if err != nil {
+	if err := s.requireAdmin(ctx, adminID); err != nil {
 		return err
-	}
-	if !isAdmin {
-		return store.ErrNotAdmin
 	}
 	if adminID == targetID {
 		return store.ErrUserNotFound
@@ -889,12 +881,8 @@ func (s *Service) AdminDeleteUser(ctx context.Context, adminID, targetID model.U
 
 // AdminDeleteRoom removes any non-DM room regardless of creator.
 func (s *Service) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roomID model.RoomID) error {
-	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
-	if err != nil {
+	if err := s.requireAdmin(ctx, adminID); err != nil {
 		return err
-	}
-	if !isAdmin {
-		return store.ErrNotAdmin
 	}
 	if err := s.assertNotDM(ctx, roomID); err != nil {
 		return err
@@ -904,12 +892,8 @@ func (s *Service) AdminDeleteRoom(ctx context.Context, adminID model.UserID, roo
 
 // SetUserAdmin grants or revokes admin status. An admin cannot demote themselves.
 func (s *Service) SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error {
-	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
-	if err != nil {
+	if err := s.requireAdmin(ctx, adminID); err != nil {
 		return err
-	}
-	if !isAdmin {
-		return store.ErrNotAdmin
 	}
 	if !grant && adminID == targetID {
 		return store.ErrCannotSelfDemote
@@ -918,6 +902,17 @@ func (s *Service) SetUserAdmin(ctx context.Context, adminID, targetID model.User
 		return s.store.Users.GrantAdmin(ctx, targetID, adminID)
 	}
 	return s.store.Users.RevokeAdmin(ctx, targetID)
+}
+
+func (s *Service) requireAdmin(ctx context.Context, adminID model.UserID) error {
+	isAdmin, err := s.store.Users.IsUserAdmin(ctx, adminID)
+	if err != nil {
+		return err
+	}
+	if !isAdmin {
+		return store.ErrNotAdmin
+	}
+	return nil
 }
 
 func (s *Service) assertNotDM(ctx context.Context, roomID model.RoomID) error {
