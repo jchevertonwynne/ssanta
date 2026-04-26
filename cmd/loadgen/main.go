@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -23,6 +24,14 @@ type config struct {
 	pauseMax    time.Duration
 }
 
+var (
+	errUsersMin      = errors.New("-users must be >= 1")
+	errBurstMin      = errors.New("-burst-min must be >= 1")
+	errBurstMinMax   = errors.New("-burst-min must be <= -burst-max")
+	errMsgDelayRange = errors.New("-msg-delay-min must be <= -msg-delay-max")
+	errPauseRange    = errors.New("-pause-min must be <= -pause-max")
+)
+
 func main() {
 	var cfg config
 	flag.StringVar(&cfg.baseURL, "url", "http://localhost:8080", "base server URL")
@@ -40,16 +49,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := run(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(cfg config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	fmt.Printf("setting up %d users...\n", cfg.numUsers)
+	_, _ = fmt.Fprintf(os.Stdout, "setting up %d users...\n", cfg.numUsers)
 	clients, roomID, err := setup(ctx, cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "setup failed: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("setup failed: %w", err)
 	}
-	fmt.Printf("setup complete, room ID: %d — starting simulation\n", roomID)
+	_, _ = fmt.Fprintf(os.Stdout, "setup complete, room ID: %d — starting simulation\n", roomID)
 
 	stats := make([]*userStats, cfg.numUsers)
 	for i, c := range clients {
@@ -67,37 +82,38 @@ func main() {
 	go printStatsPeriodically(ctx, stats, 10*time.Second)
 
 	<-ctx.Done()
-	fmt.Println("\nshutting down...")
+	_, _ = fmt.Fprintf(os.Stdout, "\nshutting down...\n")
 	wg.Wait()
 
 	cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	cleanup(cleanupCtx, clients)
 	printStats(stats)
+	return nil
 }
 
 func validateConfig(cfg config) error {
 	if cfg.numUsers < 1 {
-		return fmt.Errorf("-users must be >= 1")
+		return errUsersMin
 	}
 	if cfg.burstMin < 1 {
-		return fmt.Errorf("-burst-min must be >= 1")
+		return errBurstMin
 	}
 	if cfg.burstMin > cfg.burstMax {
-		return fmt.Errorf("-burst-min must be <= -burst-max")
+		return errBurstMinMax
 	}
 	if cfg.msgDelayMin > cfg.msgDelayMax {
-		return fmt.Errorf("-msg-delay-min must be <= -msg-delay-max")
+		return errMsgDelayRange
 	}
 	if cfg.pauseMin > cfg.pauseMax {
-		return fmt.Errorf("-pause-min must be <= -pause-max")
+		return errPauseRange
 	}
 	return nil
 }
 
 func setup(ctx context.Context, cfg config) ([]*userClient, int64, error) {
 	clients := make([]*userClient, cfg.numUsers)
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 	for i := range cfg.numUsers {
 		name := fmt.Sprintf("loadgen_%06x", rng.Int31n(1<<24))
 		c, err := newUserClient(cfg.baseURL, name, "loadgen-pass-"+name)
@@ -107,8 +123,33 @@ func setup(ctx context.Context, cfg config) ([]*userClient, int64, error) {
 		clients[i] = c
 	}
 
-	// Register all users in parallel.
-	errs := make([]error, cfg.numUsers)
+	if err := registerClients(ctx, clients); err != nil {
+		return nil, 0, err
+	}
+
+	roomName := fmt.Sprintf("loadgen_%06x", rng.Int31n(1<<24))
+	roomID, err := clients[0].createRoom(ctx, roomName)
+	if err != nil {
+		return nil, 0, fmt.Errorf("create room: %w", err)
+	}
+
+	for _, c := range clients[1:] {
+		if err := clients[0].inviteUser(ctx, roomID, c.username); err != nil {
+			return nil, 0, fmt.Errorf("invite %s: %w", c.username, err)
+		}
+	}
+
+	if cfg.numUsers > 1 {
+		if err := acceptAllInvites(ctx, clients[1:]); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return clients, roomID, nil
+}
+
+func registerClients(ctx context.Context, clients []*userClient) error {
+	errs := make([]error, len(clients))
 	var wg sync.WaitGroup
 	for i, c := range clients {
 		wg.Go(func() {
@@ -129,47 +170,34 @@ func setup(ctx context.Context, cfg config) ([]*userClient, int64, error) {
 	wg.Wait()
 	for _, err := range errs {
 		if err != nil {
-			return nil, 0, err
+			return err
 		}
 	}
+	return nil
+}
 
-	// User 0 creates the room.
-	roomName := fmt.Sprintf("loadgen_%06x", rng.Int31n(1<<24))
-	roomID, err := clients[0].createRoom(ctx, roomName)
-	if err != nil {
-		return nil, 0, fmt.Errorf("create room: %w", err)
-	}
-
-	// User 0 invites everyone else.
-	for _, c := range clients[1:] {
-		if err := clients[0].inviteUser(ctx, roomID, c.username); err != nil {
-			return nil, 0, fmt.Errorf("invite %s: %w", c.username, err)
-		}
-	}
-
-	// All invited users accept in parallel.
-	if cfg.numUsers > 1 {
-		for i, c := range clients[1:] {
-			wg.Go(func() {
-				inviteID, err := c.getInviteID(ctx)
-				if err != nil {
-					errs[i+1] = fmt.Errorf("get invite id [%s]: %w", c.username, err)
-					return
-				}
-				if err := c.acceptInvite(ctx, inviteID); err != nil {
-					errs[i+1] = fmt.Errorf("accept invite [%s]: %w", c.username, err)
-				}
-			})
-		}
-		wg.Wait()
-		for _, err := range errs {
+func acceptAllInvites(ctx context.Context, clients []*userClient) error {
+	errs := make([]error, len(clients))
+	var wg sync.WaitGroup
+	for i, c := range clients {
+		wg.Go(func() {
+			inviteID, err := c.getInviteID(ctx)
 			if err != nil {
-				return nil, 0, err
+				errs[i] = fmt.Errorf("get invite id [%s]: %w", c.username, err)
+				return
 			}
+			if err := c.acceptInvite(ctx, inviteID); err != nil {
+				errs[i] = fmt.Errorf("accept invite [%s]: %w", c.username, err)
+			}
+		})
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return err
 		}
 	}
-
-	return clients, roomID, nil
+	return nil
 }
 
 func cleanup(ctx context.Context, clients []*userClient) {
@@ -179,7 +207,7 @@ func cleanup(ctx context.Context, clients []*userClient) {
 			// Re-seed CSRF as the session may have been invalidated by the WS close.
 			_ = c.seedCSRF(ctx)
 			if err := c.deleteUser(ctx); err != nil {
-				fmt.Printf("[%s] cleanup error: %v\n", c.username, err)
+				fmt.Fprintf(os.Stderr, "[%s] cleanup error: %v\n", c.username, err)
 			}
 		})
 	}
@@ -200,13 +228,13 @@ func printStatsPeriodically(ctx context.Context, stats []*userStats, interval ti
 }
 
 func printStats(stats []*userStats) {
-	fmt.Println("--- stats ---")
+	_, _ = fmt.Fprintf(os.Stdout, "--- stats ---\n")
 	total := int64(0)
 	for _, s := range stats {
 		sent := s.sent.Load()
 		errs := s.errors.Load()
 		total += sent
-		fmt.Printf("  %-24s  sent=%-6d errors=%d\n", s.username, sent, errs)
+		_, _ = fmt.Fprintf(os.Stdout, "  %-24s  sent=%-6d errors=%d\n", s.username, sent, errs)
 	}
-	fmt.Printf("  total sent: %d\n", total)
+	_, _ = fmt.Fprintf(os.Stdout, "  total sent: %d\n", total)
 }

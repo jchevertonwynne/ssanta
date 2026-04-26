@@ -69,8 +69,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.Us
 	}
 
 	hub.wg.Go(client.writePump)
-	hub.wg.Go(func() {
-		//nolint: contextcheck // this is fine
+	hub.wg.Go(func() { //nolint:contextcheck
 		client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 	})
 }
@@ -99,7 +98,6 @@ func RunContentWS(hub *ChatHub, sessions SessionReader, currentID model.UserID, 
 
 	hub.wg.Go(client.writePump)
 	hub.wg.Go(func() {
-		//nolint: contextcheck // this is fine
 		client.readPump(context.WithValue(hub.lifetimeCtx, ctxKeyWSSide, "readPump"))
 	})
 }

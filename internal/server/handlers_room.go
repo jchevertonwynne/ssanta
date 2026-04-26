@@ -288,7 +288,7 @@ func handleSetMembersCanInvite(svc RoomHandlersService, sessions SessionManager)
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		value := r.FormValue("value") == "true"
+		value := r.FormValue("value") == formTrue
 		err := svc.SetRoomMembersCanInvite(r.Context(), roomID, currentID, value)
 		switch {
 		case errors.Is(err, store.ErrNotRoomCreator):
@@ -322,7 +322,7 @@ func handleSetPGPRequired(svc RoomHandlersService, sessions SessionManager, hub 
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		value := r.FormValue("value") == "true"
+		value := r.FormValue("value") == formTrue
 		err := svc.SetRoomPGPRequired(r.Context(), roomID, currentID, value)
 		switch {
 		case errors.Is(err, store.ErrNotRoomCreator):

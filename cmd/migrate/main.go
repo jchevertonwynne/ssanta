@@ -37,15 +37,12 @@ func run() error {
 		return errDatabaseURLRequired
 	}
 
+	var err error
 	if databaseSchema != "" {
-		if err := db.CreateSchema(ctx, dbURL, databaseSchema); err != nil {
-			return err
-		}
-		urlWithSP, err := db.WithSearchPath(dbURL, databaseSchema)
+		dbURL, err = applySchema(ctx, dbURL, databaseSchema)
 		if err != nil {
 			return err
 		}
-		dbURL = urlWithSP
 	}
 
 	if err := db.Migrate(dbURL, migrationsDir); err != nil {
@@ -67,6 +64,13 @@ func run() error {
 	}
 
 	return nil
+}
+
+func applySchema(ctx context.Context, dbURL, schema string) (string, error) {
+	if err := db.CreateSchema(ctx, dbURL, schema); err != nil {
+		return "", err
+	}
+	return db.WithSearchPath(dbURL, schema)
 }
 
 func envOrDefault(key, def string) string {

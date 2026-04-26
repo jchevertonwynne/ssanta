@@ -232,7 +232,6 @@ type SetUserAdminService interface {
 	SetUserAdmin(ctx context.Context, adminID, targetID model.UserID, grant bool) error
 }
 
-//nolint:interfacebloat
 type AdminHandlersService interface {
 	UserExistsService
 	IsAdminService

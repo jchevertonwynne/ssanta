@@ -10,6 +10,8 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
+const formTrue = "true"
+
 type adminData struct {
 	CurrentUserID   model.UserID
 	CurrentUsername string
@@ -139,7 +141,7 @@ func handleAdminSetUserAdmin(svc AdminHandlersService, sessions SessionManager) 
 			http.Error(w, "invalid form", http.StatusBadRequest)
 			return
 		}
-		grant := r.FormValue("grant") == "true"
+		grant := r.FormValue("grant") == formTrue
 		if err := svc.SetUserAdmin(r.Context(), adminID, targetID, grant); err != nil {
 			switch {
 			case errors.Is(err, store.ErrCannotSelfDemote):

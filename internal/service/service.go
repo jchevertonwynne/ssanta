@@ -103,66 +103,19 @@ type RoomDetailView struct {
 
 // GetContentView loads all data needed for the main content page.
 func (s *Service) GetContentView(ctx context.Context, userID model.UserID) (*ContentView, error) {
-	view := &ContentView{}
-
 	if userID == 0 {
 		users, err := s.store.Users.ListUsers(ctx)
 		if err != nil {
 			return nil, err
 		}
-		view.Users = users
-		return view, nil
+		return &ContentView{Users: users}, nil
 	}
 
-	var users []model.User
-	g, gCtx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		users, err = s.store.Users.ListUsers(gCtx)
-		return err
-	})
-
-	g.Go(func() error {
-		user, err := s.store.Users.GetUserByID(gCtx, userID)
-		if err != nil {
-			return err
-		}
-		view.CurrentUsername = user.Username
-		return nil
-	})
-
-	g.Go(func() error {
-		var err error
-		view.IsAdmin, err = s.store.Users.IsUserAdmin(gCtx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		view.CreatedRooms, err = s.store.Rooms.ListRoomsByCreator(gCtx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(gCtx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		view.Invites, err = s.store.Invites.ListInvitesForUser(gCtx, userID)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
+	view, users, err := s.loadAuthenticatedContentView(ctx, userID)
+	if err != nil {
 		return nil, err
 	}
 
-	view.Users = users
-
-	// getDMRoomsForUser depends on the users list, so run after the errgroup
 	dmRooms, err := s.getDMRoomsForUser(ctx, userID, users)
 	if err != nil {
 		return nil, err
@@ -857,17 +810,6 @@ func (s *Service) SearchMessages(
 	return s.store.Chat.SearchMessages(ctx, roomID, userID, query, limit)
 }
 
-func (s *Service) assertNotDM(ctx context.Context, roomID model.RoomID) error {
-	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
-	if err != nil {
-		return err
-	}
-	if detail.IsDM {
-		return store.ErrOperationNotAllowedOnDM
-	}
-	return nil
-}
-
 // Admin operations
 
 // IsUserAdmin reports whether a user has admin status.
@@ -961,4 +903,67 @@ func (s *Service) SetUserAdmin(ctx context.Context, adminID, targetID model.User
 		return s.store.Users.GrantAdmin(ctx, targetID, adminID)
 	}
 	return s.store.Users.RevokeAdmin(ctx, targetID)
+}
+
+func (s *Service) assertNotDM(ctx context.Context, roomID model.RoomID) error {
+	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
+		return err
+	}
+	if detail.IsDM {
+		return store.ErrOperationNotAllowedOnDM
+	}
+	return nil
+}
+
+func (s *Service) loadAuthenticatedContentView(ctx context.Context, userID model.UserID) (*ContentView, []model.User, error) {
+	view := &ContentView{}
+	var users []model.User
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		users, err = s.store.Users.ListUsers(gCtx)
+		return err
+	})
+
+	g.Go(func() error {
+		user, err := s.store.Users.GetUserByID(gCtx, userID)
+		if err != nil {
+			return err
+		}
+		view.CurrentUsername = user.Username
+		return nil
+	})
+
+	g.Go(func() error {
+		var err error
+		view.IsAdmin, err = s.store.Users.IsUserAdmin(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.CreatedRooms, err = s.store.Rooms.ListRoomsByCreator(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.MemberRooms, err = s.store.Rooms.ListRoomsByMember(gCtx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		view.Invites, err = s.store.Invites.ListInvitesForUser(gCtx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, nil, err
+	}
+
+	view.Users = users
+	return view, users, nil
 }

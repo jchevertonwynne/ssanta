@@ -35,11 +35,13 @@ type User struct {
 
 type UserWithPassword struct {
 	User
+
 	PasswordHash string
 }
 
 type AdminUser struct {
 	User
+
 	IsAdmin                bool
 	AdminSince             *time.Time
 	AdminGrantedByUsername *string

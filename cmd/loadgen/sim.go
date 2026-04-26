@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,9 +41,12 @@ func simulate(ctx context.Context, client *userClient, roomID int64, cfg config,
 		header.Set("Cookie", strings.Join(cookieParts, "; "))
 	}
 
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, header)
+	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, wsURL, header)
 	if err != nil {
-		fmt.Printf("[%s] websocket dial error: %v\n", client.username, err)
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "[%s] websocket dial error: %v\n", client.username, err)
 		stats.errors.Add(1)
 		return
 	}
@@ -53,36 +57,12 @@ func simulate(ctx context.Context, client *userClient, roomID int64, cfg config,
 	})
 
 	msgCount := 0
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 
 loop:
 	for {
-		burstSize := randInt(rng, cfg.burstMin, cfg.burstMax)
-		for i := range burstSize {
-			select {
-			case <-ctx.Done():
-				break loop
-			default:
-			}
-
-			msgCount++
-			msg := wsMessage{
-				Type:        "message",
-				Message:     fmt.Sprintf("hello from %s (msg %d)", client.username, msgCount),
-				ClientMsgID: fmt.Sprintf("%x-%x-%d", rng.Int63(), rng.Int63(), i),
-			}
-			data, _ := json.Marshal(msg)
-			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-				stats.errors.Add(1)
-				break loop
-			}
-			stats.sent.Add(1)
-
-			select {
-			case <-ctx.Done():
-				break loop
-			case <-time.After(randDuration(rng, cfg.msgDelayMin, cfg.msgDelayMax)):
-			}
+		if !sendBurst(ctx, conn, client, cfg, rng, &msgCount, stats) {
+			break loop
 		}
 
 		select {
@@ -92,10 +72,45 @@ loop:
 		}
 	}
 
-	conn.WriteMessage(websocket.CloseMessage,
+	_ = conn.WriteMessage(websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	conn.Close()
+	_ = conn.Close()
 	wg.Wait()
+}
+
+func sendBurst(ctx context.Context, conn *websocket.Conn, client *userClient, cfg config, rng *rand.Rand, msgCount *int, stats *userStats) bool {
+	burstSize := randInt(rng, cfg.burstMin, cfg.burstMax)
+	for i := range burstSize {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+
+		*msgCount++
+		msg := wsMessage{
+			Type:        "message",
+			Message:     fmt.Sprintf("hello from %s (msg %d)", client.username, *msgCount),
+			ClientMsgID: fmt.Sprintf("%x-%x-%d", rng.Int63(), rng.Int63(), i),
+		}
+		data, err := json.Marshal(msg)
+		if err != nil {
+			stats.errors.Add(1)
+			return false
+		}
+		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			stats.errors.Add(1)
+			return false
+		}
+		stats.sent.Add(1)
+
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(randDuration(rng, cfg.msgDelayMin, cfg.msgDelayMax)):
+		}
+	}
+	return true
 }
 
 func drainReads(conn *websocket.Conn) {
@@ -111,16 +126,16 @@ func toWSURL(baseURL string) string {
 	return strings.Replace(s, "http://", "ws://", 1)
 }
 
-func randInt(rng *rand.Rand, min, max int) int {
-	if min >= max {
-		return min
+func randInt(rng *rand.Rand, lo, hi int) int {
+	if lo >= hi {
+		return lo
 	}
-	return min + rng.Intn(max-min+1)
+	return lo + rng.Intn(hi-lo+1)
 }
 
-func randDuration(rng *rand.Rand, min, max time.Duration) time.Duration {
-	if min >= max {
-		return min
+func randDuration(rng *rand.Rand, lo, hi time.Duration) time.Duration {
+	if lo >= hi {
+		return lo
 	}
-	return min + time.Duration(rng.Int63n(int64(max-min+1)))
+	return lo + time.Duration(rng.Int63n(int64(hi-lo+1)))
 }
