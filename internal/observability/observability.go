@@ -5,14 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime/debug"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
@@ -25,10 +26,8 @@ import (
 
 // Config holds observability configuration.
 type Config struct {
-	OTLPEndpoint string
-	OTLPInsecure bool
-	ServiceName  string
-	Environment  string
+	ServiceName string
+	Environment string
 }
 
 // InitResult holds the results of initializing observability.
@@ -37,19 +36,19 @@ type InitResult struct {
 	MetricsHandler http.Handler
 }
 
-// Init initializes OpenTelemetry with OTLP exporters for traces, metrics, and logs,
-// plus a Prometheus exporter for /metrics scraping.
+// Init initializes OpenTelemetry with OTLP/HTTP exporters for traces, metrics, and logs,
+// plus a Prometheus exporter for /metrics scraping. OTLP is enabled when the standard
+// OTEL_EXPORTER_OTLP_ENDPOINT env var is set; the SDK reads endpoint, headers, and TLS
+// config from the standard OTEL_EXPORTER_OTLP_* env vars automatically.
 //
 //nolint:cyclop,funlen
 func Init(ctx context.Context, cfg Config) (*InitResult, error) {
-	// Always set up Prometheus exporter (works without OTLP)
 	promExporter, err := otelprom.New()
 	if err != nil {
 		return nil, fmt.Errorf("create prometheus exporter: %w", err)
 	}
 
-	if cfg.OTLPEndpoint == "" {
-		// No OTLP endpoint; set up meter provider with Prometheus only
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
 		meterProvider := sdkmetric.NewMeterProvider(
 			sdkmetric.WithReader(promExporter),
 		)
@@ -60,7 +59,6 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		}, nil
 	}
 
-	// Build resource with service info
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(cfg.ServiceName),
@@ -73,7 +71,6 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		return nil, fmt.Errorf("create resource: %w", err)
 	}
 
-	// Add build info if available
 	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" {
 		res, _ = resource.Merge(res, resource.NewWithAttributes(
 			"",
@@ -81,40 +78,19 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 		))
 	}
 
-	// Initialize trace exporter
-	var traceExporter sdktrace.SpanExporter
-	if cfg.OTLPInsecure {
-		traceExporter, err = otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpoint(cfg.OTLPEndpoint),
-			otlptracegrpc.WithInsecure(),
-		)
-	} else {
-		traceExporter, err = otlptracegrpc.New(ctx,
-			otlptracegrpc.WithEndpoint(cfg.OTLPEndpoint),
-		)
-	}
+	traceExporter, err := otlptracehttp.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create trace exporter: %w", err)
 	}
 
 	tracerProvider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
 	)
 	otel.SetTracerProvider(tracerProvider)
 
-	// Initialize metric exporter
-	var metricExporter sdkmetric.Exporter
-	if cfg.OTLPInsecure {
-		metricExporter, err = otlpmetricgrpc.New(ctx,
-			otlpmetricgrpc.WithEndpoint(cfg.OTLPEndpoint),
-			otlpmetricgrpc.WithInsecure(),
-		)
-	} else {
-		metricExporter, err = otlpmetricgrpc.New(ctx,
-			otlpmetricgrpc.WithEndpoint(cfg.OTLPEndpoint),
-		)
-	}
+	metricExporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		_ = traceExporter.Shutdown(ctx)
 		return nil, fmt.Errorf("create metric exporter: %w", err)
@@ -127,18 +103,7 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 	)
 	otel.SetMeterProvider(meterProvider)
 
-	// Initialize log exporter
-	var logExporter sdklog.Exporter
-	if cfg.OTLPInsecure {
-		logExporter, err = otlploggrpc.New(ctx,
-			otlploggrpc.WithEndpoint(cfg.OTLPEndpoint),
-			otlploggrpc.WithInsecure(),
-		)
-	} else {
-		logExporter, err = otlploggrpc.New(ctx,
-			otlploggrpc.WithEndpoint(cfg.OTLPEndpoint),
-		)
-	}
+	logExporter, err := otlploghttp.New(ctx)
 	if err != nil {
 		_ = traceExporter.Shutdown(ctx)
 		_ = metricExporter.Shutdown(ctx)
@@ -151,23 +116,19 @@ func Init(ctx context.Context, cfg Config) (*InitResult, error) {
 	)
 	global.SetLoggerProvider(loggerProvider)
 
-	// Set up text map propagation (W3C trace context)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
 
-	// Return shutdown function that closes all exporters
 	shutdown := func(ctx context.Context) error {
 		var errs []error
 		if err := tracerProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}
-
 		if err := meterProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}
-
 		if err := loggerProvider.Shutdown(ctx); err != nil {
 			errs = append(errs, err)
 		}

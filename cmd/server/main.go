@@ -42,10 +42,8 @@ func run() error {
 
 	// Initialize observability (traces, metrics, logs)
 	otelResult, err := observability.Init(ctx, observability.Config{
-		OTLPEndpoint: cfg.OTLPEndpoint,
-		OTLPInsecure: cfg.OTLPInsecure,
-		ServiceName:  cfg.ServiceName,
-		Environment:  cfg.Environment,
+		ServiceName: cfg.ServiceName,
+		Environment: cfg.Environment,
 	})
 	if err != nil {
 		return err
@@ -199,6 +197,7 @@ func (m *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	}
 	return &multiHandler{handlers: handlers}
 }
+
 
 func (m *multiHandler) WithGroup(name string) slog.Handler {
 	handlers := make([]slog.Handler, len(m.handlers))

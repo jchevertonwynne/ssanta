@@ -64,10 +64,8 @@ type Config struct {
 	Argon2Iterations  uint32 `env:"ARGON2_ITERATIONS,1"`
 	Argon2Parallelism uint8  `env:"ARGON2_PARALLELISM,4"`
 
-	OTLPEndpoint string `env:"OTLP_ENDPOINT,"`
-	OTLPInsecure bool   `env:"OTLP_INSECURE,true"`
-	ServiceName  string `env:"OTEL_SERVICE_NAME,ssanta"`
-	Environment  string `env:"DEPLOYMENT_ENVIRONMENT,local"`
+	ServiceName string `env:"OTEL_SERVICE_NAME,ssanta"`
+	Environment string `env:"DEPLOYMENT_ENVIRONMENT,local"`
 }
 
 // Load reads configuration from environment variables.

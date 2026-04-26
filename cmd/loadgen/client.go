@@ -47,7 +47,7 @@ func newUserClient(baseURL, username, password string) (*userClient, error) {
 	}
 	return &userClient{
 		http:     &http.Client{Jar: jar},
-		baseURL:  baseURL,
+		baseURL:  strings.TrimRight(baseURL, "/"),
 		username: username,
 		password: password,
 	}, nil

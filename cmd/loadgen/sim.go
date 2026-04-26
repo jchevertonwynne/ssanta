@@ -37,6 +37,7 @@ func simulate(ctx context.Context, client *userClient, roomID int64, cfg config,
 		cookieParts = append(cookieParts, c.Name+"="+c.Value)
 	}
 	header := http.Header{}
+	header.Set("Origin", client.baseURL)
 	if len(cookieParts) > 0 {
 		header.Set("Cookie", strings.Join(cookieParts, "; "))
 	}
