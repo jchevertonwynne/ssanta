@@ -42,7 +42,7 @@ var (
 	ErrNotAdmin         = errors.New("not an admin")
 	ErrCannotSelfDemote = errors.New("cannot remove your own admin status")
 
-	ErrPGPKeyInvalid = errors.New("invalid pgp public key")
+	ErrPGPKeyInvalid         = errors.New("invalid pgp public key")
 	ErrPGPChallengeMissing   = errors.New("pgp challenge missing")
 	ErrPGPChallengeExpired   = errors.New("pgp challenge expired")
 	ErrPGPChallengeIncorrect = errors.New("pgp challenge incorrect")
