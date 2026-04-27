@@ -159,8 +159,10 @@
     const soundToggle = document.getElementById('sound-toggle');
     const notifToggle = document.getElementById('notif-toggle');
 
+    const notifKey = 'chat_notif:room' + roomId;
+
     soundToggle.checked = localStorage.getItem('chat_sound_enabled') === 'true';
-    notifToggle.checked = localStorage.getItem('chat_notif_enabled') === 'true';
+    notifToggle.checked = localStorage.getItem(notifKey) === 'true';
 
     soundToggle.onchange = function() {
         localStorage.setItem('chat_sound_enabled', soundToggle.checked);
@@ -168,7 +170,7 @@
 
     notifToggle.onchange = function() {
         if (!notifToggle.checked) {
-            localStorage.setItem('chat_notif_enabled', 'false');
+            localStorage.setItem(notifKey, 'false');
             return;
         }
         if (Notification.permission === 'denied') {
@@ -178,10 +180,10 @@
         }
         Notification.requestPermission().then(function(perm) {
             if (perm === 'granted') {
-                localStorage.setItem('chat_notif_enabled', 'true');
+                localStorage.setItem(notifKey, 'true');
             } else {
                 notifToggle.checked = false;
-                localStorage.setItem('chat_notif_enabled', 'false');
+                localStorage.setItem(notifKey, 'false');
             }
         });
     };
@@ -189,7 +191,7 @@
     // Revoke notif toggle if permission was revoked externally
     if (Notification.permission !== 'granted' && notifToggle.checked) {
         notifToggle.checked = false;
-        localStorage.setItem('chat_notif_enabled', 'false');
+        localStorage.setItem(notifKey, 'false');
     }
 
     function playNotificationSound() {
@@ -212,6 +214,7 @@
         const n = new Notification(username, { body: text.slice(0, 80) });
         n.onclick = function() { window.focus(); n.close(); };
     }
+
 
     // --- WebSocket with auto-reconnect ---
 
