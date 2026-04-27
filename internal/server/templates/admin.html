@@ -1,23 +1,6 @@
 <div class="bar">
     <span>Admin — logged in as {{.CurrentUsername}}</span>
     <button hx-get="/content" hx-target="#content" hx-swap="innerHTML" hx-push-url="true">Back</button>
-    <label style="display:flex;align-items:center;gap:0.5rem;margin-left:auto">
-        <input type="checkbox" id="admin-skip-confirm-toggle"> Skip confirmations
-    </label>
-</div>
-<script>
-(function() {
-    var toggle = document.getElementById('admin-skip-confirm-toggle');
-    toggle.checked = localStorage.getItem('admin_skip_confirm') === 'true';
-    toggle.addEventListener('change', function() {
-        if (toggle.checked) {
-            localStorage.setItem('admin_skip_confirm', 'true');
-        } else {
-            localStorage.removeItem('admin_skip_confirm');
-        }
-    });
-})();
-</script>
 
 <div class="cols">
     <section>
@@ -49,7 +32,7 @@
                                         hx-vals='{"grant":"false"}'
                                         hx-target="#content"
                                         hx-swap="innerHTML"
-                                        hx-confirm="Revoke admin from {{.Username}}?">Revoke admin</button>
+                                        >Revoke admin</button>
                             {{else}}
                                 <button hx-post="/admin/users/{{.ID}}/admin"
                                         hx-vals='{"grant":"true"}'
@@ -58,8 +41,7 @@
                             {{end}}
                             <button hx-delete="/admin/users/{{.ID}}"
                                     hx-target="#content"
-                                    hx-swap="innerHTML"
-                                    hx-confirm="Delete user {{.Username}} and all their data?">Delete</button>
+                                    hx-swap="innerHTML">Delete</button>
                         {{end}}
                     </td>
                 </tr>
@@ -93,7 +75,7 @@
                         <button hx-delete="/admin/rooms/{{.ID}}"
                                 hx-target="#content"
                                 hx-swap="innerHTML"
-                                hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
+                                >Delete</button>
                     </td>
                 </tr>
             {{end}}
