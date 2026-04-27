@@ -5,7 +5,7 @@
         {{$currentID := $.CurrentUserID}}
         {{$isCreator := $.IsCreator}}
         {{range .Members}}
-            <li data-member-id="{{.ID}}">
+            <li data-member-id="{{.ID.Int64}}">
                 {{.Username}}                
                 {{if and $isCreator (ne .ID $currentID) (not $.IsDMRoom)}}
                     <button hx-delete="/rooms/{{$.Room.ID}}/members/{{.ID}}"
