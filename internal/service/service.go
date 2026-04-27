@@ -216,6 +216,20 @@ func (s *Service) ListRoomMembersWithPGP(ctx context.Context, roomID model.RoomI
 	return s.store.Rooms.ListRoomMembersWithPGP(ctx, roomID)
 }
 
+// ListRoomMemberIDs returns the user IDs of all room members.
+func (s *Service) ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error) {
+	return s.store.Rooms.ListRoomMemberIDs(ctx, roomID)
+}
+
+// GetRoomName returns the display name of a room.
+func (s *Service) GetRoomName(ctx context.Context, roomID model.RoomID) (string, error) {
+	detail, err := s.store.Rooms.GetRoomDetail(ctx, roomID)
+	if err != nil {
+		return "", err
+	}
+	return detail.DisplayName, nil
+}
+
 // SetRoomPGPKey stores and challenges a room member's public key.
 func (s *Service) SetRoomPGPKey(
 	ctx context.Context,

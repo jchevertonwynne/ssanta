@@ -46,7 +46,13 @@ func handleWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions Ses
 			return
 		}
 
-		ws.RunWS(hub, sessions, svc, currentID, username, roomID, w, r)
+		roomName, err := svc.GetRoomName(r.Context(), roomID)
+		if err != nil {
+			http.Error(w, "failed to get room info", http.StatusInternalServerError)
+			return
+		}
+
+		ws.RunWS(hub, sessions, svc, currentID, username, roomID, roomName, w, r)
 	}
 }
 

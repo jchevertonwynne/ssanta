@@ -94,6 +94,14 @@ type RoomAccessService interface {
 	GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (isCreator bool, isMember bool, err error)
 }
 
+type RoomNameService interface {
+	GetRoomName(ctx context.Context, roomID model.RoomID) (string, error)
+}
+
+type RoomMemberIDsService interface {
+	ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error)
+}
+
 type SetRoomMembersCanInviteService interface {
 	SetRoomMembersCanInvite(ctx context.Context, roomID model.RoomID, creatorID model.UserID, value bool) error
 }
@@ -194,6 +202,8 @@ type WebSocketHandlersService interface {
 	IsRoomPGPRequiredService
 	IsRoomPublicService
 	RoomAccessService
+	RoomNameService
+	RoomMemberIDsService
 	MessageHistoryService
 }
 

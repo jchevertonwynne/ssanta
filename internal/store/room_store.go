@@ -224,6 +224,28 @@ func (s *roomStore) JoinRoom(ctx context.Context, roomID RoomID, userID UserID) 
 	return err
 }
 
+func (s *roomStore) ListRoomMemberIDs(ctx context.Context, roomID RoomID) ([]UserID, error) {
+	ctx = db.WithQueryName(ctx, "list_room_member_ids")
+	rows, err := s.pool.Query(ctx,
+		`SELECT user_id FROM room_users WHERE room_id = $1`,
+		roomID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []UserID
+	for rows.Next() {
+		var id UserID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
 func (s *roomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) ([]RoomMember, error) {
 	ctx = db.WithQueryName(ctx, "list_room_members_with_pgp")
 	rows, err := s.pool.Query(ctx,

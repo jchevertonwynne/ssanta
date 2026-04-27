@@ -1305,6 +1305,45 @@ func (c *MockRoomStoreListPublicRoomsCall) DoAndReturn(f func(context.Context, s
 	return c
 }
 
+// ListRoomMemberIDs mocks base method.
+func (m *MockRoomStore) ListRoomMemberIDs(ctx context.Context, roomID store.RoomID) ([]store.UserID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMemberIDs", ctx, roomID)
+	ret0, _ := ret[0].([]store.UserID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMemberIDs indicates an expected call of ListRoomMemberIDs.
+func (mr *MockRoomStoreMockRecorder) ListRoomMemberIDs(ctx, roomID any) *MockRoomStoreListRoomMemberIDsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMemberIDs", reflect.TypeOf((*MockRoomStore)(nil).ListRoomMemberIDs), ctx, roomID)
+	return &MockRoomStoreListRoomMemberIDsCall{Call: call}
+}
+
+// MockRoomStoreListRoomMemberIDsCall wrap *gomock.Call
+type MockRoomStoreListRoomMemberIDsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomStoreListRoomMemberIDsCall) Return(arg0 []store.UserID, arg1 error) *MockRoomStoreListRoomMemberIDsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomStoreListRoomMemberIDsCall) Do(f func(context.Context, store.RoomID) ([]store.UserID, error)) *MockRoomStoreListRoomMemberIDsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomStoreListRoomMemberIDsCall) DoAndReturn(f func(context.Context, store.RoomID) ([]store.UserID, error)) *MockRoomStoreListRoomMemberIDsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListRoomMembersWithPGP mocks base method.
 func (m *MockRoomStore) ListRoomMembersWithPGP(ctx context.Context, roomID store.RoomID) ([]store.RoomMember, error) {
 	m.ctrl.T.Helper()

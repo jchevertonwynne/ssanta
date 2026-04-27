@@ -49,6 +49,7 @@ type RoomStore interface {
 	ListAllRooms(ctx context.Context) ([]RoomDetail, error)
 	ListDMRoomsByMember(ctx context.Context, userID UserID) ([]Room, error)
 	ListPublicRooms(ctx context.Context, userID UserID) ([]Room, error)
+	ListRoomMemberIDs(ctx context.Context, roomID RoomID) ([]UserID, error)
 	ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) ([]RoomMember, error)
 	ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error)
 	ListRoomsByMember(ctx context.Context, userID UserID) ([]Room, error)

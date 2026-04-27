@@ -11,7 +11,7 @@ import (
 	"github.com/jchevertonwynne/ssanta/internal/model"
 )
 
-func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.UserID, username string, roomID model.RoomID, w http.ResponseWriter, r *http.Request) {
+func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.UserID, username string, roomID model.RoomID, roomName string, w http.ResponseWriter, r *http.Request) {
 	conn, err := websocketUpgrader(sessions.Secure()).Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("upgrade websocket", "err", err)
@@ -54,6 +54,7 @@ func RunWS(hub *ChatHub, sessions SessionReader, svc Service, currentID model.Us
 		roomID:   roomID,
 		userID:   currentID,
 		username: username,
+		roomName: roomName,
 		svc:      svc,
 		bucket:   newTokenBucket(float64(hub.msgBurst), hub.msgRefill),
 	}

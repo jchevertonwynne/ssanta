@@ -1313,6 +1313,132 @@ func (c *MockRoomAccessServiceGetRoomAccessCall) DoAndReturn(f func(context.Cont
 	return c
 }
 
+// MockRoomNameService is a mock of RoomNameService interface.
+type MockRoomNameService struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomNameServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockRoomNameServiceMockRecorder is the mock recorder for MockRoomNameService.
+type MockRoomNameServiceMockRecorder struct {
+	mock *MockRoomNameService
+}
+
+// NewMockRoomNameService creates a new mock instance.
+func NewMockRoomNameService(ctrl *gomock.Controller) *MockRoomNameService {
+	mock := &MockRoomNameService{ctrl: ctrl}
+	mock.recorder = &MockRoomNameServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomNameService) EXPECT() *MockRoomNameServiceMockRecorder {
+	return m.recorder
+}
+
+// GetRoomName mocks base method.
+func (m *MockRoomNameService) GetRoomName(ctx context.Context, roomID model.RoomID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomName", ctx, roomID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomName indicates an expected call of GetRoomName.
+func (mr *MockRoomNameServiceMockRecorder) GetRoomName(ctx, roomID any) *MockRoomNameServiceGetRoomNameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomName", reflect.TypeOf((*MockRoomNameService)(nil).GetRoomName), ctx, roomID)
+	return &MockRoomNameServiceGetRoomNameCall{Call: call}
+}
+
+// MockRoomNameServiceGetRoomNameCall wrap *gomock.Call
+type MockRoomNameServiceGetRoomNameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomNameServiceGetRoomNameCall) Return(arg0 string, arg1 error) *MockRoomNameServiceGetRoomNameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomNameServiceGetRoomNameCall) Do(f func(context.Context, model.RoomID) (string, error)) *MockRoomNameServiceGetRoomNameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomNameServiceGetRoomNameCall) DoAndReturn(f func(context.Context, model.RoomID) (string, error)) *MockRoomNameServiceGetRoomNameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MockRoomMemberIDsService is a mock of RoomMemberIDsService interface.
+type MockRoomMemberIDsService struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomMemberIDsServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockRoomMemberIDsServiceMockRecorder is the mock recorder for MockRoomMemberIDsService.
+type MockRoomMemberIDsServiceMockRecorder struct {
+	mock *MockRoomMemberIDsService
+}
+
+// NewMockRoomMemberIDsService creates a new mock instance.
+func NewMockRoomMemberIDsService(ctrl *gomock.Controller) *MockRoomMemberIDsService {
+	mock := &MockRoomMemberIDsService{ctrl: ctrl}
+	mock.recorder = &MockRoomMemberIDsServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomMemberIDsService) EXPECT() *MockRoomMemberIDsServiceMockRecorder {
+	return m.recorder
+}
+
+// ListRoomMemberIDs mocks base method.
+func (m *MockRoomMemberIDsService) ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMemberIDs", ctx, roomID)
+	ret0, _ := ret[0].([]model.UserID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMemberIDs indicates an expected call of ListRoomMemberIDs.
+func (mr *MockRoomMemberIDsServiceMockRecorder) ListRoomMemberIDs(ctx, roomID any) *MockRoomMemberIDsServiceListRoomMemberIDsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMemberIDs", reflect.TypeOf((*MockRoomMemberIDsService)(nil).ListRoomMemberIDs), ctx, roomID)
+	return &MockRoomMemberIDsServiceListRoomMemberIDsCall{Call: call}
+}
+
+// MockRoomMemberIDsServiceListRoomMemberIDsCall wrap *gomock.Call
+type MockRoomMemberIDsServiceListRoomMemberIDsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockRoomMemberIDsServiceListRoomMemberIDsCall) Return(arg0 []model.UserID, arg1 error) *MockRoomMemberIDsServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockRoomMemberIDsServiceListRoomMemberIDsCall) Do(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockRoomMemberIDsServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockRoomMemberIDsServiceListRoomMemberIDsCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockRoomMemberIDsServiceListRoomMemberIDsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // MockSetRoomMembersCanInviteService is a mock of SetRoomMembersCanInviteService interface.
 type MockSetRoomMembersCanInviteService struct {
 	ctrl     *gomock.Controller
@@ -4220,6 +4346,45 @@ func (c *MockWebSocketHandlersServiceGetRoomAccessCall) DoAndReturn(f func(conte
 	return c
 }
 
+// GetRoomName mocks base method.
+func (m *MockWebSocketHandlersService) GetRoomName(ctx context.Context, roomID model.RoomID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomName", ctx, roomID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomName indicates an expected call of GetRoomName.
+func (mr *MockWebSocketHandlersServiceMockRecorder) GetRoomName(ctx, roomID any) *MockWebSocketHandlersServiceGetRoomNameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomName", reflect.TypeOf((*MockWebSocketHandlersService)(nil).GetRoomName), ctx, roomID)
+	return &MockWebSocketHandlersServiceGetRoomNameCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceGetRoomNameCall wrap *gomock.Call
+type MockWebSocketHandlersServiceGetRoomNameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceGetRoomNameCall) Return(arg0 string, arg1 error) *MockWebSocketHandlersServiceGetRoomNameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceGetRoomNameCall) Do(f func(context.Context, model.RoomID) (string, error)) *MockWebSocketHandlersServiceGetRoomNameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceGetRoomNameCall) DoAndReturn(f func(context.Context, model.RoomID) (string, error)) *MockWebSocketHandlersServiceGetRoomNameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetUserSessionVersion mocks base method.
 func (m *MockWebSocketHandlersService) GetUserSessionVersion(ctx context.Context, id model.UserID) (int, error) {
 	m.ctrl.T.Helper()
@@ -4489,6 +4654,45 @@ func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) Do(f func(context.
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockWebSocketHandlersServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockWebSocketHandlersServiceListMessagesAfterIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListRoomMemberIDs mocks base method.
+func (m *MockWebSocketHandlersService) ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMemberIDs", ctx, roomID)
+	ret0, _ := ret[0].([]model.UserID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMemberIDs indicates an expected call of ListRoomMemberIDs.
+func (mr *MockWebSocketHandlersServiceMockRecorder) ListRoomMemberIDs(ctx, roomID any) *MockWebSocketHandlersServiceListRoomMemberIDsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMemberIDs", reflect.TypeOf((*MockWebSocketHandlersService)(nil).ListRoomMemberIDs), ctx, roomID)
+	return &MockWebSocketHandlersServiceListRoomMemberIDsCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceListRoomMemberIDsCall wrap *gomock.Call
+type MockWebSocketHandlersServiceListRoomMemberIDsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceListRoomMemberIDsCall) Return(arg0 []model.UserID, arg1 error) *MockWebSocketHandlersServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceListRoomMemberIDsCall) Do(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockWebSocketHandlersServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceListRoomMemberIDsCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockWebSocketHandlersServiceListRoomMemberIDsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -5292,6 +5496,45 @@ func (c *MockServerServiceGetRoomDetailViewCall) DoAndReturn(f func(context.Cont
 	return c
 }
 
+// GetRoomName mocks base method.
+func (m *MockServerService) GetRoomName(ctx context.Context, roomID model.RoomID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomName", ctx, roomID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomName indicates an expected call of GetRoomName.
+func (mr *MockServerServiceMockRecorder) GetRoomName(ctx, roomID any) *MockServerServiceGetRoomNameCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomName", reflect.TypeOf((*MockServerService)(nil).GetRoomName), ctx, roomID)
+	return &MockServerServiceGetRoomNameCall{Call: call}
+}
+
+// MockServerServiceGetRoomNameCall wrap *gomock.Call
+type MockServerServiceGetRoomNameCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceGetRoomNameCall) Return(arg0 string, arg1 error) *MockServerServiceGetRoomNameCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceGetRoomNameCall) Do(f func(context.Context, model.RoomID) (string, error)) *MockServerServiceGetRoomNameCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceGetRoomNameCall) DoAndReturn(f func(context.Context, model.RoomID) (string, error)) *MockServerServiceGetRoomNameCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetUserByUsername mocks base method.
 func (m *MockServerService) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	m.ctrl.T.Helper()
@@ -5715,6 +5958,45 @@ func (c *MockServerServiceListMessagesAfterIDCall) Do(f func(context.Context, mo
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockServerServiceListMessagesAfterIDCall) DoAndReturn(f func(context.Context, model.RoomID, model.UserID, model.MessageID, int) ([]model.Message, error)) *MockServerServiceListMessagesAfterIDCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ListRoomMemberIDs mocks base method.
+func (m *MockServerService) ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRoomMemberIDs", ctx, roomID)
+	ret0, _ := ret[0].([]model.UserID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRoomMemberIDs indicates an expected call of ListRoomMemberIDs.
+func (mr *MockServerServiceMockRecorder) ListRoomMemberIDs(ctx, roomID any) *MockServerServiceListRoomMemberIDsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRoomMemberIDs", reflect.TypeOf((*MockServerService)(nil).ListRoomMemberIDs), ctx, roomID)
+	return &MockServerServiceListRoomMemberIDsCall{Call: call}
+}
+
+// MockServerServiceListRoomMemberIDsCall wrap *gomock.Call
+type MockServerServiceListRoomMemberIDsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockServerServiceListRoomMemberIDsCall) Return(arg0 []model.UserID, arg1 error) *MockServerServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockServerServiceListRoomMemberIDsCall) Do(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockServerServiceListRoomMemberIDsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockServerServiceListRoomMemberIDsCall) DoAndReturn(f func(context.Context, model.RoomID) ([]model.UserID, error)) *MockServerServiceListRoomMemberIDsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

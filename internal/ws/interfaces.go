@@ -18,6 +18,7 @@ type Service interface {
 	GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (isCreator bool, isMember bool, err error)
 	CreateMessage(ctx context.Context, roomID model.RoomID, userID model.UserID, username, message string, whisper bool, targetUserID *model.UserID, preEncrypted bool) (model.MessageID, error)
 	ListMessagesAfterID(ctx context.Context, roomID model.RoomID, userID model.UserID, afterID model.MessageID, limit int) ([]model.Message, error)
+	ListRoomMemberIDs(ctx context.Context, roomID model.RoomID) ([]model.UserID, error)
 }
 
 // SessionReader is the subset of session.Manager the WS handlers need.

@@ -20,4 +20,5 @@ const (
 	MsgTypeRoomsUpdated     MsgType = "rooms_updated"
 	MsgTypeInviteReceived   MsgType = "invite_received"
 	MsgTypeInviteCancelled  MsgType = "invite_cancelled"
+	MsgTypeNewRoomMessage   MsgType = "new_room_message"
 )

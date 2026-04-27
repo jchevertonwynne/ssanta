@@ -72,6 +72,7 @@ type ChatClient struct {
 	roomID    model.RoomID
 	userID    model.UserID
 	username  string
+	roomName  string
 	svc       Service
 	bucket    *tokenBucket
 }
@@ -86,6 +87,16 @@ type ChatMessagePayload struct {
 	Whisper      bool            `json:"whisper,omitempty"`
 	PreEncrypted bool            `json:"pre_encrypted,omitempty"`
 	ClientMsgID  string          `json:"client_message_id,omitempty"`
+}
+
+type RoomNotificationPayload struct {
+	Type         MsgType      `json:"type"`
+	RoomID       model.RoomID `json:"room_id"`
+	RoomName     string       `json:"room_name"`
+	Username     string       `json:"username"`
+	Message      string       `json:"message"`
+	PreEncrypted bool         `json:"pre_encrypted,omitempty"`
+	Whisper      bool         `json:"whisper,omitempty"`
 }
 
 func NewChatHubWithLimits(burst int, refillPerSecond float64) *ChatHub {
@@ -491,6 +502,52 @@ func (h *ChatHub) NotifyContentUpdate(msgType MsgType) {
 	}
 }
 
+// NotifyMembersNotInRoom sends a new_room_message notification to room members
+// who have a content-page connection but no active connection to roomID.
+func (h *ChatHub) NotifyMembersNotInRoom(roomID model.RoomID, roomName, senderUsername, message string, preEncrypted, whisper bool, memberIDs []model.UserID) {
+	payload := RoomNotificationPayload{
+		Type:         MsgTypeNewRoomMessage,
+		RoomID:       roomID,
+		RoomName:     roomName,
+		Username:     senderUsername,
+		Message:      message,
+		PreEncrypted: preEncrypted,
+		Whisper:      whisper,
+	}
+	msg, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Build set of users already connected to this room.
+	inRoom := make(map[model.UserID]bool)
+	if room, ok := h.rooms[roomID]; ok {
+		room.mu.RLock()
+		for client := range room.clients {
+			inRoom[client.userID] = true
+		}
+		room.mu.RUnlock()
+	}
+
+	for _, memberID := range memberIDs {
+		if inRoom[memberID] {
+			continue
+		}
+		for client := range h.userConnections[memberID] {
+			if client.roomID != 0 {
+				continue
+			}
+			select {
+			case client.send <- msg:
+			default:
+			}
+		}
+	}
+}
+
 // HandleAccountDeletion disconnects all active connections for a user and
 // notifies affected rooms so clients can refresh room state. This method is
 // intentionally not on the Hub interface; handlers call it via an optional
@@ -826,6 +883,7 @@ func (c *ChatClient) readPump(parent context.Context) {
 					metrics.WSMessagesSent.Add(ctx, 1, metric.WithAttributeSet(attrs))
 				}
 				slog.InfoContext(ctx, "whisper sent", "room_id", c.roomID, "user_id", c.userID, "target_user_id", targetUserID)
+				c.hub.NotifyMembersNotInRoom(c.roomID, c.roomName, c.username, plaintext, payload.PreEncrypted, true, []model.UserID{targetUserID})
 			} else {
 				c.hub.BroadcastToRoom(c.roomID, outBytes)
 				if metrics := observability.GetMetrics(); metrics != nil {
@@ -833,6 +891,14 @@ func (c *ChatClient) readPump(parent context.Context) {
 					metrics.WSMessagesSent.Add(ctx, 1, metric.WithAttributeSet(attrs))
 				}
 				slog.InfoContext(ctx, "chat message broadcast", "room_id", c.roomID, "user_id", c.userID, "pgp_required", pgpRequired)
+				notifyCtx, notifyCancel := context.WithTimeout(baseCtx, 2*time.Second)
+				memberIDs, err := c.svc.ListRoomMemberIDs(notifyCtx, c.roomID)
+				notifyCancel()
+				if err != nil {
+					slog.ErrorContext(notifyCtx, "list room member ids for notification", "err", err, "room_id", c.roomID)
+				} else {
+					c.hub.NotifyMembersNotInRoom(c.roomID, c.roomName, c.username, plaintext, payload.PreEncrypted, false, memberIDs)
+				}
 			}
 			span.End()
 		}

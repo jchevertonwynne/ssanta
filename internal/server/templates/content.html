@@ -191,6 +191,14 @@
             if (data.type === 'rooms_updated') {
                 htmx.ajax('GET', '/content', { target: '#content', swap: 'innerHTML' });
             }
+            if (data.type === 'new_room_message') {
+                if (localStorage.getItem('chat_notif_enabled') === 'true' && Notification.permission === 'granted') {
+                    const body = data.pre_encrypted ? '(encrypted message)' : data.message.slice(0, 80);
+                    const prefix = data.whisper ? '(whisper) ' : '';
+                    const n = new Notification(prefix + data.username + ' in ' + data.room_name, { body });
+                    n.onclick = function() { window.focus(); n.close(); };
+                }
+            }
         };
 
         ws.onerror = function (error) {
