@@ -33,16 +33,18 @@
                                         hx-vals='{"grant":"false"}'
                                         hx-target="#content"
                                         hx-swap="innerHTML"
-                                        >Revoke admin</button>
+                                        hx-confirm="Revoke admin from {{.Username}}?">Revoke admin</button>
                             {{else}}
                                 <button hx-post="/admin/users/{{.ID}}/admin"
                                         hx-vals='{"grant":"true"}'
                                         hx-target="#content"
-                                        hx-swap="innerHTML">Grant admin</button>
+                                        hx-swap="innerHTML"
+                                        hx-confirm="Grant admin to {{.Username}}?">Grant admin</button>
                             {{end}}
                             <button hx-delete="/admin/users/{{.ID}}"
                                     hx-target="#content"
-                                    hx-swap="innerHTML">Delete</button>
+                                    hx-swap="innerHTML"
+                                    hx-confirm="Delete user {{.Username}} and all their data?">Delete</button>
                         {{end}}
                     </td>
                 </tr>
@@ -76,7 +78,7 @@
                         <button hx-delete="/admin/rooms/{{.ID}}"
                                 hx-target="#content"
                                 hx-swap="innerHTML"
-                                >Delete</button>
+                                hx-confirm="Delete room {{.DisplayName}}?">Delete</button>
                     </td>
                 </tr>
             {{end}}

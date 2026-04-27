@@ -18,13 +18,13 @@
         <button hx-post="/rooms/{{.Room.ID}}/leave"
                 hx-target="#room-sidebar"
                 hx-swap="outerHTML"
-                >Leave room</button>
+                hx-confirm="Leave this room? You will remain the creator but won't be a member.">Leave room</button>
         {{else}}
         <button hx-post="/rooms/{{.Room.ID}}/leave"
                 hx-target="#content"
                 hx-swap="innerHTML"
                 hx-push-url="/"
-                >Leave room</button>
+                hx-confirm="Leave this room?">Leave room</button>
         {{end}}
         {{else}}
         {{if .IsCreator}}
@@ -42,7 +42,7 @@
                 hx-target="#content"
                 hx-swap="innerHTML"
                 hx-push-url="/"
-                >Delete room</button>
+                hx-confirm="Delete room {{.Room.DisplayName}}? This cannot be undone.">Delete room</button>
         {{end}}
         {{end}}
     </div>
