@@ -55,7 +55,7 @@
 
     const isMember = {{if .IsMember}}true{{else}}false{{end}};
     const isCreator = {{if .IsCreator}}true{{else}}false{{end}};
-    const roomId = {{.Room.ID}};
+    const roomId = {{.Room.ID.Int64}};
     let roomPGPRequired = {{if .Room.PGPRequired}}true{{else}}false{{end}};
     const currentUserID = String({{.CurrentUserID}});
     const currentUsername = "{{.CurrentUsername}}";
