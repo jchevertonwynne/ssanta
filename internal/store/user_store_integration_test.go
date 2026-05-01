@@ -115,6 +115,81 @@ func TestUserStore_DeleteUser_NotFound(t *testing.T) {
 	}
 }
 
+func TestUserStore_DeleteUser_ExcludedFromLists(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	id := createUser(t, pool, "alice")
+
+	if err := st.Users.DeleteUser(ctx, id); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+
+	exists, err := st.Users.UserExists(ctx, id)
+	if err != nil {
+		t.Fatalf("user exists: %v", err)
+	}
+	if exists {
+		t.Fatalf("expected UserExists=false after soft delete")
+	}
+
+	if _, err := st.Users.GetUserByUsername(ctx, "alice"); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("expected ErrUserNotFound for deleted user by username, got %v", err)
+	}
+
+	users, err := st.Users.ListUsers(ctx)
+	if err != nil {
+		t.Fatalf("list users: %v", err)
+	}
+	for _, u := range users {
+		if u.ID == id {
+			t.Fatalf("deleted user still appears in ListUsers")
+		}
+	}
+}
+
+func TestUserStore_DeleteUser_UsernameStillClaimed(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	id := createUser(t, pool, "alice")
+
+	if err := st.Users.DeleteUser(ctx, id); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+
+	// Username must remain reserved — a new account with the same name must be rejected.
+	if _, err := st.Users.CreateUser(ctx, "alice", "testhash"); !errors.Is(err, ErrUsernameTaken) {
+		t.Fatalf("expected ErrUsernameTaken after soft delete, got %v", err)
+	}
+}
+
+func TestUserStore_DeleteUser_AlreadyDeleted(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := testCtx(t)
+	defer cancel()
+
+	id := createUser(t, pool, "alice")
+
+	if err := st.Users.DeleteUser(ctx, id); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+	if err := st.Users.DeleteUser(ctx, id); !errors.Is(err, ErrUserNotFound) {
+		t.Fatalf("expected ErrUserNotFound on second delete, got %v", err)
+	}
+}
+
 func TestUserStore_GetUser_NotFound(t *testing.T) {
 	t.Parallel()
 	pool := requireIntegration(t)

@@ -42,9 +42,11 @@ func messagesToResponse(msgs []model.Message) []messageResponse {
 
 // checkRoomReadAccess returns false and writes the error response if the user
 // cannot read messages in the room (not creator/member of a non-public room).
+// Admins may read any room's messages regardless of membership.
 func checkRoomReadAccess(w http.ResponseWriter, r *http.Request, svc interface {
 	GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error)
 	IsRoomPublic(ctx context.Context, roomID model.RoomID) (bool, error)
+	IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error)
 }, roomID model.RoomID, userID model.UserID) bool {
 	isCreator, isMember, err := svc.GetRoomAccess(r.Context(), roomID, userID)
 	if err != nil {
@@ -53,18 +55,38 @@ func checkRoomReadAccess(w http.ResponseWriter, r *http.Request, svc interface {
 		return false
 	}
 	if !isCreator && !isMember {
-		isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
-		if err != nil {
-			slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
-			http.Error(w, "failed to check room access", http.StatusInternalServerError)
-			return false
-		}
-		if !isPublic {
-			http.Error(w, "not a member of this room", http.StatusForbidden)
+		shouldReturn := newFunction(svc, r, roomID, w, userID)
+		if shouldReturn {
 			return false
 		}
 	}
 	return true
+}
+
+func newFunction(svc interface {
+	GetRoomAccess(ctx context.Context, roomID model.RoomID, userID model.UserID) (bool, bool, error)
+	IsRoomPublic(ctx context.Context, roomID model.RoomID) (bool, error)
+	IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error)
+}, r *http.Request, roomID model.RoomID, w http.ResponseWriter, userID model.UserID) bool {
+	isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+	if err != nil {
+		slog.Error("check room public", "err", err, "room_id", roomID) //nolint:gosec
+		http.Error(w, "failed to check room access", http.StatusInternalServerError)
+		return true
+	}
+	if !isPublic {
+		isAdmin, err := svc.IsUserAdmin(r.Context(), userID)
+		if err != nil {
+			slog.Error("check admin", "err", err, "user_id", userID) //nolint:gosec
+			http.Error(w, "failed to check room access", http.StatusInternalServerError)
+			return true
+		}
+		if !isAdmin {
+			http.Error(w, "not a member of this room", http.StatusForbidden)
+			return true
+		}
+	}
+	return false
 }
 
 //nolint:cyclop

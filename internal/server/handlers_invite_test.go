@@ -58,6 +58,7 @@ func TestHandleCreateInvite_Success_BroadcastsAndNotifiesInvitee(t *testing.T) {
 	svc.EXPECT().GetUserByUsername(gomock.Any(), "bob").Return(store.User{ID: 99, Username: "bob"}, nil)
 	hub.EXPECT().NotifyUser(store.UserID(99), ws.MsgTypeInviteReceived, "")
 	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
+	hub.EXPECT().NotifyRoomUpdate(roomID).Return()
 
 	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
 	r.SetPathValue("id", "10")

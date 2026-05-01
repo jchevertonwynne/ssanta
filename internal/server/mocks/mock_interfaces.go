@@ -4087,6 +4087,45 @@ func (c *MockMessageListServiceIsRoomPublicCall) DoAndReturn(f func(context.Cont
 	return c
 }
 
+// IsUserAdmin mocks base method.
+func (m *MockMessageListService) IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUserAdmin", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsUserAdmin indicates an expected call of IsUserAdmin.
+func (mr *MockMessageListServiceMockRecorder) IsUserAdmin(ctx, userID any) *MockMessageListServiceIsUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserAdmin", reflect.TypeOf((*MockMessageListService)(nil).IsUserAdmin), ctx, userID)
+	return &MockMessageListServiceIsUserAdminCall{Call: call}
+}
+
+// MockMessageListServiceIsUserAdminCall wrap *gomock.Call
+type MockMessageListServiceIsUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockMessageListServiceIsUserAdminCall) Return(arg0 bool, arg1 error) *MockMessageListServiceIsUserAdminCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockMessageListServiceIsUserAdminCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockMessageListServiceIsUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockMessageListServiceIsUserAdminCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockMessageListServiceIsUserAdminCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListMessages mocks base method.
 func (m *MockMessageListService) ListMessages(ctx context.Context, roomID model.RoomID, userID model.UserID, beforeID model.MessageID, limit int) ([]model.Message, error) {
 	m.ctrl.T.Helper()
@@ -4576,6 +4615,45 @@ func (c *MockWebSocketHandlersServiceIsRoomPublicCall) Do(f func(context.Context
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockWebSocketHandlersServiceIsRoomPublicCall) DoAndReturn(f func(context.Context, model.RoomID) (bool, error)) *MockWebSocketHandlersServiceIsRoomPublicCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// IsUserAdmin mocks base method.
+func (m *MockWebSocketHandlersService) IsUserAdmin(ctx context.Context, userID model.UserID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsUserAdmin", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsUserAdmin indicates an expected call of IsUserAdmin.
+func (mr *MockWebSocketHandlersServiceMockRecorder) IsUserAdmin(ctx, userID any) *MockWebSocketHandlersServiceIsUserAdminCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsUserAdmin", reflect.TypeOf((*MockWebSocketHandlersService)(nil).IsUserAdmin), ctx, userID)
+	return &MockWebSocketHandlersServiceIsUserAdminCall{Call: call}
+}
+
+// MockWebSocketHandlersServiceIsUserAdminCall wrap *gomock.Call
+type MockWebSocketHandlersServiceIsUserAdminCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockWebSocketHandlersServiceIsUserAdminCall) Return(arg0 bool, arg1 error) *MockWebSocketHandlersServiceIsUserAdminCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockWebSocketHandlersServiceIsUserAdminCall) Do(f func(context.Context, model.UserID) (bool, error)) *MockWebSocketHandlersServiceIsUserAdminCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockWebSocketHandlersServiceIsUserAdminCall) DoAndReturn(f func(context.Context, model.UserID) (bool, error)) *MockWebSocketHandlersServiceIsUserAdminCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -7738,6 +7816,42 @@ func (c *MockHubDisconnectUserCall) Do(f func(model.RoomID, model.UserID)) *Mock
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockHubDisconnectUserCall) DoAndReturn(f func(model.RoomID, model.UserID)) *MockHubDisconnectUserCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// HandleAccountDeletion mocks base method.
+func (m *MockHub) HandleAccountDeletion(userID model.UserID) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "HandleAccountDeletion", userID)
+}
+
+// HandleAccountDeletion indicates an expected call of HandleAccountDeletion.
+func (mr *MockHubMockRecorder) HandleAccountDeletion(userID any) *MockHubHandleAccountDeletionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleAccountDeletion", reflect.TypeOf((*MockHub)(nil).HandleAccountDeletion), userID)
+	return &MockHubHandleAccountDeletionCall{Call: call}
+}
+
+// MockHubHandleAccountDeletionCall wrap *gomock.Call
+type MockHubHandleAccountDeletionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHubHandleAccountDeletionCall) Return() *MockHubHandleAccountDeletionCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHubHandleAccountDeletionCall) Do(f func(model.UserID)) *MockHubHandleAccountDeletionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHubHandleAccountDeletionCall) DoAndReturn(f func(model.UserID)) *MockHubHandleAccountDeletionCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

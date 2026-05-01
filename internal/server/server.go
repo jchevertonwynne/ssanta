@@ -58,6 +58,7 @@ type roomDetailData struct {
 	Room                model.RoomDetail
 	IsCreator           bool
 	IsMember            bool
+	IsAdminView         bool
 	IsDMRoom            bool
 	CanInvite           bool
 	Members             []model.RoomMember
@@ -171,7 +172,7 @@ func New(svc ServerService, sessions SessionManager, serviceName string, metrics
 	mux.HandleFunc("GET /rooms/{id}/ws", wsLimited(handleWebSocket(hub, svc, sessions)))
 	mux.HandleFunc("POST /rooms/{id}/join", roomLimited(handleJoinRoom(svc, sessions, hubAPI)))
 	mux.HandleFunc("POST /rooms/{id}/leave", roomLimited(handleLeaveRoom(svc, sessions, hubAPI)))
-	mux.HandleFunc("POST /rooms/{id}/members-can-invite", makeRoomBoolHandler(svc, sessions, svc.SetRoomMembersCanInvite, "set members_can_invite", nil))
+	mux.HandleFunc("POST /rooms/{id}/members-can-invite", makeRoomBoolHandler(svc, sessions, svc.SetRoomMembersCanInvite, "set members_can_invite", hubAPI.NotifyRoomUpdate))
 	mux.HandleFunc("POST /rooms/{id}/pgp-required", makeRoomBoolHandler(svc, sessions, svc.SetRoomPGPRequired, "set pgp_required", hubAPI.NotifyRoomUpdate))
 	mux.HandleFunc("POST /rooms/{id}/public", handleSetRoomPublic(svc, sessions, hubAPI))
 	mux.HandleFunc("DELETE /rooms/{id}/members/{memberid}", handleRemoveMember(svc, sessions, hubAPI))
@@ -408,6 +409,7 @@ func renderRoom(w http.ResponseWriter, ctx context.Context, svc RoomDetailViewSe
 		Room:                view.Room,
 		IsCreator:           view.IsCreator,
 		IsMember:            view.IsMember,
+		IsAdminView:         view.IsAdminView,
 		IsDMRoom:            view.IsDMRoom,
 		CanInvite:           view.CanInvite,
 		Members:             view.Members,

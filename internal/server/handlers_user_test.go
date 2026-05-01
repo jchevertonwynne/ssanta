@@ -9,6 +9,7 @@ import (
 
 	"go.uber.org/mock/gomock"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
 
@@ -148,6 +149,7 @@ func TestHandleDeleteUser_Success_ClearsSession(t *testing.T) {
 	sessions.EXPECT().Clear(gomock.Any())
 	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
 	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
+	hub.EXPECT().HandleAccountDeletion(model.UserID(7))
 
 	r := newFormRequest(t, "/users/7", url.Values{"current_password": {"mypassword"}})
 	r.Method = http.MethodDelete

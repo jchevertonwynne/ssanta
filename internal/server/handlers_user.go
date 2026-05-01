@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
-	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/observability"
 	"github.com/jchevertonwynne/ssanta/internal/store"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
@@ -77,7 +76,6 @@ func handleCreateUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 	}
 }
 
-//nolint:cyclop
 func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currentID, ok := resolveSessionUser(r.Context(), svc, sessions, w, r)
@@ -122,12 +120,7 @@ func handleDeleteUser(svc UserHandlersService, sessions SessionManager, hub Hub)
 			return
 		}
 		sessions.Clear(w)
-		// Notify websocket hub about account deletion if it supports the optional
-		// HandleAccountDeletion hook. We keep this optional to avoid forcing a
-		// signature change on the Hub interface and to make tests simpler.
-		if notifier, ok := hub.(interface{ HandleAccountDeletion(userID model.UserID) }); ok {
-			notifier.HandleAccountDeletion(id)
-		}
+		hub.HandleAccountDeletion(id)
 		renderContent(w, r.Context(), svc, 0)
 		hub.NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 	}

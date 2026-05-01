@@ -46,8 +46,8 @@ func (s *inviteStore) CreateInvite(ctx context.Context, roomID RoomID, inviterID
 			u.id,
 			EXISTS(SELECT 1 FROM room_users ru2 WHERE ru2.room_id = $1 AND ru2.user_id = u.id) AS invitee_is_member
 		 FROM rooms r
-		 LEFT JOIN users u ON u.username = $3
-		 WHERE r.id = $1`,
+		 LEFT JOIN users u ON u.username = $3 AND u.deleted_at IS NULL
+		 WHERE r.id = $1 AND r.deleted_at IS NULL`,
 		roomID, inviterID, inviteeName,
 	).Scan(&creatorID, &membersCanInvite, &inviterIsMember, &inviteeID, &inviteeIsMember)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -100,7 +100,7 @@ func (s *inviteStore) ListInvitesForUser(ctx context.Context, userID UserID) ([]
 	rows, err := s.pool.Query(ctx,
 		`SELECT i.id, r.id, r.display_name, u.id, u.username, i.created_at
 		 FROM room_invites i
-		 JOIN rooms r ON r.id = i.room_id
+		 JOIN rooms r ON r.id = i.room_id AND r.deleted_at IS NULL
 		 JOIN users u ON u.id = i.inviter_id
 		 WHERE i.invitee_id = $1
 		 ORDER BY i.created_at DESC`,
@@ -225,7 +225,7 @@ func (s *inviteStore) CancelInvite(ctx context.Context, inviteID InviteID, actin
 	err = tx.QueryRow(ctx,
 		`SELECT i.inviter_id, r.creator_id, i.room_id, i.invitee_id
 		 FROM room_invites i
-		 JOIN rooms r ON r.id = i.room_id
+		 JOIN rooms r ON r.id = i.room_id AND r.deleted_at IS NULL
 		 WHERE i.id = $1
 		 FOR UPDATE OF i`,
 		inviteID,

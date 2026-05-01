@@ -154,7 +154,7 @@ func (h *ChatHub) Stop() {
 	}
 }
 
-//nolint:gocognit,cyclop,nestif,funlen
+//nolint:gocognit,cyclop,funlen
 func (h *ChatHub) Run() {
 	for {
 		select {
@@ -237,16 +237,7 @@ func (h *ChatHub) Run() {
 					}
 				}
 
-				// Clear typing status for this user in this room
-				if typingRoom, ok := h.typingStatus[client.roomID]; ok {
-					if session, ok := typingRoom[client.userID]; ok {
-						session.cancelFunc()
-						delete(typingRoom, client.userID)
-					}
-					if len(typingRoom) == 0 {
-						delete(h.typingStatus, client.roomID)
-					}
-				}
+				h.clearTypingForUser(client.roomID, client.userID)
 			}
 			h.mu.Unlock()
 			if client.roomID > 0 {
@@ -359,11 +350,7 @@ func (h *ChatHub) DisconnectUser(roomID model.RoomID, userID model.UserID) {
 			Message: "You have been removed from this room",
 		}
 		if msg, err := json.Marshal(kickedMsg); err == nil {
-			select {
-			case client.send <- msg:
-			case <-time.After(time.Second):
-				// send buffer wedged; fall through to close path.
-			}
+			trySendToClient(client, msg)
 		}
 		client.closeOnce.Do(func() { close(client.send) })
 		delete(room.clients, client)
@@ -396,10 +383,7 @@ func (h *ChatHub) KickSpectators(roomID model.RoomID, memberIDs map[model.UserID
 		if _, isMember := memberIDs[client.userID]; isMember {
 			continue
 		}
-		select {
-		case client.send <- msg:
-		case <-time.After(time.Second):
-		}
+		trySendToClient(client, msg)
 		client.closeOnce.Do(func() { close(client.send) })
 		delete(room.clients, client)
 	}
@@ -427,10 +411,7 @@ func (h *ChatHub) DisconnectRoom(roomID model.RoomID) {
 		room.mu.Lock()
 		defer room.mu.Unlock()
 		for client := range room.clients {
-			select {
-			case client.send <- noticeBytes:
-			case <-time.After(time.Second):
-			}
+			trySendToClient(client, noticeBytes)
 			client.closeOnce.Do(func() { close(client.send) })
 		}
 	}
@@ -553,7 +534,7 @@ func (h *ChatHub) NotifyMembersNotInRoom(roomID model.RoomID, roomName, senderUs
 // intentionally not on the Hub interface; handlers call it via an optional
 // interface assertion so tests using the mock Hub are unaffected.
 //
-//nolint:gocognit,cyclop,nestif
+//nolint:nestif
 func (h *ChatHub) HandleAccountDeletion(userID model.UserID) {
 	var affectedRooms []model.RoomID
 
@@ -572,17 +553,7 @@ func (h *ChatHub) HandleAccountDeletion(userID model.UserID) {
 						delete(h.rooms, client.roomID)
 					}
 				}
-
-				// Clear typing status for this user in the room
-				if typingRoom, ok := h.typingStatus[client.roomID]; ok {
-					if session, ok := typingRoom[client.userID]; ok {
-						session.cancelFunc()
-						delete(typingRoom, client.userID)
-					}
-					if len(typingRoom) == 0 {
-						delete(h.typingStatus, client.roomID)
-					}
-				}
+				h.clearTypingForUser(client.roomID, userID)
 			}
 
 			// Close the outgoing channel to terminate the connection's writePump.
@@ -941,5 +912,27 @@ func (c *ChatClient) writePump() {
 				return
 			}
 		}
+	}
+}
+
+// caller must hold h.mu (write lock).
+func (h *ChatHub) clearTypingForUser(roomID model.RoomID, userID model.UserID) {
+	typingRoom, ok := h.typingStatus[roomID]
+	if !ok {
+		return
+	}
+	if session, ok := typingRoom[userID]; ok {
+		session.cancelFunc()
+		delete(typingRoom, userID)
+	}
+	if len(typingRoom) == 0 {
+		delete(h.typingStatus, roomID)
+	}
+}
+
+func trySendToClient(client *ChatClient, msg []byte) {
+	select {
+	case client.send <- msg:
+	case <-time.After(time.Second):
 	}
 }

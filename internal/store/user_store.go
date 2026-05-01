@@ -19,7 +19,7 @@ type userStore struct {
 func (s *userStore) UserExists(ctx context.Context, id UserID) (bool, error) {
 	ctx = db.WithQueryName(ctx, "user_exists")
 	var exists bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)`, id).Scan(&exists)
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)`, id).Scan(&exists)
 	return exists, err
 }
 
@@ -27,7 +27,7 @@ func (s *userStore) GetUserByID(ctx context.Context, id UserID) (User, error) {
 	ctx = db.WithQueryName(ctx, "get_user_by_id")
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, created_at FROM users WHERE id = $1`,
+		`SELECT id, username, created_at FROM users WHERE id = $1 AND deleted_at IS NULL`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -40,7 +40,7 @@ func (s *userStore) GetUserByUsername(ctx context.Context, username string) (Use
 	ctx = db.WithQueryName(ctx, "get_user_by_username")
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, created_at FROM users WHERE username = $1`,
+		`SELECT id, username, created_at FROM users WHERE username = $1 AND deleted_at IS NULL`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -53,7 +53,7 @@ func (s *userStore) GetUserWithPassword(ctx context.Context, username string) (U
 	ctx = db.WithQueryName(ctx, "get_user_with_password")
 	var u UserWithPassword
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, created_at, password_hash FROM users WHERE username = $1`,
+		`SELECT id, username, created_at, password_hash FROM users WHERE username = $1 AND deleted_at IS NULL`,
 		username,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -81,14 +81,14 @@ func (s *userStore) CreateUser(ctx context.Context, username, passwordHash strin
 
 func (s *userStore) DeleteUser(ctx context.Context, id UserID) error {
 	ctx = db.WithQueryName(ctx, "delete_user")
-	tag, err := s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrUserNotFound
 	}
-	slog.InfoContext(ctx, "user deleted from db", "user_id", id)
+	slog.InfoContext(ctx, "user soft-deleted in db", "user_id", id)
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (s *userStore) GetUserWithPasswordByID(ctx context.Context, id UserID) (Use
 	ctx = db.WithQueryName(ctx, "get_user_with_password_by_id")
 	var u UserWithPassword
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, created_at, password_hash FROM users WHERE id = $1`,
+		`SELECT id, username, created_at, password_hash FROM users WHERE id = $1 AND deleted_at IS NULL`,
 		id,
 	).Scan(&u.ID, &u.Username, &u.CreatedAt, &u.PasswordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -124,7 +124,7 @@ func (s *userStore) UpdatePasswordHash(ctx context.Context, id UserID, passwordH
 func (s *userStore) GetUserSessionVersion(ctx context.Context, id UserID) (int, error) {
 	ctx = db.WithQueryName(ctx, "get_user_session_version")
 	var v int
-	err := s.pool.QueryRow(ctx, `SELECT session_version FROM users WHERE id = $1`, id).Scan(&v)
+	err := s.pool.QueryRow(ctx, `SELECT session_version FROM users WHERE id = $1 AND deleted_at IS NULL`, id).Scan(&v)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, ErrUserNotFound
 	}
@@ -150,7 +150,7 @@ func (s *userStore) BumpSessionVersion(ctx context.Context, id UserID) error {
 
 func (s *userStore) ListUsers(ctx context.Context) ([]User, error) {
 	ctx = db.WithQueryName(ctx, "list_users")
-	rows, err := s.pool.Query(ctx, `SELECT id, username, created_at FROM users ORDER BY username ASC`)
+	rows, err := s.pool.Query(ctx, `SELECT id, username, created_at FROM users WHERE deleted_at IS NULL ORDER BY username ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +177,7 @@ func (s *userStore) ListAllUsers(ctx context.Context) ([]AdminUser, error) {
 		 FROM users u
 		 LEFT JOIN admins a ON a.user_id = u.id
 		 LEFT JOIN users g ON g.id = a.granted_by
+		 WHERE u.deleted_at IS NULL
 		 ORDER BY u.username ASC`,
 	)
 	if err != nil {

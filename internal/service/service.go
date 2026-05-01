@@ -94,6 +94,7 @@ type RoomDetailView struct {
 	Room            model.RoomDetail
 	IsCreator       bool
 	IsMember        bool
+	IsAdminView     bool // true when admin is viewing a room they are not a member of
 	IsDMRoom        bool
 	CanInvite       bool
 	Members         []model.RoomMember
@@ -138,6 +139,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, us
 		members  []model.RoomMember
 		invites  []model.InviteForRoom
 		allUsers []model.User
+		isAdmin  bool
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -166,6 +168,11 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, us
 		allUsers, err = s.store.Users.ListUsers(gCtx)
 		return err
 	})
+	g.Go(func() error {
+		var err error
+		isAdmin, err = s.store.Users.IsUserAdmin(gCtx, userID)
+		return err
+	})
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
@@ -180,7 +187,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, us
 			break
 		}
 	}
-	if !isCreator && !isMember && !room.IsPublic {
+	if !isCreator && !isMember && !room.IsPublic && !isAdmin {
 		return nil, store.ErrNotRoomMember
 	}
 
@@ -202,6 +209,7 @@ func (s *Service) GetRoomDetailView(ctx context.Context, roomID model.RoomID, us
 		Room:            room,
 		IsCreator:       isCreator,
 		IsMember:        isMember,
+		IsAdminView:     isAdmin && !isMember && !isCreator,
 		IsDMRoom:        isDMRoom,
 		CanInvite:       !isDMRoom && (isCreator || (isMember && room.MembersCanInvite)),
 		Members:         members,

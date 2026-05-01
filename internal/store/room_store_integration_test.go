@@ -333,6 +333,123 @@ func TestRoomStore_LeaveRoom_DMDeletesOnLastLeave(t *testing.T) {
 	}
 }
 
+func TestRoomStore_DeleteRoom_ExcludedFromLists(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	creatorID := createUser(t, pool, "creator")
+	roomID := createRoom(t, pool, "myroom", creatorID)
+	if err := st.Rooms.JoinRoom(ctx, roomID, creatorID); err != nil {
+		t.Fatalf("join room: %v", err)
+	}
+
+	if err := st.Rooms.DeleteRoom(ctx, roomID, creatorID); err != nil {
+		t.Fatalf("delete room: %v", err)
+	}
+
+	if _, err := st.Rooms.GetRoomDetail(ctx, roomID); !errors.Is(err, ErrRoomNotFound) {
+		t.Fatalf("expected ErrRoomNotFound after delete, got %v", err)
+	}
+
+	rooms, err := st.Rooms.ListRoomsByCreator(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms by creator: %v", err)
+	}
+	for _, r := range rooms {
+		if r.ID == roomID {
+			t.Fatalf("deleted room still appears in ListRoomsByCreator")
+		}
+	}
+
+	rooms, err = st.Rooms.ListRoomsByMember(ctx, creatorID)
+	if err != nil {
+		t.Fatalf("list rooms by member: %v", err)
+	}
+	for _, r := range rooms {
+		if r.ID == roomID {
+			t.Fatalf("deleted room still appears in ListRoomsByMember")
+		}
+	}
+}
+
+func TestRoomStore_DeleteRoom_NameReusable(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	creatorID := createUser(t, pool, "creator")
+	roomID := createRoom(t, pool, "myroom", creatorID)
+
+	if err := st.Rooms.DeleteRoom(ctx, roomID, creatorID); err != nil {
+		t.Fatalf("delete room: %v", err)
+	}
+
+	// Room name should be available again after soft delete.
+	if _, err := st.Rooms.CreateRoom(ctx, "myroom", creatorID, false); err != nil {
+		t.Fatalf("create room with reused name: %v", err)
+	}
+}
+
+func TestRoomStore_AdminDeleteRoom_ExcludedFromLists(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	creatorID := createUser(t, pool, "creator")
+	roomID := createRoom(t, pool, "myroom", creatorID)
+
+	if err := st.Rooms.AdminDeleteRoom(ctx, roomID); err != nil {
+		t.Fatalf("admin delete room: %v", err)
+	}
+
+	if _, err := st.Rooms.GetRoomDetail(ctx, roomID); !errors.Is(err, ErrRoomNotFound) {
+		t.Fatalf("expected ErrRoomNotFound after admin delete, got %v", err)
+	}
+
+	// Admin delete also frees the name.
+	if _, err := st.Rooms.CreateRoom(ctx, "myroom", creatorID, false); err != nil {
+		t.Fatalf("create room with reused name after admin delete: %v", err)
+	}
+}
+
+func TestRoomStore_DeleteRoom_InvitesHiddenForInvitee(t *testing.T) {
+	t.Parallel()
+	pool := requireIntegration(t)
+	st := New(pool)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	creatorID := createUser(t, pool, "creator")
+	inviteeID := createUser(t, pool, "invitee")
+	roomID := createRoom(t, pool, "myroom", creatorID)
+
+	createInvite(t, pool, roomID, creatorID, "invitee")
+
+	if err := st.Rooms.DeleteRoom(ctx, roomID, creatorID); err != nil {
+		t.Fatalf("delete room: %v", err)
+	}
+
+	// Invitee should no longer see the invite for the deleted room.
+	invites, err := st.Invites.ListInvitesForUser(ctx, inviteeID)
+	if err != nil {
+		t.Fatalf("list invites for user: %v", err)
+	}
+	if len(invites) != 0 {
+		t.Fatalf("expected no invites after room deleted, got %d", len(invites))
+	}
+}
+
 func TestRoomStore_ListRoomsByMember_ExcludesDMs(t *testing.T) {
 	t.Parallel()
 	pool := requireIntegration(t)

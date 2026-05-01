@@ -225,6 +225,7 @@
     let intentionalClose = false;
     let wasDisconnected = false;
     let reconnectMsgEl = null;
+    let lastDate = null;
 
     function showReconnectMsg(text) {
         if (!reconnectMsgEl) {
@@ -634,6 +635,8 @@
         if (isTyping) {
             isTyping = false;
             ws.send(JSON.stringify({ type: 'stopped_typing' }));
+            typingUsers.delete(currentUsername);
+            updateTypingIndicator();
         }
         chatInput.value = '';
     };
@@ -882,7 +885,8 @@
             msgDiv.style.fontStyle = 'italic';
         }
 
-        const time = new Date(data.created_at).toLocaleString();
+        const date = new Date(data.created_at).toLocaleDateString();
+        const time = new Date(data.created_at).toLocaleTimeString();
         const msgTime = new Date(data.created_at);
 
         // Group consecutive messages from the same sender within 10 minutes.
@@ -893,6 +897,18 @@
 
         lastMsgUsername = data.username;
         lastMsgTime = msgTime;
+
+        if (lastDate != date) {
+            msgDiv.style.marginTop = '0.5rem';
+            const header = document.createElement('div');
+
+            const nameEl = document.createElement('small');
+            nameEl.textContent = date;
+            header.appendChild(nameEl);
+
+            msgDiv.appendChild(header);
+        }
+        lastDate = date;
 
         if (!grouped) {
             msgDiv.style.marginTop = '0.5rem';

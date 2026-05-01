@@ -113,7 +113,6 @@ Postgres (migrations/)
 The entrypoint is `cmd/server/main.go`. It:
 - Loads config from environment (`internal/config`)
 - Connects to Postgres (`internal/db`)
-- Runs migrations (`internal/db.Migrate`)
 - Constructs the service (`internal/service`) and session manager (`internal/session`)
 - Starts the HTTP server and WebSocket hub (`internal/server`)
 - Starts a janitor goroutine to clean up old data periodically
@@ -142,7 +141,7 @@ The store layer wraps a `pgxpool.Pool` and provides concrete operations for:
 - Rooms + membership (including DM rooms)
 - Invites
 
-All schema changes live in `migrations/` and are applied on startup.
+All schema changes live in `migrations/` and are applied by `cmd/migrate`.
 
 ### `internal/session`
 

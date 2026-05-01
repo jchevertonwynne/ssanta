@@ -317,6 +317,7 @@ func TestWebSocket_E2E_NonMemberRejected403(t *testing.T) {
 	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil).AnyTimes()
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil).AnyTimes()
 	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil).AnyTimes()
+	svc.EXPECT().IsUserAdmin(gomock.Any(), userID).Return(false, nil).AnyTimes()
 
 	hub := ws.NewChatHubWithLimits(ws.DefaultWSBurst, ws.DefaultWSRefillPerSec)
 	go hub.Run()

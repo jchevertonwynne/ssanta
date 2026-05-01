@@ -224,6 +224,7 @@ func TestGetRoomDetailView_NotFound(t *testing.T) {
 	ts.rooms.EXPECT().ListRoomMembersWithPGP(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	ts.invites.EXPECT().ListInvitesForRoom(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	ts.users.EXPECT().ListUsers(gomock.Any()).Return(nil, nil).AnyTimes()
+	ts.users.EXPECT().IsUserAdmin(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 
 	_, err := ts.svc.GetRoomDetailView(context.Background(), 10, 1)
 	if !errors.Is(err, store.ErrRoomNotFound) {
@@ -242,6 +243,7 @@ func TestGetRoomDetailView_NotMemberAndNotPublic(t *testing.T) {
 	ts.rooms.EXPECT().ListRoomMembersWithPGP(gomock.Any(), store.RoomID(10)).Return([]store.RoomMember{}, nil)
 	ts.invites.EXPECT().ListInvitesForRoom(gomock.Any(), store.RoomID(10)).Return(nil, nil)
 	ts.users.EXPECT().ListUsers(gomock.Any()).Return(nil, nil)
+	ts.users.EXPECT().IsUserAdmin(gomock.Any(), store.UserID(1)).Return(false, nil)
 
 	_, err := ts.svc.GetRoomDetailView(context.Background(), 10, 1)
 	if !errors.Is(err, store.ErrNotRoomMember) {

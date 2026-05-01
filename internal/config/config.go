@@ -160,7 +160,8 @@ func setFromString(v reflect.Value, raw string) error {
 		return nil
 	}
 
-	switch v.Kind() { //nolint:exhaustive // we handle all relevant types
+	//nolint:exhaustive // we handle all relevant types
+	switch v.Kind() {
 	case reflect.String:
 		v.SetString(raw)
 		return nil

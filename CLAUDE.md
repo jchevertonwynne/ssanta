@@ -55,6 +55,8 @@ Postgres (migrations/)
 | `cmd/server` | Entry point: loads config, initialises DB/service/sessions, starts HTTP + janitor |
 | `cmd/migrate` | Standalone migration runner; supports separate admin vs runtime DB roles |
 | `internal/config` | Env-based config via `env` struct tags; validates required fields |
+| `internal/db` | Database connection setup (pgxpool) and migration execution |
+| `internal/model` | Core shared data model types used across service and store |
 | `internal/server` | Handlers, template rendering, CSRF, middleware chain, WebSocket routing |
 | `internal/service` | View-model composition (ContentView, RoomDetailView), DM/PGP workflows |
 | `internal/store` | All Postgres access via pgx/pgxpool |
@@ -67,7 +69,7 @@ Postgres (migrations/)
 ### server package internals
 
 `server.go` — `New()` wires the mux + middleware chain, plus template data types and render helpers.  
-`interfaces.go` — ~30 small single-method capability interfaces composed into handler-facing and root interfaces (`ServerService`). `service.Service` satisfies `ServerService`. Mocks are generated at `mocks/mock_interfaces.go`.  
+`interfaces.go` — ~45 small single-method capability interfaces composed into handler-facing and root interfaces (`ServerService`). `service.Service` satisfies `ServerService`. Mocks are generated at `mocks/mock_interfaces.go`.  
 `middleware.go` — middleware stack + shared context helpers (`loggerFromContext`, `pathRoomID`, `pathUserID`, `pathInviteID`, `scriptNonceFromContext`).  
 `csrf.go` — HMAC-SHA256 CSRF tokens stored in context and validated on state-changing requests.
 

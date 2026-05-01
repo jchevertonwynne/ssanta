@@ -28,7 +28,7 @@ func (s *roomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, c
 	err := s.pool.QueryRow(ctx,
 		`INSERT INTO rooms (display_name, creator_id, is_dm)
 		 VALUES ($1, $2, TRUE)
-		 ON CONFLICT (display_name) DO NOTHING
+		 ON CONFLICT (display_name) WHERE deleted_at IS NULL DO NOTHING
 		 RETURNING id`,
 		displayName, creatorID,
 	).Scan(&roomID)
@@ -40,7 +40,7 @@ func (s *roomStore) GetOrCreateDMRoom(ctx context.Context, displayName string, c
 	}
 	// Row already existed; resolve it.
 	err = s.pool.QueryRow(ctx,
-		`SELECT id FROM rooms WHERE display_name = $1`,
+		`SELECT id FROM rooms WHERE display_name = $1 AND deleted_at IS NULL`,
 		displayName,
 	).Scan(&roomID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -69,19 +69,19 @@ func (s *roomStore) CreateRoom(ctx context.Context, displayName string, creatorI
 func (s *roomStore) DeleteRoom(ctx context.Context, roomID RoomID, creatorID UserID) error {
 	ctx = db.WithQueryName(ctx, "delete_room")
 	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
-		`DELETE FROM rooms WHERE id = $1 AND creator_id = $2`,
+		`UPDATE rooms SET deleted_at = now() WHERE id = $1 AND creator_id = $2 AND deleted_at IS NULL`,
 		roomID, creatorID,
 	); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "room deleted from db", "room_id", roomID, "creator_id", creatorID)
+	slog.InfoContext(ctx, "room soft-deleted in db", "room_id", roomID, "creator_id", creatorID)
 	return nil
 }
 
 func (s *roomStore) ListRoomsByCreator(ctx context.Context, userID UserID) ([]Room, error) {
 	ctx = db.WithQueryName(ctx, "list_rooms_by_creator")
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, display_name, created_at, pgp_required, is_dm, is_public FROM rooms WHERE creator_id = $1 AND is_dm = FALSE ORDER BY display_name ASC`,
+		`SELECT id, display_name, created_at, pgp_required, is_dm, is_public FROM rooms WHERE creator_id = $1 AND is_dm = FALSE AND deleted_at IS NULL ORDER BY display_name ASC`,
 		userID,
 	)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *roomStore) ListRoomsByMember(ctx context.Context, userID UserID) ([]Roo
 		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm, r.is_public
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
-		 WHERE ru.user_id = $1 AND r.is_dm = FALSE
+		 WHERE ru.user_id = $1 AND r.is_dm = FALSE AND r.deleted_at IS NULL
 		 ORDER BY r.display_name ASC`,
 		userID,
 	)
@@ -112,7 +112,7 @@ func (s *roomStore) ListDMRoomsByMember(ctx context.Context, userID UserID) ([]R
 		`SELECT r.id, r.display_name, r.created_at, r.pgp_required, r.is_dm, r.is_public
 		 FROM rooms r
 		 JOIN room_users ru ON ru.room_id = r.id
-		 WHERE ru.user_id = $1 AND r.is_dm = TRUE`,
+		 WHERE ru.user_id = $1 AND r.is_dm = TRUE AND r.deleted_at IS NULL`,
 		userID,
 	)
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *roomStore) GetRoomDetail(ctx context.Context, roomID RoomID) (RoomDetai
 		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, r.is_dm, r.is_public, u.username
 		 FROM rooms r
 		 JOIN users u ON u.id = r.creator_id
-		 WHERE r.id = $1`,
+		 WHERE r.id = $1 AND r.deleted_at IS NULL`,
 		roomID,
 	).Scan(&d.ID, &d.DisplayName, &d.CreatedAt, &d.CreatorID, &d.MembersCanInvite, &d.PGPRequired, &d.IsDM, &d.IsPublic, &d.CreatorUsername)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -151,7 +151,7 @@ func (s *roomStore) IsRoomPGPRequired(ctx context.Context, roomID RoomID) (bool,
 	ctx = db.WithQueryName(ctx, "is_room_pgp_required")
 	var required bool
 	err := s.pool.QueryRow(ctx,
-		`SELECT pgp_required FROM rooms WHERE id = $1`,
+		`SELECT pgp_required FROM rooms WHERE id = $1 AND deleted_at IS NULL`,
 		roomID,
 	).Scan(&required)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -164,7 +164,7 @@ func (s *roomStore) IsRoomPublic(ctx context.Context, roomID RoomID) (bool, erro
 	ctx = db.WithQueryName(ctx, "is_room_public")
 	var public bool
 	err := s.pool.QueryRow(ctx,
-		`SELECT is_public FROM rooms WHERE id = $1`,
+		`SELECT is_public FROM rooms WHERE id = $1 AND deleted_at IS NULL`,
 		roomID,
 	).Scan(&public)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -180,6 +180,7 @@ func (s *roomStore) ListPublicRooms(ctx context.Context, userID UserID) ([]Room,
 		 FROM rooms
 		 WHERE is_public = TRUE
 		   AND is_dm = FALSE
+		   AND deleted_at IS NULL
 		   AND creator_id != $1
 		   AND NOT EXISTS (
 		       SELECT 1 FROM room_users WHERE room_id = rooms.id AND user_id = $1
@@ -197,7 +198,7 @@ func (s *roomStore) IsRoomCreator(ctx context.Context, roomID RoomID, userID Use
 	ctx = db.WithQueryName(ctx, "is_room_creator")
 	var exists bool
 	err := s.pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2)`,
+		`SELECT EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2 AND deleted_at IS NULL)`,
 		roomID, userID,
 	).Scan(&exists)
 	return exists, err
@@ -208,7 +209,7 @@ func (s *roomStore) GetRoomAccess(ctx context.Context, roomID RoomID, userID Use
 	var isCreator, isMember bool
 	err := s.pool.QueryRow(ctx,
 		`SELECT
-			EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2),
+			EXISTS(SELECT 1 FROM rooms WHERE id = $1 AND creator_id = $2 AND deleted_at IS NULL),
 			EXISTS(SELECT 1 FROM room_users WHERE room_id = $1 AND user_id = $2)`,
 		roomID, userID,
 	).Scan(&isCreator, &isMember)
@@ -259,7 +260,7 @@ func (s *roomStore) ListRoomMembersWithPGP(ctx context.Context, roomID RoomID) (
 		        ru.pgp_challenge_expires_at
 		 FROM users u
 		 JOIN room_users ru ON ru.user_id = u.id
-		 WHERE ru.room_id = $1
+		 WHERE ru.room_id = $1 AND u.deleted_at IS NULL
 		 ORDER BY u.username ASC`,
 		roomID,
 	)
@@ -333,7 +334,7 @@ func (s *roomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 	var creatorID UserID
 	var isDM bool
 	err = tx.QueryRow(ctx,
-		`SELECT creator_id, is_dm FROM rooms WHERE id = $1`,
+		`SELECT creator_id, is_dm FROM rooms WHERE id = $1 AND deleted_at IS NULL`,
 		roomID,
 	).Scan(&creatorID, &isDM)
 	if err != nil {
@@ -399,9 +400,9 @@ func (s *roomStore) LeaveRoom(ctx context.Context, roomID RoomID, userID UserID)
 				return err
 			}
 
-			// Delete the room itself
+			// Soft-delete the room itself
 			_, err = tx.Exec(ctx,
-				`DELETE FROM rooms WHERE id = $1`,
+				`UPDATE rooms SET deleted_at = now() WHERE id = $1`,
 				roomID,
 			)
 			if err != nil {
@@ -424,7 +425,7 @@ func (s *roomStore) RemoveMember(ctx context.Context, roomID RoomID, memberID, c
 	// Verify the actor is the creator
 	var actualCreatorID UserID
 	err = tx.QueryRow(ctx,
-		`SELECT creator_id FROM rooms WHERE id = $1`,
+		`SELECT creator_id FROM rooms WHERE id = $1 AND deleted_at IS NULL`,
 		roomID,
 	).Scan(&actualCreatorID)
 	if err != nil {
@@ -473,7 +474,7 @@ func (s *roomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
 		`SELECT r.id, r.display_name, r.created_at, r.creator_id, r.members_can_invite, r.pgp_required, r.is_dm, r.is_public, u.username
 		 FROM rooms r
 		 JOIN users u ON u.id = r.creator_id
-		 WHERE r.is_dm = FALSE
+		 WHERE r.is_dm = FALSE AND r.deleted_at IS NULL
 		 ORDER BY r.display_name ASC`,
 	)
 	if err != nil {
@@ -495,12 +496,12 @@ func (s *roomStore) ListAllRooms(ctx context.Context) ([]RoomDetail, error) {
 func (s *roomStore) AdminDeleteRoom(ctx context.Context, roomID RoomID) error {
 	ctx = db.WithQueryName(ctx, "admin_delete_room")
 	if err := execAssertRows(ctx, s.pool, ErrRoomNotFound,
-		`DELETE FROM rooms WHERE id = $1`,
+		`UPDATE rooms SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`,
 		roomID,
 	); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "room admin-deleted from db", "room_id", roomID)
+	slog.InfoContext(ctx, "room admin soft-deleted in db", "room_id", roomID)
 	return nil
 }
 

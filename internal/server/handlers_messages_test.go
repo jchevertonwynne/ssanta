@@ -34,6 +34,7 @@ func TestHandleListMessages_Unauthorized_Returns401(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleListMessages_NotMember_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -45,6 +46,7 @@ func TestHandleListMessages_NotMember_Returns403(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
 	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
+	svc.EXPECT().IsUserAdmin(gomock.Any(), userID).Return(false, nil)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/messages", nil)
 	r.SetPathValue("id", "10")
@@ -139,6 +141,7 @@ func TestHandleSearchMessages_Unauthorized_Returns401(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleSearchMessages_NotMember_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -150,6 +153,7 @@ func TestHandleSearchMessages_NotMember_Returns403(t *testing.T) {
 	expectLoggedIn(t, svc, sessions, userID)
 	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
 	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
+	svc.EXPECT().IsUserAdmin(gomock.Any(), userID).Return(false, nil)
 
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/rooms/10/messages/search?q=hello", nil)
 	r.SetPathValue("id", "10")

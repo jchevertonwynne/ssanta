@@ -192,8 +192,10 @@ type MessageListService interface {
 	MessageHistoryService
 	RoomAccessService
 	IsRoomPublicService
+	IsAdminService
 }
 
+//nolint:interfacebloat
 type WebSocketHandlersService interface {
 	UserExistsService
 	UsernameService
@@ -205,6 +207,7 @@ type WebSocketHandlersService interface {
 	RoomNameService
 	RoomMemberIDsService
 	MessageHistoryService
+	IsAdminService
 }
 
 // ServerService is the full surface required to wire all routes.
@@ -273,4 +276,5 @@ type Hub interface {
 	DisconnectRoom(roomID model.RoomID)
 	BroadcastRoomPresence(roomID model.RoomID)
 	KickSpectators(roomID model.RoomID, memberIDs map[model.UserID]struct{})
+	HandleAccountDeletion(userID model.UserID)
 }

@@ -77,6 +77,7 @@ func handleCreateInvite(svc InviteHandlersService, sessions SessionManager, hub 
 		} else {
 			loggerFromContext(ctx).Error("get inviter username", "err", err)
 		}
+		hub.NotifyRoomUpdate(roomID)
 
 		// Notify the invitee if they're online
 		if inviteeUser, err := svc.GetUserByUsername(ctx, attempted); err == nil {

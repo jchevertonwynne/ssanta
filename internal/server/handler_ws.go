@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/jchevertonwynne/ssanta/internal/model"
 	"github.com/jchevertonwynne/ssanta/internal/ws"
 )
 
@@ -28,13 +29,8 @@ func handleWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions Ses
 		}
 
 		if !isCreator && !isMember {
-			isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
-			if err != nil {
-				http.Error(w, "failed to check room access", http.StatusInternalServerError)
-				return
-			}
-			if !isPublic {
-				http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
+			ok := shouldStillHaveAccess(svc, r, roomID, w, currentID)
+			if !ok {
 				return
 			}
 		}
@@ -54,6 +50,26 @@ func handleWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions Ses
 
 		ws.RunWS(hub, sessions, svc, currentID, username, roomID, roomName, w, r)
 	}
+}
+
+func shouldStillHaveAccess(svc WebSocketHandlersService, r *http.Request, roomID model.RoomID, w http.ResponseWriter, currentID model.UserID) bool {
+	isPublic, err := svc.IsRoomPublic(r.Context(), roomID)
+	if err != nil {
+		http.Error(w, "failed to check room access", http.StatusInternalServerError)
+		return false
+	}
+	if !isPublic {
+		isAdmin, err := svc.IsUserAdmin(r.Context(), currentID)
+		if err != nil {
+			http.Error(w, "failed to check room access", http.StatusInternalServerError)
+			return false
+		}
+		if !isAdmin {
+			http.Error(w, "must be a creator or member to access chat", http.StatusForbidden)
+			return false
+		}
+	}
+	return true
 }
 
 func handleContentWebSocket(hub *ws.ChatHub, svc WebSocketHandlersService, sessions SessionManager) http.HandlerFunc {

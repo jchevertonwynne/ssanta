@@ -75,6 +75,8 @@
                     <td>{{.CreatorUsername}}</td>
                     <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                     <td>
+                        <button hx-get="/rooms/{{.ID}}" hx-target="#content" hx-swap="innerHTML"
+                                hx-push-url="true">Enter</button>
                         <button hx-delete="/admin/rooms/{{.ID}}"
                                 hx-target="#content"
                                 hx-swap="innerHTML"

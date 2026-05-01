@@ -172,6 +172,7 @@ func TestHandleAdminDeleteUser_Success_NotifiesHubAndRendersAdmin(t *testing.T) 
 	// MockHub does not implement HandleAccountDeletion — the type assertion silently fails, which is fine.
 	hub.EXPECT().NotifyContentUpdate(ws.MsgTypeUsersUpdated)
 	svc.EXPECT().GetAdminView(gomock.Any(), adminID).Return(stubAdminView(), nil)
+	hub.EXPECT().HandleAccountDeletion(targetID).Return()
 
 	r, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, "/admin/users/99", nil)
 	r.SetPathValue("id", "99")
