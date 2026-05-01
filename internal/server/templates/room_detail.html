@@ -91,10 +91,12 @@
     // --- Message grouping state ---
     let lastMsgUsername = null;
     let lastMsgTime = null;
+    let lastDate = null;
 
     function resetGroupingState() {
         lastMsgUsername = null;
         lastMsgTime = null;
+        lastDate = null;
     }
 
     // --- Search state ---
@@ -225,7 +227,6 @@
     let intentionalClose = false;
     let wasDisconnected = false;
     let reconnectMsgEl = null;
-    let lastDate = null;
 
     function showReconnectMsg(text) {
         if (!reconnectMsgEl) {
