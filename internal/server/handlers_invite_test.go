@@ -117,6 +117,114 @@ func TestHandleAcceptInvite_Success_NotifiesRoomAndRenders(t *testing.T) {
 	}
 }
 
+func TestHandleCreateInvite_RoomNotFound_Returns404(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CreateInvite(gomock.Any(), roomID, userID, "bob").Return(store.ErrRoomNotFound)
+
+	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleCreateInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateInvite_DMRoom_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CreateInvite(gomock.Any(), roomID, userID, "bob").Return(store.ErrOperationNotAllowedOnDM)
+
+	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleCreateInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateInvite_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CreateInvite(gomock.Any(), roomID, userID, "bob").Return(errTest)
+
+	r := newFormRequest(t, "/rooms/10/invites", url.Values{"invitee_username": {"bob"}})
+	r.SetPathValue("id", "10")
+	w := serve(t, handleCreateInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestHandleAcceptInvite_Expired_Returns410(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().AcceptInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), store.ErrInviteExpired)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/accept", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusGone {
+		t.Fatalf("expected 410, got %d", w.Code)
+	}
+}
+
+func TestHandleAcceptInvite_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().AcceptInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/accept", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleAcceptInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
 func TestHandleDeclineInvite_NotFound_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -155,6 +263,96 @@ func TestHandleCancelInvite_Forbidden_Returns403(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleCancelInvite_NotFound_Returns404(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CancelInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), store.UserID(0), store.ErrInviteNotFound)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/cancel", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleCancelInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestHandleCancelInvite_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CancelInvite(gomock.Any(), store.InviteID(123), userID).Return(store.RoomID(0), store.UserID(0), errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/cancel", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleCancelInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleCancelInvite_Success_WithInvitee_NotifiesAndRenders(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
+	inviteeID := store.UserID(5)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CancelInvite(gomock.Any(), store.InviteID(123), userID).Return(roomID, inviteeID, nil)
+	hub.EXPECT().NotifyUser(inviteeID, ws.MsgTypeInviteCancelled, "")
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/cancel", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleCancelInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestHandleCancelInvite_Success_NoInvitee_SkipsNotifyAndRenders(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	userID := store.UserID(2)
+	roomID := store.RoomID(10)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CancelInvite(gomock.Any(), store.InviteID(123), userID).Return(roomID, store.UserID(0), nil)
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("alice"), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/invites/123/cancel", nil)
+	r.SetPathValue("id", "123")
+	w := serve(t, handleCancelInvite(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 }
 

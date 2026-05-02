@@ -100,6 +100,90 @@ func TestHandleCreateOrGetDM_Multipart_Redirects303(t *testing.T) {
 	}
 }
 
+func TestHandleCreateOrGetDM_InvalidPartnerID_Returns400(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+
+	r := newFormRequest(t, "/dms", url.Values{"partner_id": {"not-a-number"}})
+	w := serve(t, handleCreateOrGetDM(svc, sessions), r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateOrGetDM_UserExists_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	partnerID := store.UserID(2)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+	svc.EXPECT().UserExists(gomock.Any(), partnerID).Return(false, errTest)
+
+	r := newFormRequest(t, "/dms", url.Values{"partner_id": {"2"}})
+	w := serve(t, handleCreateOrGetDM(svc, sessions), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateOrGetDM_CannotMessageSelf_Returns409(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	partnerID := store.UserID(2)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+	svc.EXPECT().UserExists(gomock.Any(), partnerID).Return(true, nil)
+	svc.EXPECT().GetOrCreateDMRoom(gomock.Any(), userID, partnerID).Return(store.RoomID(0), store.ErrCannotInviteSelf)
+
+	r := newFormRequest(t, "/dms", url.Values{"partner_id": {"2"}})
+	w := serve(t, handleCreateOrGetDM(svc, sessions), r)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateOrGetDM_GetOrCreate_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	partnerID := store.UserID(2)
+	sessions.EXPECT().UserID(gomock.Any()).Return(userID, 0, true)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), userID).Return(0, nil)
+	svc.EXPECT().UserExists(gomock.Any(), partnerID).Return(true, nil)
+	svc.EXPECT().GetOrCreateDMRoom(gomock.Any(), userID, partnerID).Return(store.RoomID(0), errTest)
+
+	r := newFormRequest(t, "/dms", url.Values{"partner_id": {"2"}})
+	w := serve(t, handleCreateOrGetDM(svc, sessions), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
 func TestEscapeHTML(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

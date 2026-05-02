@@ -97,6 +97,103 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	}
 }
 
+func TestHandleCreateUser_UsernameTaken_RendersFormError(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	svc.EXPECT().CreateUser(gomock.Any(), "alice", "secret123").Return(store.UserID(0), store.ErrUsernameTaken)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
+
+	r := newFormRequest(t, "/users", url.Values{
+		"username":         {"alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), store.ErrUsernameTaken.Error()) {
+		t.Fatalf("expected ErrUsernameTaken rendered, got: %s", w.Body.String())
+	}
+}
+
+func TestHandleCreateUser_PasswordTooShort_RendersFormError(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	svc.EXPECT().CreateUser(gomock.Any(), "alice", "short").Return(store.UserID(0), store.ErrPasswordTooShort)
+	svc.EXPECT().GetContentView(gomock.Any(), store.UserID(0)).Return(stubContentView(""), nil)
+
+	r := newFormRequest(t, "/users", url.Values{
+		"username":         {"alice"},
+		"password":         {"short"},
+		"password_confirm": {"short"},
+	})
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), store.ErrPasswordTooShort.Error()) {
+		t.Fatalf("expected ErrPasswordTooShort rendered, got: %s", w.Body.String())
+	}
+}
+
+func TestHandleCreateUser_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	svc.EXPECT().CreateUser(gomock.Any(), "alice", "secret123").Return(store.UserID(0), errTest)
+
+	r := newFormRequest(t, "/users", url.Values{
+		"username":         {"alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateUser_SessionVersionError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	svc.EXPECT().CreateUser(gomock.Any(), "alice", "secret123").Return(store.UserID(42), nil)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(42)).Return(0, errTest)
+
+	r := newFormRequest(t, "/users", url.Values{
+		"username":         {"alice"},
+		"password":         {"secret123"},
+		"password_confirm": {"secret123"},
+	})
+	w := serve(t, handleCreateUser(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
 func TestHandleDeleteUser_Unauthorized_Returns401(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -206,6 +303,47 @@ func TestHandleLogin_Success_SetsSessionAndRenders(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestHandleLogin_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "pass").Return(store.UserID(0), errTest)
+
+	r := newFormRequest(t, "/login", url.Values{
+		"username": {"alice"},
+		"password": {"pass"},
+	})
+	w := serve(t, handleLogin(svc, sessions), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleLogin_SessionVersionError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	svc.EXPECT().LoginUser(gomock.Any(), "alice", "pass").Return(store.UserID(5), nil)
+	svc.EXPECT().GetUserSessionVersion(gomock.Any(), store.UserID(5)).Return(0, errTest)
+
+	r := newFormRequest(t, "/login", url.Values{
+		"username": {"alice"},
+		"password": {"pass"},
+	})
+	w := serve(t, handleLogin(svc, sessions), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
 	}
 }
 

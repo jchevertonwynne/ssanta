@@ -628,6 +628,81 @@ func TestWebSocket_E2E_WhisperInvalidTarget_SystemError(t *testing.T) {
 	assertNoNonPresenceMessage(t, connB, 200*time.Millisecond)
 }
 
+func TestShouldStillHaveAccess_PublicRoom_AllowsAccess(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	svc := servermocks.NewMockWebSocketHandlersService(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(true, nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	if !shouldStillHaveAccess(svc, r, roomID, w, userID) {
+		t.Fatal("expected access granted for public room")
+	}
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected no error response, got %d", w.Code)
+	}
+}
+
+func TestShouldStillHaveAccess_AdminInPrivateRoom_AllowsAccess(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	svc := servermocks.NewMockWebSocketHandlersService(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
+	svc.EXPECT().IsUserAdmin(gomock.Any(), userID).Return(true, nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	if !shouldStillHaveAccess(svc, r, roomID, w, userID) {
+		t.Fatal("expected access granted for admin")
+	}
+}
+
+func TestShouldStillHaveAccess_IsRoomPublic_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	svc := servermocks.NewMockWebSocketHandlersService(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	if shouldStillHaveAccess(svc, r, roomID, w, userID) {
+		t.Fatal("expected access denied on error")
+	}
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestShouldStillHaveAccess_IsUserAdmin_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	svc := servermocks.NewMockWebSocketHandlersService(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
+	svc.EXPECT().IsUserAdmin(gomock.Any(), userID).Return(false, errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	if shouldStillHaveAccess(svc, r, roomID, w, userID) {
+		t.Fatal("expected access denied on error")
+	}
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
 // readNextNonPresenceMessage reads from the WebSocket, skipping any presence messages,
 // and returns the first non-presence message.
 func readNextNonPresenceMessage(t *testing.T, conn *websocket.Conn) ws.ChatMessagePayload {

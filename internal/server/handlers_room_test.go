@@ -64,6 +64,55 @@ func TestHandleCreateRoom_ReservedDMPrefix_RendersError(t *testing.T) {
 	testCreateRoomError(t, "dm:alice:bob", store.ErrRoomNameReservedPrefix)
 }
 
+func TestHandleCreateRoom_Success_RendersContent(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CreateRoom(gomock.Any(), "my-room", userID).Return(store.RoomID(10), nil)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
+
+	r := newFormRequest(t, "/rooms", url.Values{"display_name": {"my-room"}})
+	w := serve(t, handleCreateRoom(svc, sessions), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestHandleCreateRoom_NameTaken_RendersError(t *testing.T) {
+	t.Parallel()
+	testCreateRoomError(t, "taken-name", store.ErrRoomNameTaken)
+}
+
+func TestHandleCreateRoom_NameTooLong_RendersError(t *testing.T) {
+	t.Parallel()
+	testCreateRoomError(t, string(make([]byte, 200)), store.ErrRoomNameTooLong)
+}
+
+func TestHandleCreateRoom_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().CreateRoom(gomock.Any(), "room", userID).Return(store.RoomID(0), errTest)
+
+	r := newFormRequest(t, "/rooms", url.Values{"display_name": {"room"}})
+	w := serve(t, handleCreateRoom(svc, sessions), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
 func TestHandleJoinRoom_NonCreator_RendersRoomDetailAndNotifiesRoom(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -151,6 +200,273 @@ func TestHandleLeaveRoom_NotMember_Returns403(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_Success_NonCreator_RendersContent(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
+	svc.EXPECT().LeaveRoom(gomock.Any(), roomID, userID).Return(nil)
+	hub.EXPECT().DisconnectUser(roomID, userID)
+	hub.EXPECT().BroadcastSystemMessage(roomID, "alice left the room")
+	hub.EXPECT().NotifyRoomUpdate(roomID)
+	hub.EXPECT().BroadcastRoomPresence(roomID)
+	svc.EXPECT().GetContentView(gomock.Any(), userID).Return(stubContentView("alice"), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_Success_Creator_RendersSidebar(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(true, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("creator", nil)
+	svc.EXPECT().LeaveRoom(gomock.Any(), roomID, userID).Return(nil)
+	hub.EXPECT().DisconnectUser(roomID, userID)
+	hub.EXPECT().BroadcastSystemMessage(roomID, "creator left the room")
+	hub.EXPECT().NotifyRoomUpdate(roomID)
+	hub.EXPECT().BroadcastRoomPresence(roomID)
+	hub.EXPECT().NotifyUser(userID, ws.MsgTypeMembershipLost, "")
+	svc.EXPECT().GetRoomDetailView(gomock.Any(), roomID, userID).Return(stubRoomDetailView("creator"), nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_GetRoomAccess_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_GetUsername_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("", errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_RoomNotFound_Returns404(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
+	svc.EXPECT().LeaveRoom(gomock.Any(), roomID, userID).Return(store.ErrRoomNotFound)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestHandleLeaveRoom_GenericError_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
+	svc.EXPECT().LeaveRoom(gomock.Any(), roomID, userID).Return(errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/leave", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleLeaveRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleJoinRoom_GetRoomAccess_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleJoinRoom_NotPublic_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, nil)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestHandleJoinRoom_IsRoomPublic_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, false, nil)
+	svc.EXPECT().IsRoomPublic(gomock.Any(), roomID).Return(false, errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleJoinRoom_GetUsername_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("", errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestHandleJoinRoom_JoinRoom_Error_Returns500(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	userID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, userID)
+	svc.EXPECT().GetRoomAccess(gomock.Any(), roomID, userID).Return(false, true, nil)
+	svc.EXPECT().GetUsername(gomock.Any(), userID).Return("alice", nil)
+	svc.EXPECT().JoinRoom(gomock.Any(), roomID, userID).Return(errTest)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/rooms/10/join", nil)
+	r.SetPathValue("id", "10")
+	w := serve(t, handleJoinRoom(svc, sessions, hub), r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
 	}
 }
 
@@ -291,6 +607,101 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "id=\"room-dynamic\"") {
 		t.Fatalf("expected room dynamic fragment")
+	}
+}
+
+func TestHandleRemoveMember_NotCreator_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	memberID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, creatorID)
+	svc.EXPECT().RemoveMember(gomock.Any(), roomID, memberID, creatorID).Return(store.ErrNotRoomCreator)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/2", nil)
+	r.SetPathValue("id", "10")
+	r.SetPathValue("memberid", "2")
+	w := serve(t, handleRemoveMember(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
+	}
+}
+
+func TestHandleRemoveMember_CannotRemoveCreator_Returns400(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	expectLoggedIn(t, svc, sessions, creatorID)
+	svc.EXPECT().RemoveMember(gomock.Any(), roomID, creatorID, creatorID).Return(store.ErrCannotRemoveCreator)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/1", nil)
+	r.SetPathValue("id", "10")
+	r.SetPathValue("memberid", "1")
+	w := serve(t, handleRemoveMember(svc, sessions, hub), r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRemoveMember_NotMember_Returns404(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	memberID := store.UserID(99)
+	expectLoggedIn(t, svc, sessions, creatorID)
+	svc.EXPECT().RemoveMember(gomock.Any(), roomID, memberID, creatorID).Return(store.ErrNotRoomMember)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/99", nil)
+	r.SetPathValue("id", "10")
+	r.SetPathValue("memberid", "99")
+	w := serve(t, handleRemoveMember(svc, sessions, hub), r)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestHandleRemoveMember_DMRoom_Returns403(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	svc := servermocks.NewMockServerService(ctrl)
+	sessions := servermocks.NewMockSessionManager(ctrl)
+	hub := servermocks.NewMockHub(ctrl)
+
+	roomID := store.RoomID(10)
+	creatorID := store.UserID(1)
+	memberID := store.UserID(2)
+	expectLoggedIn(t, svc, sessions, creatorID)
+	svc.EXPECT().RemoveMember(gomock.Any(), roomID, memberID, creatorID).Return(store.ErrOperationNotAllowedOnDM)
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/rooms/10/members/2", nil)
+	r.SetPathValue("id", "10")
+	r.SetPathValue("memberid", "2")
+	w := serve(t, handleRemoveMember(svc, sessions, hub), r)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", w.Code)
 	}
 }
 

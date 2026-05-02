@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,6 +17,8 @@ import (
 
 	servermocks "github.com/jchevertonwynne/ssanta/internal/server/mocks"
 )
+
+var errTest = errors.New("test error")
 
 // withCSRFID injects a csrf_id into the context so handlers that call
 // setCSRFRefreshHeader (login, logout, register) can be tested without the
