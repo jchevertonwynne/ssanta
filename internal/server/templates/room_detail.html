@@ -303,12 +303,11 @@
             const storedPass = store.getItem(roomId + ':pgp_passphrase') || '';
             const keyInput = document.getElementById('pgp-private-key-input');
             const passInput = document.getElementById('pgp-passphrase-input');
-            const persistEl = document.getElementById('pgp-persist-toggle');
             if (keyInput) keyInput.value = storedKey || '';
             if (passInput) passInput.value = storedPass;
-            if (persistEl) persistEl.checked = persist;
             const details = document.getElementById('pgp-keys-section');
             if (details && pgpSectionWasOpen) details.open = true;
+            initPGPButtons();
             applyPresenceIndicators();
         }
     });
@@ -663,29 +662,9 @@
 
     // --- PGP key management ---
 
-    const pgpPersistToggle = document.getElementById('pgp-persist-toggle');
-    pgpPersistToggle.checked = localStorage.getItem(roomId + ':pgp_persist_across_sessions') === 'true';
-
-    pgpPersistToggle.onchange = function() {
-        localStorage.setItem(roomId + ':pgp_persist_across_sessions', pgpPersistToggle.checked);
-        if (!loadedPrivateKey) return;
-        const armoredKey = document.getElementById('pgp-private-key-input').value;
-        const passphrase = document.getElementById('pgp-passphrase-input').value;
-        if (pgpPersistToggle.checked) {
-            localStorage.setItem(roomId + ':pgp_armored_key', armoredKey);
-            localStorage.setItem(roomId + ':pgp_passphrase', passphrase);
-            sessionStorage.removeItem(roomId + ':pgp_armored_key');
-            sessionStorage.removeItem(roomId + ':pgp_passphrase');
-        } else {
-            sessionStorage.setItem(roomId + ':pgp_armored_key', armoredKey);
-            sessionStorage.setItem(roomId + ':pgp_passphrase', passphrase);
-            localStorage.removeItem(roomId + ':pgp_armored_key');
-            localStorage.removeItem(roomId + ':pgp_passphrase');
-        }
-    };
-
     function pgpKeyStore() {
-        return pgpPersistToggle.checked ? localStorage : sessionStorage;
+        const toggle = document.getElementById('pgp-persist-toggle');
+        return (toggle && toggle.checked) ? localStorage : sessionStorage;
     }
 
     function savePGPKey(armoredKey, passphrase) {
@@ -700,40 +679,74 @@
         sessionStorage.removeItem(roomId + ':pgp_passphrase');
     }
 
-    document.getElementById('pgp-load-key-btn').onclick = async function() {
-        const armoredKey = document.getElementById('pgp-private-key-input').value.trim();
-        const passphrase = document.getElementById('pgp-passphrase-input').value;
-        const statusEl = document.getElementById('pgp-key-status');
-        if (!armoredKey) { statusEl.textContent = 'No key entered.'; return; }
-        try {
-            let key = await openpgp.readPrivateKey({ armoredKey });
-            if (!key.isDecrypted()) {
-                key = await openpgp.decryptKey({ privateKey: key, passphrase });
-            }
-            loadedPrivateKey = key;
-            savePGPKey(armoredKey, passphrase);
-            statusEl.style.color = 'green';
-            statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
-            await rerenderAllMessages();
-            await autoHandlePGPVerification();
-        } catch (err) {
-            loadedPrivateKey = null;
-            statusEl.style.color = 'red';
-            statusEl.textContent = 'Failed to load key: ' + err.message;
+    // Wire up PGP sidebar buttons. Called at page load and after each htmx:afterSwap of #room-sidebar,
+    // because the sidebar is replaced wholesale when the user joins (creating new DOM elements).
+    function initPGPButtons() {
+        const persistToggle = document.getElementById('pgp-persist-toggle');
+        if (persistToggle) {
+            persistToggle.checked = localStorage.getItem(roomId + ':pgp_persist_across_sessions') === 'true';
+            persistToggle.onchange = function() {
+                localStorage.setItem(roomId + ':pgp_persist_across_sessions', persistToggle.checked);
+                if (!loadedPrivateKey) return;
+                const armoredKey = document.getElementById('pgp-private-key-input').value;
+                const passphrase = document.getElementById('pgp-passphrase-input').value;
+                if (persistToggle.checked) {
+                    localStorage.setItem(roomId + ':pgp_armored_key', armoredKey);
+                    localStorage.setItem(roomId + ':pgp_passphrase', passphrase);
+                    sessionStorage.removeItem(roomId + ':pgp_armored_key');
+                    sessionStorage.removeItem(roomId + ':pgp_passphrase');
+                } else {
+                    sessionStorage.setItem(roomId + ':pgp_armored_key', armoredKey);
+                    sessionStorage.setItem(roomId + ':pgp_passphrase', passphrase);
+                    localStorage.removeItem(roomId + ':pgp_armored_key');
+                    localStorage.removeItem(roomId + ':pgp_passphrase');
+                }
+            };
         }
-    };
 
-    document.getElementById('pgp-clear-key-btn').onclick = async function() {
-        loadedPrivateKey = null;
-        clearPGPStorage();
-        pgpPersistToggle.checked = false;
-        localStorage.setItem(roomId + ':pgp_persist_across_sessions', 'false');
-        document.getElementById('pgp-private-key-input').value = '';
-        document.getElementById('pgp-passphrase-input').value = '';
-        document.getElementById('pgp-key-status').textContent = '';
-        document.getElementById('pgp-key-status').style.color = '';
-        await rerenderAllMessages();
-    };
+        const pgpLoadButton = document.getElementById('pgp-load-key-btn');
+        if (pgpLoadButton) {
+            pgpLoadButton.onclick = async function() {
+                const armoredKey = document.getElementById('pgp-private-key-input').value.trim();
+                const passphrase = document.getElementById('pgp-passphrase-input').value;
+                const statusEl = document.getElementById('pgp-key-status');
+                if (!armoredKey) { statusEl.textContent = 'No key entered.'; return; }
+                try {
+                    let key = await openpgp.readPrivateKey({ armoredKey });
+                    if (!key.isDecrypted()) {
+                        key = await openpgp.decryptKey({ privateKey: key, passphrase });
+                    }
+                    loadedPrivateKey = key;
+                    savePGPKey(armoredKey, passphrase);
+                    statusEl.style.color = 'green';
+                    statusEl.textContent = 'Key loaded. Fingerprint: ' + key.getFingerprint().toUpperCase();
+                    await rerenderAllMessages();
+                    await autoHandlePGPVerification();
+                } catch (err) {
+                    loadedPrivateKey = null;
+                    statusEl.style.color = 'red';
+                    statusEl.textContent = 'Failed to load key: ' + err.message;
+                }
+            };
+        }
+
+        const pgpClearButton = document.getElementById('pgp-clear-key-btn');
+        if (pgpClearButton) {
+            pgpClearButton.onclick = async function() {
+                loadedPrivateKey = null;
+                clearPGPStorage();
+                const toggle = document.getElementById('pgp-persist-toggle');
+                if (toggle) toggle.checked = false;
+                localStorage.setItem(roomId + ':pgp_persist_across_sessions', 'false');
+                document.getElementById('pgp-private-key-input').value = '';
+                document.getElementById('pgp-passphrase-input').value = '';
+                document.getElementById('pgp-key-status').textContent = '';
+                document.getElementById('pgp-key-status').style.color = '';
+                await rerenderAllMessages();
+            };
+        }
+    }
+    initPGPButtons();
 
     // Auto-load stored PGP key on page load
     (async function() {
@@ -795,12 +808,18 @@
             const storedPass = store.getItem(roomId + ':pgp_passphrase') || '';
             const keyInput = document.getElementById('pgp-private-key-input');
             const passInput = document.getElementById('pgp-passphrase-input');
-            const persistEl = document.getElementById('pgp-persist-toggle');
             if (keyInput) keyInput.value = storedKey || '';
             if (passInput) passInput.value = storedPass;
-            if (persistEl) persistEl.checked = persist;
             const details = document.getElementById('pgp-keys-section');
             if (details && pgpWasOpen) details.open = true;
+            initPGPButtons();
+            if (loadedPrivateKey) {
+                const statusEl = document.getElementById('pgp-key-status');
+                if (statusEl) {
+                    statusEl.style.color = 'green';
+                    statusEl.textContent = 'Key loaded. Fingerprint: ' + loadedPrivateKey.getFingerprint().toUpperCase();
+                }
+            }
             applyPresenceIndicators();
         }
     }

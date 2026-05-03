@@ -284,6 +284,7 @@ func TestHandleLeaveRoom_GetRoomAccess_Error_Returns500(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleLeaveRoom_GetUsername_Error_Returns500(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -331,6 +332,7 @@ func TestHandleLeaveRoom_RoomNotFound_Returns404(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleLeaveRoom_GenericError_Returns500(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -377,6 +379,7 @@ func TestHandleJoinRoom_GetRoomAccess_Error_Returns500(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleJoinRoom_NotPublic_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -400,6 +403,7 @@ func TestHandleJoinRoom_NotPublic_Returns403(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleJoinRoom_IsRoomPublic_Error_Returns500(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -423,6 +427,7 @@ func TestHandleJoinRoom_IsRoomPublic_Error_Returns500(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleJoinRoom_GetUsername_Error_Returns500(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -446,6 +451,7 @@ func TestHandleJoinRoom_GetUsername_Error_Returns500(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleJoinRoom_JoinRoom_Error_Returns500(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -610,6 +616,7 @@ func TestHandleRemoveMember_Success_DisconnectsAndRendersDynamic(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleRemoveMember_NotCreator_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -657,6 +664,7 @@ func TestHandleRemoveMember_CannotRemoveCreator_Returns400(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleRemoveMember_NotMember_Returns404(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -681,6 +689,7 @@ func TestHandleRemoveMember_NotMember_Returns404(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleRemoveMember_DMRoom_Returns403(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

@@ -1,6 +1,6 @@
-.PHONY: all build test test-race test-integration test-all lint vet fmt generate run migrate clean help
+.PHONY: all build test test-race test-integration test-all test-e2e test-e2e-ui lint vet fmt generate run migrate clean help
 
-all: vet lint test-race
+all: vet lint test-all
 
 ## build: Build the server binary.
 build:
@@ -52,6 +52,14 @@ migrate:
 clean:
 	rm -f server migrate loadgen
 	docker compose down -v
+
+## test-e2e: Run Playwright E2E tests (requires Docker).
+test-e2e:
+	cd tests/e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test
+
+## test-e2e-ui: Open Playwright UI mode.
+test-e2e-ui:
+	cd tests/e2e && npx playwright test --ui
 
 ## help: Show this help message.
 help:

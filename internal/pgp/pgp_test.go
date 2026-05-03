@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func generateTestKeyPair(t *testing.T) (armoredPub string, priv *crypto.Key) {
+func generateTestKeyPair(t *testing.T) (string, *crypto.Key) {
 	t.Helper()
 	pgpHandle := crypto.PGP()
 	priv, err := pgpHandle.KeyGeneration().AddUserId("test", "test@example.com").New().GenerateKey()
 	require.NoError(t, err)
 	pub, err := priv.ToPublic()
 	require.NoError(t, err)
-	armoredPub, err = pub.Armor()
+	armoredPub, err := pub.Armor()
 	require.NoError(t, err)
 	return armoredPub, priv
 }
@@ -94,6 +94,7 @@ func TestHashChallenge_KnownInput(t *testing.T) {
 func TestHashChallenge_Deterministic(t *testing.T) {
 	t.Parallel()
 	input := "some-challenge"
+	//nolint:testifylint
 	require.Equal(t, HashChallenge(input), HashChallenge(input))
 }
 

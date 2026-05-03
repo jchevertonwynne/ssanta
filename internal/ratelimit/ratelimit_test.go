@@ -8,6 +8,7 @@ import (
 )
 
 const testIP = "1.2.3.4"
+const testIP2 = "1.2.3.4:1234"
 
 func TestRateLimiter_AllowWithinLimit(t *testing.T) {
 	t.Parallel()
@@ -139,7 +140,7 @@ func TestMiddleware_AllowsUnderLimit(t *testing.T) {
 
 	for i := range 3 {
 		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-		r.RemoteAddr = "1.2.3.4:1234"
+		r.RemoteAddr = testIP2
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, r)
 		if w.Code != http.StatusOK {
@@ -162,7 +163,7 @@ func TestMiddleware_Blocks_Returns429WithRetryAfter(t *testing.T) {
 	handler := Middleware(rl)(next)
 
 	r1 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	r1.RemoteAddr = "1.2.3.4:1234"
+	r1.RemoteAddr = testIP2
 	w1 := httptest.NewRecorder()
 	handler.ServeHTTP(w1, r1)
 	if w1.Code != http.StatusOK {
@@ -170,7 +171,7 @@ func TestMiddleware_Blocks_Returns429WithRetryAfter(t *testing.T) {
 	}
 
 	r2 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-	r2.RemoteAddr = "1.2.3.4:1234"
+	r2.RemoteAddr = testIP2
 	w2 := httptest.NewRecorder()
 	handler.ServeHTTP(w2, r2)
 	if w2.Code != http.StatusTooManyRequests {

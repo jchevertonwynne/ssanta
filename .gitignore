@@ -55,3 +55,9 @@ __debug_bin
 # Note: `vendor/` is NOT ignored because this repo includes it.
 # If you don't want to commit vendored deps, uncomment the next line.
 /vendor/
+
+# E2E tests (Playwright)
+tests/e2e/node_modules/
+tests/e2e/playwright-report/
+tests/e2e/test-results/
+tests/e2e/dist/

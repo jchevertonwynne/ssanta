@@ -27,7 +27,9 @@
                 hx-confirm="Leave this room?">Leave room</button>
         {{end}}
         {{else}}
-        {{if not .IsAdminView}}
+        {{if .IsAdminView}}
+        <h4>Admin View - non interactive</h4>
+        {{ else }}
         {{if .IsCreator}}
         <button hx-post="/rooms/{{.Room.ID}}/join"
                 hx-target="#room-sidebar"

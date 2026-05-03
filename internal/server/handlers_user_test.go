@@ -97,6 +97,7 @@ func TestHandleCreateUser_InvalidUsername_RendersFormError(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleCreateUser_UsernameTaken_RendersFormError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -123,6 +124,7 @@ func TestHandleCreateUser_UsernameTaken_RendersFormError(t *testing.T) {
 	}
 }
 
+//nolint:dupl
 func TestHandleCreateUser_PasswordTooShort_RendersFormError(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
