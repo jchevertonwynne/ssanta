@@ -11,6 +11,7 @@ test.describe('admin dashboard', () => {
     await adminPage.reload();
 
     await adminPage.goto('/admin');
+    await adminPage.waitForLoadState('networkidle');
     await expect(adminPage.locator('.bar:has-text("Admin —")')).toBeVisible({ timeout: 10_000 });
 
     const usersTable = adminPage.locator('section:has(h2:has-text("Users")) table');
@@ -30,6 +31,7 @@ test.describe('admin dashboard', () => {
     await navigateToRoom(creatorPage, roomId);
 
     await adminPage.goto('/admin');
+    await adminPage.waitForLoadState('networkidle');
     await expect(adminPage.locator('.bar:has-text("Admin —")')).toBeVisible({ timeout: 10_000 });
 
     const roomRow = adminPage
@@ -37,9 +39,9 @@ test.describe('admin dashboard', () => {
       .filter({ hasText: roomName });
     await expect(roomRow).toBeVisible();
 
-    adminPage.on('dialog', (d) => d.accept());
+    adminPage.once('dialog', (d) => d.accept());
     await roomRow.locator('button:has-text("Delete")').click();
-    await expect(roomRow).toBeHidden({ timeout: 10_000 });
+    await expect(adminPage.locator('section:has(h2:has-text("Rooms"))')).not.toContainText(roomName, { timeout: 10_000 });
   });
 
   test('admin can delete a user', async ({
@@ -50,6 +52,7 @@ test.describe('admin dashboard', () => {
     await adminPage.reload();
 
     await adminPage.goto('/admin');
+    await adminPage.waitForLoadState('networkidle');
     await expect(adminPage.locator('.bar:has-text("Admin —")')).toBeVisible({ timeout: 10_000 });
 
     // Use a locator specific to admin.html (has "Admin since" column not in home page users table)
@@ -57,7 +60,7 @@ test.describe('admin dashboard', () => {
     const userRow = adminUsersTable.locator('tbody tr').filter({ hasText: user2Username });
     await expect(userRow).toBeVisible();
 
-    adminPage.on('dialog', (d) => d.accept());
+    adminPage.once('dialog', (d) => d.accept());
     await userRow.locator('button:has-text("Delete")').click();
     await expect(adminUsersTable).not.toContainText(user2Username, { timeout: 10_000 });
   });
@@ -70,20 +73,19 @@ test.describe('admin dashboard', () => {
     await adminPage.reload();
 
     await adminPage.goto('/admin');
+    await adminPage.waitForLoadState('networkidle');
     await expect(adminPage.locator('.bar:has-text("Admin —")')).toBeVisible({ timeout: 10_000 });
 
     // Use a locator specific to admin.html (has "Admin since" column not in home page users table)
     const adminUsersTable = adminPage.locator('section:has(th:has-text("Admin since")) table');
-    const userRow = adminUsersTable.locator('tbody tr').filter({ hasText: user2Username });
-    await expect(userRow).toBeVisible();
 
     adminPage.once('dialog', (d) => d.accept());
-    await userRow.locator('button:has-text("Grant admin")').click();
-    await expect(userRow.locator('button:has-text("Revoke admin")')).toBeVisible({ timeout: 10_000 });
+    await adminUsersTable.locator('tbody tr').filter({ hasText: user2Username }).locator('button:has-text("Grant admin")').click();
+    await expect(adminUsersTable.locator('tbody tr').filter({ hasText: user2Username }).locator('button:has-text("Revoke admin")')).toBeVisible({ timeout: 10_000 });
 
     adminPage.once('dialog', (d) => d.accept());
-    await userRow.locator('button:has-text("Revoke admin")').click();
-    await expect(userRow.locator('button:has-text("Grant admin")')).toBeVisible({ timeout: 10_000 });
+    await adminUsersTable.locator('tbody tr').filter({ hasText: user2Username }).locator('button:has-text("Revoke admin")').click();
+    await expect(adminUsersTable.locator('tbody tr').filter({ hasText: user2Username }).locator('button:has-text("Grant admin")')).toBeVisible({ timeout: 10_000 });
   });
 
   test('non-admin user does not see Admin button', async ({

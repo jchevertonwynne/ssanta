@@ -107,15 +107,16 @@ test.describe('room management', () => {
     // Enable members-can-invite
     const membersCanInviteCheckbox = pageA.locator('label:has-text("Members can invite") input[type=checkbox]');
     if (!(await membersCanInviteCheckbox.isChecked())) {
-      const mciDone = pageA.waitForResponse((r) => r.url().includes('/members-can-invite'));
       await membersCanInviteCheckbox.click();
-      await mciDone;
+      await pageA.waitForTimeout(500);
     }
 
     // Make room public so User B can join
-    const publicDone = pageA.waitForResponse((r) => r.url().includes('/public'));
-    await pageA.locator('label:has-text("Public room") input[type=checkbox]').click();
-    await publicDone;
+    const publicCheckbox = pageA.locator('label:has-text("Public room") input[type=checkbox]');
+    if (!(await publicCheckbox.isChecked())) {
+      await publicCheckbox.click();
+      await pageA.waitForTimeout(500);
+    }
 
     // User B joins the room
     const roomBFirst = await navigateToRoom(pageB, roomId);

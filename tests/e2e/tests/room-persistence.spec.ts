@@ -27,12 +27,19 @@ test.describe('room persistence', () => {
       await room.pgpSection.locator('summary').first().click();
     }
     await room.pgpPersistToggle.check();
+    // The load handler also triggers autoHandlePGPVerification() which POSTs the
+    // public key to /pgp-key and swaps the sidebar. Wait for that POST so the
+    // page is stable before reload — otherwise localStorage may not be flushed.
+    const pgpUploadDone = page.waitForResponse(
+      (r) => r.url().includes('/pgp-key') && r.request().method() === 'POST'
+    );
     await room.loadPGPKey(privateKey);
+    await pgpUploadDone;
     await expect(room.pgpKeyStatus).toContainText('Key loaded. Fingerprint:');
 
     // Reload the page — the auto-load IIFE should read from localStorage and restore the key
-    await page.reload();
     await routeOpenPGP(page);
+    await page.reload();
     const room2 = await navigateToRoom(page, roomId);
     await expect(room2.pgpKeyStatus).toContainText('Key loaded. Fingerprint:', { timeout: 10_000 });
   });

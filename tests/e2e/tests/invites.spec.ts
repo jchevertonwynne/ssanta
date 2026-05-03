@@ -16,12 +16,13 @@ test.describe('invite lifecycle', () => {
 
     // User B loads home — invite appears server-rendered in #content-invites
     await pageB.goto('/');
+    await pageB.waitForLoadState('networkidle');
     await expect(pageB.locator('#content-invites')).toContainText(usernameA, { timeout: 5_000 });
 
     // Accept → HTMX swaps #content with the room detail
-    const acceptDone = pageB.waitForResponse((r) => r.url().includes('/accept'));
     await pageB.locator('#content-invites button:has-text("Accept")').first().click();
-    await acceptDone;
+    // Wait for the room detail to load (HTMX swapped #content)
+    await pageB.waitForSelector('#chat-messages', { timeout: 10_000 });
 
     // Navigate directly to the room to avoid a WS race where rooms_updated
     // reloads the home page content before we can interact with the room.
@@ -51,11 +52,8 @@ test.describe('invite lifecycle', () => {
     await expect(pageA.locator('#room-dynamic')).toContainText(usernameB, { timeout: 5_000 });
 
     // Cancel via hx-confirm dialog
-    const cancelDone = pageA.waitForResponse((r) => r.url().includes('/cancel'));
     pageA.once('dialog', (d) => d.accept());
     await pageA.locator('#room-dynamic button:has-text("Cancel")').click();
-    await cancelDone;
-
     await expect(pageA.locator('#room-dynamic')).not.toContainText(usernameB, { timeout: 5_000 });
   });
 
@@ -72,6 +70,7 @@ test.describe('invite lifecycle', () => {
     await pageA.waitForResponse((r) => r.url().includes('/invites'));
 
     await pageB.goto('/');
+    await pageB.waitForLoadState('networkidle');
     await expect(pageB.locator('#content-invites')).toContainText(usernameA, { timeout: 5_000 });
 
     await pageB.locator('#content-invites button:has-text("Refuse")').first().click();
